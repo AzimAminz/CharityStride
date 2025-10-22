@@ -33,8 +33,8 @@ It bridges the gap between volunteers and NGOs by providing an all-in-one soluti
 |-------|-------------|--------------|
 | **Frontend** | [Next.js 15](https://nextjs.org/) | Modern React framework for dynamic UI and fast rendering |
 | **Backend** | [Laravel 12](https://laravel.com/) | API backend with authentication, scheduling, and data management |
-| **Database** | PostgreSQL / MySQL | Structured relational storage for NGOs, volunteers, and events |
-| **Authentication** | Laravel Sanctum / JWT | Secure login system for NGOs and volunteers |
+| **Database** |  MySQL | Structured relational storage for NGOs, volunteers, and events |
+| **Authentication** | Laravel Sanctum | Secure login system for NGOs and volunteers |
 | **Styling** | Tailwind CSS | Clean, responsive, and consistent design system |
 
 ---
@@ -42,4 +42,4 @@ It bridges the gap between volunteers and NGOs by providing an all-in-one soluti
 ## 🏗️ System Architecture
 
 ```text
-Frontend (Next.js)  →  API Gateway (Laravel)  →  Database (MySQL/PostgreSQL)
+Frontend (Next.js)  →  API Gateway (Laravel)  →  Database (MySQL)
