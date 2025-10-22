@@ -11,15 +11,11 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('users', function (Blueprint $table) {
+        Schema::create('badges', function (Blueprint $table) {
             $table->uuid('id')->primary();
             $table->string('name');
-            $table->string('email')->unique();
-            $table->string('password')->nullable();
-            $table->string('google_id')->nullable()->unique();
-            $table->enum('role',['admin','ngo','user'])->default('user');
-            $table->boolean('status')->default(true);
-            $table->string('phone', 30)->nullable();
+            $table->integer('points_required');
+            $table->string('image_url')->nullable();
             $table->timestamps();
         });
     }
@@ -29,6 +25,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('users');
+        Schema::dropIfExists('badges');
     }
 };
