@@ -19,7 +19,8 @@ return new class extends Migration
             $table->string('google_id')->nullable()->unique();
             $table->enum('role',['admin','ngo','user'])->default('user');
             $table->boolean('status')->default(true);
-            $table->string('phone', 30)->nullable();
+            $table->string('phone', 30);
+            $table->date('birthdate');
             $table->timestamps();
         });
     }
