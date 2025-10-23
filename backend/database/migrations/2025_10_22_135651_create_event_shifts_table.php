@@ -12,10 +12,10 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('event_shifts', function (Blueprint $table) {
-            $table->uuid('id')->primary();
+            $table->id();
 
             // Foreign key to Events table
-            $table->uuid('event_id');
+            $table->foreignId('event_id')->constrained('events')->cascadeOnDelete();
 
             // Shift details
             $table->date('shift_date');
@@ -24,7 +24,7 @@ return new class extends Migration
             $table->integer('capacity')->default(0);
             $table->timestamps();
 
-            $table->foreign('event_id')->references('id')->on('events')->cascadeOnDelete();
+
         });
     }
 

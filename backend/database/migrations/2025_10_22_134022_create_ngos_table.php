@@ -12,10 +12,11 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('ngos', function (Blueprint $table) {
-            $table->uuid('id')->primary();
+            $table->id();
 
             // Relationship to users table
-            $table->uuid('user_id'); //Owner of the NGO
+            // Foreign key constraint
+            $table->foreignId('user_id')->unique()->constrained('users')->cascadeOnDelete();
 
             //Basic Information
             $table->string('name',255); //Official NGO name
@@ -51,8 +52,7 @@ return new class extends Migration
             
             $table->timestamps();
 
-            // Foreign key constraint
-            $table->foreign('user_id')->references('id')->on('users')->cascadeOnDelete();
+            
         });
     }
 

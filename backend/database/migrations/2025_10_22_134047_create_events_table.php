@@ -13,10 +13,10 @@ return new class extends Migration
     {
         Schema::create('events', function (Blueprint $table) {
             // Primary key
-            $table->uuid('id')->primary();
+            $table->id();   
 
             // Foreign key to NGOs table
-            $table->uuid('ngo_id');
+            $table->foreignId('ngo_id')->constrained('ngos')->cascadeOnDelete();
 
             // Event details
             $table->string('title');
@@ -44,10 +44,6 @@ return new class extends Migration
             $table->enum('status', ['open', 'closed', 'completed'])->default('open');
             $table->timestamps();
 
-            // Foreign key constraint
-            $table->foreign('ngo_id')
-                ->references('id')->on('ngos')
-                ->cascadeOnDelete();
         });
     }
 

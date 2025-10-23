@@ -12,14 +12,14 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('event_images', function (Blueprint $table) {
-            $table->uuid('id')->primary();
+            $table->id();
             
             // Foreign key to Event Sections table
-            $table->uuid('section_id');
+            $table->foreignId('event_section_id')->constrained('event_sections')->cascadeOnDelete();
             $table->string('image_url');
             $table->timestamps();
 
-            $table->foreign('section_id')->references('id')->on('event_sections')->cascadeOnDelete();
+
         });
     }
 

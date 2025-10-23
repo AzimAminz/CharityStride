@@ -12,16 +12,16 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('event_registrations', function (Blueprint $table) {
-            $table->uuid('id')->primary();
+            $table->id();
             
             // Foreign key to Events table
-            $table->uuid('event_id');
+            $table->foreignId('event_id')->constrained('events');
 
             // Optional foreign key to Event Shifts table
-            $table->uuid('shift_id')->nullable();
+            $table->foreignId('event_shift_id')->nullable()->constrained('event_shifts');
 
             // User details
-            $table->uuid('user_id');
+            $table->foreignId('user_id')->constrained('users');
 
             // Registration details
             $table->enum('status', ['pending', 'accepted', 'rejected', 'confirmed', 'completed'])->default('pending');
@@ -30,9 +30,7 @@ return new class extends Migration
             $table->integer('points_earned')->default(0);
             $table->timestamps();
 
-            $table->foreign('event_id')->references('id')->on('events')->cascadeOnDelete();
-            $table->foreign('shift_id')->references('id')->on('event_shifts')->nullOnDelete();
-            $table->foreign('user_id')->references('id')->on('users')->cascadeOnDelete();
+
         });
     }
 

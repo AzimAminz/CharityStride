@@ -12,9 +12,9 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('certificates', function (Blueprint $table) {
-            $table->uuid('id')->primary();
+            $table->id();
             // Foreign key to Event Registrations table
-            $table->uuid('registration_id');
+            $table->foreignId('event_registration_id')->constrained('event_registrations');
 
             // Certificate details
             $table->string('cert_number', 100)->unique();
@@ -23,14 +23,13 @@ return new class extends Migration
             $table->timestamp('issued_at')->nullable();
 
             // Foreign key to Certificate Templates table
-            $table->uuid('template_id')->nullable();
+            $table->foreignId('cert_template_id')->constrained('cert_templates');
 
             // Path to the generated certificate file
             $table->string('generated_path')->nullable();
             $table->timestamps();
 
-            $table->foreign('registration_id')->references('id')->on('event_registrations')->cascadeOnDelete();
-            $table->foreign('template_id')->references('id')->on('cert_templates')->nullOnDelete();
+
         });
     }
 

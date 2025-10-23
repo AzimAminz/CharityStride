@@ -12,18 +12,17 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('user_badges', function (Blueprint $table) {
-            $table->uuid('id')->primary();
+            $table->id();
 
             // Foreign keys
-            $table->uuid('user_id');
-            $table->uuid('badge_id');
+            $table->foreignId('user_id')->constrained('users');
+            $table->foreignId('badge_id')->constrained('badges');
 
             // Award details
             $table->timestamp('awarded_at')->nullable();
             $table->timestamps();
 
-            $table->foreign('user_id')->references('id')->on('users')->cascadeOnDelete();
-            $table->foreign('badge_id')->references('id')->on('badges')->cascadeOnDelete();
+
         });
     }
 

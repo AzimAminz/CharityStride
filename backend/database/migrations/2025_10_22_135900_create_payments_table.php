@@ -12,9 +12,9 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('payments', function (Blueprint $table) {
-            $table->uuid('id')->primary();
+            $table->id();
             // Foreign key to Event Registrations table
-            $table->uuid('registration_id');
+            $table->foreignId('event_registration_id')->constrained('event_registrations')->cascadeOnDelete();
 
             // Payment details
             $table->decimal('amount', 10, 2);
@@ -24,7 +24,7 @@ return new class extends Migration
             $table->timestamp('paid_at')->nullable();
             $table->timestamps();
 
-            $table->foreign('registration_id')->references('id')->on('event_registrations')->cascadeOnDelete();
+
         });
     }
 
