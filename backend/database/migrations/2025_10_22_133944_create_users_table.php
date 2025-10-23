@@ -21,6 +21,7 @@ return new class extends Migration
             $table->boolean('status')->default(true);
             $table->string('phone', 30);
             $table->date('birthdate');
+            $table->string('photo')->nullable();
             $table->timestamps();
         });
     }
