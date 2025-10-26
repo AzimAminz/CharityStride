@@ -1,7 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import LoginModal from "./login/LoginModal";
+import LoginModal from "./login/components/LoginModal";
+import { useEffect } from "react";
+import axios from "axios";
+
 
 export default function HomePage() {
   const [isOpen, setIsOpen] = useState(false);

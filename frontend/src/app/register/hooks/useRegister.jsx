@@ -2,6 +2,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+
 export function useRegister() {
     const router = useRouter();
   const [form, setForm] = useState({
@@ -91,10 +92,6 @@ export function useRegister() {
     }
   };
 
-  // 🔹 Google Register
-  const handleGoogleRegister = () => {
-    window.location.href = "http://localhost:8000/api/auth/google";
-  };
 
   // 🟢 Handle Back Navigation
   const back = () => {
@@ -111,7 +108,6 @@ export function useRegister() {
     errors,
     loading,
     handleSubmit,
-    handleGoogleRegister,
     back
   };
 }

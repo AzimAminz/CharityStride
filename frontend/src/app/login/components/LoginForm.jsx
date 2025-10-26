@@ -2,7 +2,8 @@
 
 import { motion } from "framer-motion";
 import { Heart, Eye, EyeOff, ArrowLeft } from "lucide-react";
-import useLogin from "./hooks/useLogin";
+import useLogin from "../hooks/useLogin";
+import GoogleField from "../../components/GoogleField.";
 
 export default function LoginPage() {
   const {
@@ -164,20 +165,7 @@ export default function LoginPage() {
           </div>
 
           {/* Google Button */}
-          <motion.button
-            type="button"
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.97 }}
-            className="w-full flex items-center justify-center gap-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 py-2.5 rounded-xl font-medium shadow-sm transition-all"
-          >
-            <img
-              src="https://www.svgrepo.com/show/475656/google-color.svg"
-              alt="Google"
-              width={20}
-              height={20}
-            />
-            Continue with Google
-          </motion.button>
+          <GoogleField />
 
           {/* Footer */}
           <div className="mt-6 text-center text-sm text-slate-600">

@@ -3,11 +3,14 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use Laravel\Socialite\Facades\Socialite;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
 use App\Http\Requests\LoginRequest;
 use App\Http\Requests\RegisterRequest;
+
+
 
 class AuthController extends Controller
 {
@@ -75,7 +78,81 @@ class AuthController extends Controller
         }
     }
 
-    public function logout(Request $request){
+    public function googleLogin(Request $request)
+    {
+        try {
+            $googleToken = $request->input('token');
+            /** @var GoogleProvider $provider */
+            $provider = Socialite::driver('google');
+
+            $googleUser = $provider->userFromToken($googleToken);
+
+            // 1️⃣ Cari user ikut email
+            $user = User::where('email', $googleUser->getEmail())->first();
+
+            if ($user) {
+                // 2️⃣ Kalau belum link Google ID, linkkan
+                if (!$user->google_id) {
+                    $user->update([
+                        'google_id' => $googleUser->getId(),
+                        'photo' => $googleUser->getAvatar() ?? $user->photo,
+                    ]);
+                }
+            } else {
+                // 3️⃣ Cipta user baru (tanpa phone/birthdate)
+                $user = User::create([
+                    'name' => $googleUser->getName(),
+                    'email' => $googleUser->getEmail(),
+                    'google_id' => $googleUser->getId(),
+                    'password' => Hash::make(uniqid()),
+                    'role' => 'user',
+                    'status' => true,
+                    'photo' => $googleUser->getAvatar() ?? 'https://ui-avatars.com/api/?name=' . urlencode($googleUser->getName()) . '&background=random&color=fff',
+                ]);
+            }
+
+            // 4️⃣ Hasilkan token Sanctum
+            $token = $user->createToken('auth_token')->plainTextToken;
+
+            // 5️⃣ Semak sama ada profile lengkap
+            $isProfileComplete = $user->phone && $user->birthdate;
+
+            return response()->json([
+                'message' => $user->wasRecentlyCreated ? 'Google registration successful' : 'Google login successful',
+                'user' => $user,
+                'token' => $token,
+                'profile_complete' => $isProfileComplete,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Google login failed',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    } 
+
+    public function completeProfile(Request $request)
+    {
+        $request->validate([
+            'phone' => 'required|string|max:30',
+            'birthdate' => 'required|date',
+        ]);
+
+        $user = $request->user();
+        $user->update([
+            'phone' => $request->phone,
+            'birthdate' => $request->birthdate,
+        ]);
+
+        return response()->json([
+            'message' => 'Profile updated successfully',
+            'user' => $user,
+        ]);
+    }
+
+
+    public function logout(Request $request)
+    {
         // Hapus token user sekarang
         $request->user()->currentAccessToken()->delete();
 
