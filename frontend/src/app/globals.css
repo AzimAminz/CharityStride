@@ -1,0 +1,39 @@
+@import "tailwindcss";
+
+.react-datepicker {
+  font-family: "Inter", sans-serif !important;
+  border: none !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.react-datepicker__header {
+  background-color: #10b981 !important; /* Emerald */
+  color: white !important;
+  border-bottom: none;
+  border-radius: 10px 10px 0 0;
+  padding: 0.75rem;
+}
+
+.react-datepicker__current-month {
+  color: white !important;
+  margin-bottom: 0.5rem !important;
+}
+
+.react-datepicker__day--today {
+  font-weight: bold !important;
+  color: #10b981 !important;
+  border-radius: 50%;
+  background-color: rgba(16, 185, 129, 0.1);
+}
+
+.react-datepicker__day--selected,
+.react-datepicker__day--keyboard-selected {
+  background-color: #059669 !important;
+  color: white !important;
+  border-radius: 50% !important;
+}
+
+.react-datepicker__day:hover {
+  background-color: rgba(16, 185, 129, 0.2) !important;
+  border-radius: 50%;
+}
