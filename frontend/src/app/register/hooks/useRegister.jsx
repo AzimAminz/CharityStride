@@ -1,10 +1,10 @@
 "use client";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-
+import { register as registerAPI } from "../../lib/auth"; 
 
 export function useRegister() {
-    const router = useRouter();
+  const router = useRouter();
   const [form, setForm] = useState({
     name: "",
     email: "",
@@ -16,11 +16,15 @@ export function useRegister() {
 
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
+  const [alert, setAlert] = useState({
+    type: "", 
+    message: "",
+    open: false,
+  });
 
   // ✅ Validation
   const validate = () => {
     const newErrors = {};
-
     if (!form.name.trim()) newErrors.name = "Name is required.";
     if (!form.email.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/))
       newErrors.email = "Please enter a valid email.";
@@ -50,48 +54,49 @@ export function useRegister() {
 
     setLoading(true);
     try {
-      const res = await fetch("http://localhost:8000/api/register", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...form,
-          birthdate: form.birthdate?.toISOString().split("T")[0],
-        }),
+      // Ubah birthdate ke format YYYY-MM-DD
+      const payload = {
+        ...form,
+        birthdate: form.birthdate?.toISOString().split("T")[0],
+      };
+
+       await registerAPI(payload); // guna API helper
+
+      setForm({
+        name: "",
+        email: "",
+        password: "",
+        confirmPassword: "",
+        phone: "",
+        birthdate: null,
       });
+      setErrors({});
+      setAlert({
+        type: "success",
+        message: "Registration successful!",
+        open: true,
+      });
+    
 
-      const data = await res.json();
-
-      if (res.ok) {
-        alert("Registration successful!");
-        setForm({
-          name: "",
-          email: "",
-          password: "",
-          confirmPassword: "",
-          phone: "",
-          birthdate: null,
-        });
-        setErrors({});
-      } else {
-        setForm((prev) => ({
-          ...prev,
-          password: "",
-          confirmPassword: "",
-        }));
-        setErrors({ api: data.message || "Something went wrong." });
-      }
+      // Redirect jika perlu
+      router.push("/dashboard");
     } catch (err) {
       setForm((prev) => ({
         ...prev,
         password: "",
         confirmPassword: "",
       }));
-      setErrors({ api: "Network error. Please try again later." });
+
+      setErrors({
+        api:
+          err.response?.data?.errors.email ||
+          err.message ||
+          "Something went wrong.",
+      });
     } finally {
       setLoading(false);
     }
   };
-
 
   // 🟢 Handle Back Navigation
   const back = () => {
@@ -108,6 +113,6 @@ export function useRegister() {
     errors,
     loading,
     handleSubmit,
-    back
+    back,
   };
 }

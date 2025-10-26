@@ -1,12 +1,11 @@
 <?php
 
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
 
 
 // Authentication Routes
-Route::prefix('auth')->group(function(){
+Route::middleware(['cors'])->prefix('auth')->group(function(){
 
     // Normal Authentication
     Route::post('/register', [AuthController::class, 'register']);

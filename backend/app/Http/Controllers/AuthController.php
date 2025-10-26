@@ -43,8 +43,8 @@ class AuthController extends Controller
             return response()->json([
                 'message' => 'User registered successfully',
                 'user' => $user,
-                'token' => $token,
-            ], 201);
+                
+            ], 201)->cookie('token', $token, 60 * 24 * 31); // Cookie sah selama 31 hari
         } catch (\Exception $e) {
             return response()->json(['message' => 'Registration failed', 'error' => $e->getMessage()], 500);
         }
@@ -71,8 +71,8 @@ class AuthController extends Controller
             return response()->json([
                 'message' => 'User logged in successfully',
                 'user' => $user,
-                'token' => $token,
-            ], 200);
+
+            ], 200)->cookie('token', $token, 60 * 24 * 31); // Cookie sah selama 31 hari
         } catch (\Exception $e) {
             return response()->json(['message' => 'Login failed', 'error' => $e->getMessage()], 500);
         }
@@ -120,9 +120,8 @@ class AuthController extends Controller
             return response()->json([
                 'message' => $user->wasRecentlyCreated ? 'Google registration successful' : 'Google login successful',
                 'user' => $user,
-                'token' => $token,
                 'profile_complete' => $isProfileComplete,
-            ]);
+            ])->cookie('token', $token, 60 * 24 * 31); 
         } catch (\Exception $e) {
             return response()->json([
                 'message' => 'Google login failed',
@@ -159,7 +158,7 @@ class AuthController extends Controller
         return response()->json([
             'status' => true,
             'message' => 'User logged out successfully'
-        ], 200);
+        ], 200)->cookie('token', '', -1); // Hapus cookie dengan menetapkan masa luput ke masa lalu
     }
 
     public function profile(Request $request)

@@ -4,11 +4,9 @@ import { motion } from "framer-motion";
 import { Calendar, Heart, ArrowLeft } from "lucide-react";
 import { useState } from "react";
 import DatePicker from "react-datepicker";
-
 import "react-datepicker/dist/react-datepicker.css";
 import { useRegister } from "../hooks/useRegister"; 
 import { GoogleOAuthProvider } from '@react-oauth/google';
-
 import { PasswordField } from "../../components/PasswordField";
 import { InputField } from "../../components/InputField";
 import GoogleField from "@/app/components/GoogleField.";
@@ -19,6 +17,7 @@ export default function RegisterPage() {
     form,
     setForm,
     errors,
+    alert,
     loading,
     handleSubmit,
     back
@@ -26,10 +25,12 @@ export default function RegisterPage() {
 
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
+  
 
   return (
     <GoogleOAuthProvider clientId={process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID}>
     <div className="min-h-screen flex items-center justify-center bg-gray-50 px-6 py-10">
+      
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}

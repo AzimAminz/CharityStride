@@ -2,8 +2,7 @@
 
 import { useState } from "react";
 import LoginModal from "./login/components/LoginModal";
-import { useEffect } from "react";
-import axios from "axios";
+
 
 
 export default function HomePage() {

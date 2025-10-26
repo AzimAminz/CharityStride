@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { login } from "../../lib/auth";
 
 export default function useLogin() {
   const router = useRouter();
@@ -13,30 +14,50 @@ export default function useLogin() {
   const [passwordError, setPasswordError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
 
-  // 🟢 Handle Login
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
 
-    // Email validation
+    // Validation
+    let hasError = false;
+
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       setEmailError("Please enter a valid email address.");
+      hasError = true;
     } else {
       setEmailError("");
     }
 
-    // Password validation
     if (!password) {
       setPasswordError("Please enter your password.");
-      return;
+      hasError = true;
     } else {
       setPasswordError("");
     }
 
+    if (hasError) return; // Stop if validation fail
+
+    // Send login request
     setLoading(true);
-    setTimeout(() => setLoading(false), 2000);
+    try {
+      const res = await login({ email, password });
+      console.log("Login response:", res);
+
+      if (res?.user) {
+        if (res.user.role === "admin") router.push("/admin");
+        else if (res.user.role === "ngo") router.push("/ngo");
+        else router.push("/dashboard");
+      } else {
+        setPassword("");
+        setPasswordError(res?.message || "Login failed. Please try again.");
+      }
+    } catch (err) {
+      setPassword("");
+      setPasswordError(err.response?.data?.message || "Login failed. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   };
 
-  // 🟢 Handle Back Navigation
   const back = () => {
     if (window.history.length > 1) {
       router.back();
