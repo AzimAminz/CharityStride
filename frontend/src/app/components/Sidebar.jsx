@@ -7,15 +7,9 @@ import { logout as logOut } from "@/app/lib/auth";
 import { MENU_BY_ROLE, BOTTOM_MENU_BY_ROLE } from "@/app/config/menuItems";
 
 import {
-  Settings,
   X,
   ChevronLeft,
   ChevronRight,
-  LayoutDashboard,
-  Package,
-  Calendar,
-  Truck,
-  BarChart3,
   User,
   LogOut,
 } from "lucide-react";
@@ -64,7 +58,7 @@ export default function Sidebar() {
 
           <span
             className={`
-              whitespace-nowrap overflow-hidden transition-all duration-200
+              whitespace-nowrap overflow-hidden transition-all duration-100
               ${
                 collapsed
                   ? "opacity-0 -translate-x-1.5 w-0"
@@ -128,11 +122,11 @@ export default function Sidebar() {
 
             <span
               className={`
-                text-lg font-semibold text-emerald-900 transition-all duration-200
+                text-lg font-semibold text-emerald-900 
                 ${
                   collapsed
-                    ? "opacity-0 w-0 -translate-x-1.5"
-                    : "opacity-100 w-auto translate-x-0"
+                    ? "opacity-0 w-0 "
+                    : "opacity-100 w-auto "
                 }
               `}
             >
