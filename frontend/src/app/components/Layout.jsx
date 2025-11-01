@@ -3,26 +3,25 @@
 import Sidebar from "./Sidebar";
 import Navbar from "./Navbar";
 import { useState, useEffect } from "react";
+import Loading from "@/app/loading";
 
 export default function Layout({ children }) {
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(null);
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
 
   useEffect(() => {
-  
-    const user = localStorage.getItem("user");
-    const token = localStorage.getItem("token");
+    const user = typeof window !== "undefined" && localStorage.getItem("user");
+    const token = typeof window !== "undefined" && localStorage.getItem("token");
 
-    if (user && token) {
-      setIsLoggedIn(true);
-    } else {
-      setIsLoggedIn(false);
-    }
+    setIsLoggedIn(!!user && !!token);
+    setIsCheckingAuth(false);
   }, []);
 
+  if (isCheckingAuth) return <Loading />;
+
   return (
-    <div className="flex h-screen bg-gray-50">
-      {/* Sidebar */}
+    <div className="flex h-screen bg-gray-50 animate-fadeIn">
       {isLoggedIn && (
         <Sidebar
           isCollapsed={!sidebarOpen}
@@ -30,8 +29,6 @@ export default function Layout({ children }) {
         />
       )}
 
-
-      {/* Main */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         <Navbar onMenuClick={() => setSidebarOpen(!sidebarOpen)} />
 

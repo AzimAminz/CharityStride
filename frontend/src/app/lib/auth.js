@@ -12,7 +12,6 @@ export const login = async ({ email, password }) => {
 export const logout = async () => {
   const token = localStorage.getItem("token");
   if (!token) {
-    console.log("already logged out");
     return;
   };
   await api.post("/auth/logout");

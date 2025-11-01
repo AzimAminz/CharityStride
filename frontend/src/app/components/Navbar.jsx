@@ -8,13 +8,18 @@ import Link from "next/link";
 export default function Navbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [hydrated, setHydrated] = useState(false); // ✅ prevent flicker
   const pathname = usePathname();
 
   useEffect(() => {
+    setHydrated(true); // ✅ UI only render after client load
     const user = localStorage.getItem("user");
     const token = localStorage.getItem("token");
     setIsLoggedIn(!!user && !!token);
   }, []);
+
+  // ❗ Jangan render sebelum hydration siap — ini hilangkan flicker
+  if (!hydrated) return null;
 
   const navItems = [
     { label: "Home", href: "/" },
@@ -25,13 +30,9 @@ export default function Navbar() {
   return (
     <nav className="bg-white border-b border-gray-200 px-4 lg:px-6 py-3">
       <div className="flex items-center justify-between">
-        <div className={`${isLoggedIn ? "md:hidden" : "hidden"}`}>
-
-        </div>
+        <div  className={`${isLoggedIn ? "md:hidden" : "hidden"} `}></div>
         
-        {/* Left Logo — Always show */}
         <Link href="/">
-        
           <div className="flex items-center space-x-2">
             <div className={`${isLoggedIn ? "md:hidden" : ""} w-8 h-8 bg-white rounded-lg border-2 border-emerald-500 flex items-center justify-center p-1`}>
               <img
@@ -40,17 +41,13 @@ export default function Navbar() {
                 className="w-full h-full object-contain"
               />
             </div>
-
-            
-           
-              <span className={`${isLoggedIn ? "md:hidden" : ""} text-lg font-semibold text-emerald-900`}>
-                Charity Stride
-              </span>
-           
+            <span className={`${isLoggedIn ? "md:hidden" : ""} text-lg font-semibold text-emerald-900`}>
+              Charity Stride
+            </span>
           </div>
         </Link>
 
-        {/* Center Menu (Desktop Only) */}
+        {/* Desktop Menu */}
         <div className="hidden md:flex flex-1 justify-center">
           <div className="flex items-center space-x-4 lg:space-x-8">
             {navItems.map(({ label, href }, i) => {
@@ -72,7 +69,7 @@ export default function Navbar() {
           </div>
         </div>
 
-        {/* Right Section */}
+        {/* Right Side */}
         <div className="flex items-center space-x-3 lg:space-x-4">
           {!isLoggedIn && (
             <Link

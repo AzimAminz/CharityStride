@@ -6,21 +6,17 @@ import { useRouter, usePathname } from "next/navigation";
 import { logout as logOut } from "@/app/lib/auth";
 import { MENU_BY_ROLE, BOTTOM_MENU_BY_ROLE } from "@/app/config/menuItems";
 
-import {
-  X,
-  ChevronLeft,
-  ChevronRight,
-  User,
-  LogOut,
-} from "lucide-react";
+import { X, ChevronLeft, ChevronRight, User, LogOut } from "lucide-react";
 
 export default function Sidebar() {
   const router = useRouter();
   const pathname = usePathname();
-  const role =
+  const user =
     typeof window !== "undefined"
-      ? JSON.parse(localStorage.getItem("user"))?.role || "guest"
-      : "guest";
+      ? JSON.parse(localStorage.getItem("user"))
+      : null;
+
+  const role = user?.role;
 
   const menuItems = MENU_BY_ROLE[role] || [];
   const bottomMenuItems = BOTTOM_MENU_BY_ROLE[role] || [];
@@ -72,11 +68,12 @@ export default function Sidebar() {
       );
     });
 
-  const logout = async () => {
-    await logOut();
-    setShowLogoutModal(false);
-    router.push("/events");
-  };
+    const logout = async () => {
+      await logOut();   
+      setShowLogoutModal(false);
+      router.push("/events");
+    };
+    
 
   return (
     <>
@@ -123,11 +120,7 @@ export default function Sidebar() {
             <span
               className={`
                 text-lg font-semibold text-emerald-900 
-                ${
-                  collapsed
-                    ? "opacity-0 w-0 "
-                    : "opacity-100 w-auto "
-                }
+                ${collapsed ? "opacity-0 w-0 " : "opacity-100 w-auto "}
               `}
             >
               Charity Stride
@@ -152,17 +145,23 @@ export default function Sidebar() {
         </div>
 
         {/* Profile */}
-        {!collapsed && (
+        {!collapsed && user && (
           <div className="p-4 border-b border-gray-200">
             <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 bg-gray-300 rounded-full flex items-center justify-center">
-                <User size={20} className="text-gray-600" />
+              <div className="w-10 h-10 rounded-full overflow-hidden">
+                <img
+                  src={user.photo}
+                  alt={user.name}
+                  className="w-full h-full object-cover"
+                />
               </div>
               <div>
                 <p className="text-sm font-medium text-gray-900">
                   Welcome back
                 </p>
-                <p className="text-lg font-semibold text-gray-900">Johnathan</p>
+                <p className="text-lg font-semibold text-gray-900">
+                  {user.name}
+                </p>
               </div>
             </div>
           </div>
