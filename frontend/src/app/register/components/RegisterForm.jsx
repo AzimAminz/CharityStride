@@ -172,7 +172,7 @@ export default function RegisterPage() {
           className="w-full flex items-center justify-center gap-2 mt-4 bg-gray-100 hover:bg-gray-200 text-gray-700 py-2.5 rounded-xl font-medium transition-all"
         >
           <ArrowLeft size={18} />
-          Back to Login
+          Back 
         </motion.button>
       </motion.div>
     </div>

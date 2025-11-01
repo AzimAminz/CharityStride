@@ -59,10 +59,12 @@ export default function useLogin() {
   };
 
   const back = () => {
-    if (window.history.length > 1) {
-      router.back();
-    } else {
+    const previous = document.referrer; 
+  
+    if (window.history.length <= 1 || previous.includes("/login") || previous.includes("/register")) {
       router.push("/");
+    } else {
+      router.back();
     }
   };
 
