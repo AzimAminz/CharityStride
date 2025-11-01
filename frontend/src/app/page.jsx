@@ -1,23 +1,42 @@
-"use client";
-
-import { useState } from "react";
-import LoginModal from "./login/components/LoginModal";
-
-
+// App.js atau page utama Anda
+import Layout from './components/Layout';
 
 export default function HomePage() {
-  const [isOpen, setIsOpen] = useState(false);
-
   return (
-    <div className="p-10">
-      <button
-        onClick={() => setIsOpen(true)}
-        className="px-4 py-2 bg-emerald-500 text-white rounded"
-      >
-        Open Login Modal
-      </button>
-
-      <LoginModal isOpen={isOpen} onClose={() => setIsOpen(false)} />
-    </div>
+    <Layout>
+      <div className="p-6">
+        <h1 className="text-2xl font-bold text-gray-900">Welcome to Dashboard</h1>
+        <p className="text-gray-600 mt-2">Your content goes here...</p>
+        <img src="/login.jpg" alt="" />
+      </div>
+      <div className="p-6">
+        <h1 className="text-2xl font-bold text-gray-900">Welcome to Dashboard</h1>
+        <p className="text-gray-600 mt-2">Your content goes here...</p>
+      </div>
+      <div className="p-6">
+        <h1 className="text-2xl font-bold text-gray-900">Welcome to Dashboard</h1>
+        <p className="text-gray-600 mt-2">Your content goes here...</p>
+      </div>
+      <div className="p-6">
+        <h1 className="text-2xl font-bold text-gray-900">Welcome to Dashboard</h1>
+        <p className="text-gray-600 mt-2">Your content goes here...</p>
+      </div>
+      <div className="p-6">
+        <h1 className="text-2xl font-bold text-gray-900">Welcome to Dashboard</h1>
+        <p className="text-gray-600 mt-2">Your content goes here...</p>
+      </div>
+      <div className="p-6">
+        <h1 className="text-2xl font-bold text-gray-900">Welcome to Dashboard</h1>
+        <p className="text-gray-600 mt-2">Your content goes here...</p>
+      </div>
+      <div className="p-6">
+        <h1 className="text-2xl font-bold text-gray-900">Welcome to Dashboard</h1>
+        <p className="text-gray-600 mt-2">Your content goes here...</p>
+      </div>
+      <div className="p-6">
+        <h1 className="text-2xl font-bold text-gray-900">Welcome to Dashboard</h1>
+        <p className="text-gray-600 mt-2">Your content goes here...</p>
+      </div>
+    </Layout>
   );
 }

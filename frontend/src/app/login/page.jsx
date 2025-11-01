@@ -1,4 +1,5 @@
 import LoginForm from "./components/LoginForm";
+import GuestLayout from "../guest/layout";
 
 
 export const metadata = {
@@ -7,6 +8,12 @@ export const metadata = {
 };
 
 
-export default function LoginPage() {
-  return <LoginForm />;
-}
+const page = () => {
+    return (
+        <GuestLayout>
+            <LoginForm />
+        </GuestLayout>
+    );
+};
+
+export default page;

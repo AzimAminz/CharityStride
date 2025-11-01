@@ -104,15 +104,20 @@ export default function LoginModal({ isOpen, onClose }) {
 
               {/* Login Button */}
               <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.97 }}
+                whileHover={!loading ? { scale: 1.05 } : {}}
+                whileTap={!loading ? { scale: 0.97 } : {}}
                 type="submit"
                 disabled={loading}
-                className={`w-full bg-emerald-500 hover:bg-emerald-600 text-white py-2.5 rounded-xl font-medium shadow-md transition-all ${
-                  loading ? "opacity-70 cursor-not-allowed" : ""
-                }`}
-              >
-                {loading ? "Logging in..." : "Log In"}
+                className={`
+                 w-full py-2.5 rounded-xl font-medium shadow-md transition-all
+                ${
+               loading
+                ? "bg-gray-400 cursor-wait text-gray-100"
+               : "bg-emerald-500 hover:bg-emerald-600 text-white cursor-pointer"
+               }
+               `}
+                >
+                {loading ? "Sign In..." : "Sign In"}
               </motion.button>
             </form>
 
@@ -129,7 +134,10 @@ export default function LoginModal({ isOpen, onClose }) {
             {/* Footer */}
             <div className="mt-6 text-center text-sm text-slate-600">
               Don’t have an account?{" "}
-              <Link href="/register" className="text-emerald-600 font-medium hover:underline">
+              <Link
+                href="/register"
+                className="text-emerald-600 font-medium hover:underline"
+              >
                 Sign up
               </Link>
             </div>

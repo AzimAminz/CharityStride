@@ -120,15 +120,22 @@ export default function LoginPage() {
               error={passwordError}
             />
 
-            <motion.button
-              whileHover={{ scale: 1.03 }}
-              whileTap={{ scale: 0.97 }}
-              type="submit"
-              disabled={loading}
-              className="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-2.5 rounded-xl font-semibold transition-colors"
-            >
-              {loading ? "Signing in..." : "Sign In"}
-            </motion.button>
+<motion.button
+                whileHover={!loading ? { scale: 1.05 } : {}}
+                whileTap={!loading ? { scale: 0.97 } : {}}
+                type="submit"
+                disabled={loading}
+                className={`
+    w-full py-2.5 rounded-xl font-medium shadow-md transition-all
+    ${
+      loading
+        ? "bg-gray-400 cursor-wait text-gray-100"
+        : "bg-emerald-500 hover:bg-emerald-600 text-white cursor-pointer"
+    }
+  `}
+              >
+                {loading ? "Sign In..." : "Sign In"}
+              </motion.button>
           </form>
 
           {/* Divider */}

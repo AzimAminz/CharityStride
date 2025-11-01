@@ -1,6 +1,7 @@
 
 
 import RegisterForm from './components/RegisterForm';
+import GuestLayout from '../guest/layout';
 
 export const metadata = {
     title: 'Register',
@@ -9,7 +10,9 @@ export const metadata = {
 
 const page = () => {
     return (
-        <RegisterForm />
+        <GuestLayout>
+            <RegisterForm />
+        </GuestLayout>
     );
 };
 

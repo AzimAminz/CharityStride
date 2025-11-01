@@ -1,27 +1,44 @@
-// lib/auth.js
 import { api } from "./api";
 
-// Login (simpan cookie automatically)
 export const login = async ({ email, password }) => {
-  const res = await api({ withCredentials: true }).post("/auth/login", { email, password });
+  const res = await api.post("/auth/login", { email, password });
+
+  localStorage.setItem("token", res.data.token);
+  localStorage.setItem("user", JSON.stringify(res.data.user));
+
   return res.data;
 };
 
-// Logout (delete cookie from server)
 export const logout = async () => {
-  const res = await api({ withCredentials: true }).post("/auth/logout");
-  return res.data;
+  const token = localStorage.getItem("token");
+  if (!token) {
+    console.log("already logged out");
+    return;
+  };
+  await api.post("/auth/logout");
+  localStorage.removeItem("token");
+  localStorage.removeItem("user");
 };
 
-// Register
 export const register = async (form) => {
-  const res = await api({ withCredentials: true }).post("/auth/register", form);
+  const res = await api.post("/auth/register", form);
+  localStorage.setItem("token", res.data.token);
+  localStorage.setItem("user", JSON.stringify(res.data.user));
   return res.data;
 };
 
-// Google login
 export const googleLogin = async (token) => {
-  const res = await api({ withCredentials: true }).post("/auth/google", { token });
+  const res = await api.post("/auth/google", { token });
+  localStorage.setItem("token", res.data.token);
+  localStorage.setItem("user", JSON.stringify(res.data.user));
   return res.data;
+};
+
+export const getCurrentUser = async () => {
+  const token = localStorage.getItem("token");
+  if (!token) throw new Error("No token");
+
+  const res = await api.get("/auth/profile");
+  return res.data.user; 
 };
 
