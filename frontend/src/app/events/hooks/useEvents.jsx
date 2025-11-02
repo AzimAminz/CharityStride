@@ -283,7 +283,7 @@ export const useEvents = (itemsPerPage = 12, isCategoryPage = false) => {
     if (showNearestOnly) queryParams.set('nearest', 'true');
     if (sortBy !== 'default') queryParams.set('sort', sortBy);
     
-    const newUrl = `/events/category?${queryParams.toString()}`;
+    const newUrl = `/events/search?${queryParams.toString()}`;
     window.history.replaceState(null, '', newUrl);
   };
 
@@ -308,41 +308,43 @@ export const useEvents = (itemsPerPage = 12, isCategoryPage = false) => {
   };
 
   // Fungsi untuk navigate ke category page dengan search query
-  const navigateToCategoryPage = (category, sort = 'default') => {
+  const navigateToCategoryPage = (category, sort = 'default', search = '') => {
     const queryParams = new URLSearchParams();
+    
     if (category !== 'all') queryParams.set('category', category);
     if (sort !== 'default') queryParams.set('sort', sort);
-    if (appliedSearchQuery) queryParams.set('search', appliedSearchQuery);
+    if (search) queryParams.set('search', search); // ← guna search dari parameter
     if (showNearestOnly) queryParams.set('nearest', 'true');
-    
-    router.push(`/events/category?${queryParams.toString()}`);
+  
+    router.push(`/events/search?${queryParams.toString()}`);
   };
+  
 
   // Fungsi untuk handle search dari main page
   const handleMainPageSearch = () => {
-    navigateToCategoryPage('all');
+    navigateToCategoryPage('all', 'default', searchQuery);
   };
 
   return {
-    // Untuk kedua-dua pages
+   
     events: filteredEvents,
     displayedEvents: isCategoryPage ? displayedEvents : filteredEvents,
     loading,
     pageLoading,
     searchQuery,
     setSearchQuery,
-    appliedSearchQuery, // Tambah ini untuk access applied search query
+    appliedSearchQuery, 
     selectedCategory,
     setSelectedCategory,
     showNearestOnly,
     setShowNearestOnly,
     userLocation,
     navigateToCategoryPage,
-    applySearch, // Tambah fungsi applySearch
-    handleMainPageSearch, // Tambah fungsi untuk main page
+    applySearch, 
+    handleMainPageSearch,
     totalCount,
     
-    // Hanya untuk category page
+    
     ...(isCategoryPage && {
       currentPage,
       totalPages,

@@ -103,8 +103,16 @@ export default function Navbar() {
       {isMenuOpen && (
         <div className="md:hidden mt-4 pb-4 border-t border-gray-200 pt-4">
           <div className="flex flex-col space-y-2">
-            {navItems.map(({ label, href }, i) => {
-              const isActive = pathname === href;
+            {navItems.map(({ label, href, exact }, i) => {
+              let isActive;
+        
+              if (exact) {
+
+                isActive = pathname === href;
+              } else {
+
+                isActive = pathname.startsWith(href);
+              }
               return (
                 <Link
                   key={i}

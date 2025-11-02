@@ -6,7 +6,7 @@ import Pagination from "../components/Pagination";
 import SortFilter from "../components/SortFilter";
 import EventCardSkeleton from "../components/EventCardSkeleton";
 import SearchFilters from "../components/SearchFilters";
-import { useState,useEffect } from "react";
+import { useState, useEffect } from "react";
 import MapView from "../components/MapView";
 
 export default function CategoryPage() {
@@ -19,6 +19,7 @@ export default function CategoryPage() {
     showNearestOnly,
     setShowNearestOnly,
     searchQuery,
+    setSearchQuery,
     currentPage,
     totalPages,
     goToPage,
@@ -27,11 +28,12 @@ export default function CategoryPage() {
     sortBy,
     setSortBy,
     navigateToCategoryPage,
-    applySearch
+    applySearch,
   } = useEvents(12, true); // true = category page
 
-  const [tempSearchQuery, setTempSearchQuery] = useState(searchQuery);
   const [mapView, setMapView] = useState(false);
+  const [showDropdown, setShowDropdown] = useState(false);
+
 
   const getCategoryTitle = () => {
     const titles = {
@@ -46,19 +48,14 @@ export default function CategoryPage() {
 
   useEffect(() => {
     if (!pageLoading) {
-      document.getElementById("topSection")?.scrollIntoView({ behavior: "smooth" });
+      document
+        .getElementById("topSection")
+        ?.scrollIntoView({ behavior: "smooth" });
     }
   }, [pageLoading]);
-  
-  
-  
 
   const handlePageChange = async (newPage) => {
     await goToPage(newPage);
-  };
-
-  const handleSearch = () => {
-    applySearch();
   };
 
   const handleCategoryChange = (category) => {
@@ -78,28 +75,33 @@ export default function CategoryPage() {
     <div className="min-h-screen bg-gray-50" id="topSection">
       {/* Search Filters Component */}
       <SearchFilters
-        searchQuery={tempSearchQuery}
-        setSearchQuery={setTempSearchQuery}
+        searchQuery={searchQuery} 
+        setSearchQuery={setSearchQuery} 
         selectedCategory={selectedCategory}
         setSelectedCategory={handleCategoryChange}
         showNearestOnly={showNearestOnly}
         setShowNearestOnly={setShowNearestOnly}
         mapView={mapView}
         setMapView={setMapView}
-        onSearch={handleSearch}
-      />
+        onSearch={applySearch} 
+        showDropdown={showDropdown}
+        setShowDropdown={setShowDropdown}
+        />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      {mapView && (
-          <MapView events={filteredEvents} />
-        )}
-        <div className={`flex flex-col lg:flex-row lg:items-center lg:justify-between mb-6 ${mapView? "mt-5" : ""}`}>
+        {mapView && <MapView events={filteredEvents} />}
+        <div
+          className={`flex flex-col lg:flex-row lg:items-center lg:justify-between mb-6 ${
+            mapView ? "mt-5" : ""
+          }`}
+        >
           <div>
             <h1 className="text-3xl font-bold text-gray-900 mb-2">
               {getCategoryTitle()}
             </h1>
             <p className="text-gray-600">
-              Page {currentPage} of {totalPages} - Showing {filteredEvents.length} of {totalCount} events
+              Page {currentPage} of {totalPages} - Showing{" "}
+              {filteredEvents.length} of {totalCount} events
               {searchQuery && ` for "${searchQuery}"`}
               {showNearestOnly && " near your location"}
             </p>
@@ -115,21 +117,20 @@ export default function CategoryPage() {
               No events found
             </h3>
             <p className="text-gray-600">
-              Try adjusting your search criteria or check back later for new events.
+              Try adjusting your search criteria or check back later for new
+              events.
             </p>
           </div>
         ) : (
           <>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-8">
-              {pageLoading ? (
-                Array.from({ length: 12 }).map((_, index) => (
-                  <EventCardSkeleton key={index} />
-                ))
-              ) : (
-                displayedEvents.map((event) => (
-                  <EventCard key={event.id} event={event} />
-                ))
-              )}
+              {pageLoading
+                ? Array.from({ length: 12 }).map((_, index) => (
+                    <EventCardSkeleton key={index} />
+                  ))
+                : displayedEvents.map((event) => (
+                    <EventCard key={event.id} event={event} />
+                  ))}
             </div>
 
             {totalPages > 1 && (

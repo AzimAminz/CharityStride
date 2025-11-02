@@ -1,11 +1,11 @@
 import React from 'react';
 import Layout from '../../components/Layout';
-import CategoryPage from './CategoryPage'; // Pastikan import correct
+import SearchPage from './SearchPage'; // Pastikan import correct
 
 const page = () => {
     return (
         <Layout>
-            <CategoryPage/>
+            <SearchPage/>
         </Layout>
     );
 };

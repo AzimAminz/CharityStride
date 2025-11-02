@@ -23,6 +23,8 @@ export default function EventsPage() {
   } = useEvents(12, false); // false = bukan category page
 
   const [mapView, setMapView] = useState(false);
+  const [showDropdown, setShowDropdown] = useState(false);
+
 
   // Filter events by category for sections
   const volunteerEvents = useMemo(
@@ -50,10 +52,10 @@ export default function EventsPage() {
   };
 
   const handleSearch = () => {
-    applySearch(); // Apply search filter
-    handleMainPageSearch(); // Navigate to category page
+    applySearch(); 
+    navigateToCategoryPage(selectedCategory, 'default', searchQuery);
   };
-
+  
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -74,6 +76,8 @@ export default function EventsPage() {
         mapView={mapView}
         setMapView={setMapView}
         onSearch={handleSearch}
+        showDropdown={showDropdown}
+        setShowDropdown={setShowDropdown}
       />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
