@@ -22,7 +22,7 @@ export default function Navbar() {
   if (!hydrated) return null;
 
   const navItems = [
-    { label: "Home", href: "/" },
+    { label: "Home", href: "/" , exact: true },
     { label: "Events", href: "/events" },
     { label: "About", href: "/about" },
   ];
@@ -50,8 +50,16 @@ export default function Navbar() {
         {/* Desktop Menu */}
         <div className="hidden md:flex flex-1 justify-center">
           <div className="flex items-center space-x-4 lg:space-x-8">
-            {navItems.map(({ label, href }, i) => {
-              const isActive = pathname === href;
+            {navItems.map(({ label, href , exact}, i) => {
+              let isActive;
+        
+              if (exact) {
+
+                isActive = pathname === href;
+              } else {
+
+                isActive = pathname.startsWith(href);
+              }
               return (
                 <Link
                   key={i}

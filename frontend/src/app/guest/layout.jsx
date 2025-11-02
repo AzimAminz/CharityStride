@@ -25,7 +25,7 @@ export default function GuestLayout({ children }) {
         router.replace("/ngo");
         break;
       case "user":
-        router.replace("/dashboard");
+        router.replace("/events");
         break;
       default:
         router.replace("/login");

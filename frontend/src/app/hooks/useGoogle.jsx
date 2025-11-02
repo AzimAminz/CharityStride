@@ -20,7 +20,7 @@ export function useGoogle() {
         else {
           if (res.profile_complete) {
             
-            router.push("/dashboard");
+            router.push("/events");
           } else {
             router.push("/complete-profile");
           }

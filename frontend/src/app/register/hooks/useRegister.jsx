@@ -79,7 +79,7 @@ export function useRegister() {
     
 
       // Redirect jika perlu
-      router.push("/dashboard");
+      router.push("/user/dashboard");
     } catch (err) {
       setForm((prev) => ({
         ...prev,

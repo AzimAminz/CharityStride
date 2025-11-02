@@ -1,11 +1,12 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { useRouter , usePathname} from "next/navigation";
 import { useState } from "react";
 import { login } from "../../lib/auth";
 
 export default function useLogin() {
   const router = useRouter();
+  const pathname = usePathname();
 
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState("");
@@ -45,7 +46,7 @@ export default function useLogin() {
       if (res?.user) {
         if (res.user.role === "admin") router.push("/admin");
         else if (res.user.role === "ngo") router.push("/ngo");
-        else router.push("/dashboard");
+        else router.push("/events");
       } else {
         setPassword("");
         setPasswordError(res?.message || "Login failed. Please try again.");
@@ -59,10 +60,10 @@ export default function useLogin() {
   };
 
   const back = () => {
-    const previous = document.referrer; 
+ 
   
-    if (window.history.length <= 1 || previous.includes("/login") || previous.includes("/register")) {
-      router.push("/");
+    if (window.history.length <= 1 || pathname === "/login" || pathname === '/register') {
+      router.push("/events");
     } else {
       router.back();
     }

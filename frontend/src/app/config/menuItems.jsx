@@ -2,25 +2,25 @@
 import {
     LayoutDashboard,
     Package,
-    Calendar,
     Truck,
     BarChart3,
     Settings,
+    CalendarDays,
+    CreditCard
   } from "lucide-react";
   
   // Set per role
   export const MENU_BY_ROLE = {
     user: [
-      { icon: LayoutDashboard, label: "Dashboard", href: "/" },
-      { icon: Package, label: "Products", href: "/products" },
-      { icon: Calendar, label: "Calendar", href: "/calendar" },
-      { icon: Truck, label: "Suppliers", href: "/suppliers" },
-      { icon: BarChart3, label: "Reports", href: "/reports" },
+      { icon: CalendarDays, label: "Events", href: "/events" },
+      { icon: LayoutDashboard, label: "Dashboard", href: "/user/dashboard" },
+      { icon: CreditCard, label: "Payment History", href: "/payment/history" },
     ],
   
     ngo: [
       { icon: LayoutDashboard, label: "Dashboard", href: "/" },
       { icon: Package, label: "Products", href: "/products" },
+      { icon: BarChart3, label: "Reports", href: "/reports" },
     ],
   
     admin: [

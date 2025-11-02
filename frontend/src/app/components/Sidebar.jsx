@@ -32,7 +32,7 @@ export default function Sidebar() {
 
   const renderMenu = (items) =>
     items.map(({ icon: Icon, label, href }, index) => {
-      const isActive = pathname === href;
+      const isActive = pathname.startsWith(href);
       return (
         <Link
           key={index}
@@ -68,12 +68,15 @@ export default function Sidebar() {
       );
     });
 
-    const logout = async () => {
-      await logOut();   
-      setShowLogoutModal(false);
-      router.push("/events");
-    };
-    
+  const logout = async () => {
+    await logOut();
+
+    setShowLogoutModal(false);
+
+    // ✅ redirect
+    router.replace("/login");
+    window.dispatchEvent(new Event("storage"));
+  };
 
   return (
     <>
