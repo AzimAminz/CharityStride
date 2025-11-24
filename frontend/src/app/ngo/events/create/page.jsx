@@ -1,269 +1,56 @@
+// app/create-event/page.jsx
 "use client";
 
-import { useState, useRef, useEffect } from "react";
-import { ArrowLeft, Save, Eye, Plus, Trash2, Image as ImageIcon, MapPin, Clock, Calendar, Users, Star } from "lucide-react";
+import { useState, useCallback } from "react";
+import { ArrowLeft, Save, Eye, Plus, Trash2, Image as ImageIcon, MapPin, Navigation, Package, User, Phone, Shield } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useEventForm } from "./hooks/useEventForm";
+import { useMap } from "./hooks/useMap";
+import EventPreview from "./components/EventPreview";
 
 export default function CreateEventPage() {
   const router = useRouter();
-  const mapRef = useRef(null);
-  const [map, setMap] = useState(null);
-  const [marker, setMarker] = useState(null);
-  
-  const [formData, setFormData] = useState({
-    title: "",
-    type: "volunteer",
-    description: "",
-    location: "",
-    latitude: "",
-    longitude: "",
-    start_date: "",
-    end_date: "",
-    capacity: 50,
-    fee: 0,
-    points_per_participation: 100,
-    thumbnail: null
-  });
-  
-  const [sections, setSections] = useState([
-    {
-      id: 1,
-      title: "About This Event",
-      content: "",
-      images: []
-    }
-  ]);
-
-  const [shifts, setShifts] = useState([
-    {
-      id: 1,
-      shift_date: "",
-      start_time: "",
-      end_time: "",
-      capacity: 0
-    }
-  ]);
-  
   const [loading, setLoading] = useState(false);
-  const [mapSearch, setMapSearch] = useState("");
   const [showPreview, setShowPreview] = useState(false);
 
-  // Initialize map
-  useEffect(() => {
-    if (typeof window !== 'undefined' && window.google) {
-      initMap();
-    } else {
-      loadGoogleMapsScript();
-    }
+  const {
+    formData,
+    setFormData,
+    sections,
+    shifts,
+    totalCapacity,
+    handleInputChange,
+    handleThumbnailUpload,
+    removeThumbnail,
+    handleSectionChange,
+    addNewSection,
+    removeSection,
+    handleImageUpload,
+    removeImage,
+    handleShiftChange,
+    addNewShift,
+    removeShift
+  } = useEventForm();
+
+  const {
+    mapRef,
+    mapSearch,
+    isSearching,
+    isGettingLocation,
+    locationError,
+    handleGetCurrentLocation,
+    handleManualSearch,
+    handleMapSearchChange
+  } = useMap(formData, setFormData);
+
+  const handlePreview = useCallback(() => {
+    setShowPreview(true);
   }, []);
 
-  const loadGoogleMapsScript = () => {
-    if (!document.querySelector('#google-maps-script')) {
-      const script = document.createElement('script');
-      script.id = 'google-maps-script';
-      script.src = `https://maps.googleapis.com/maps/api/js?key=YOUR_GOOGLE_MAPS_API_KEY&libraries=places`;
-      script.async = true;
-      script.defer = true;
-      script.onload = initMap;
-      document.head.appendChild(script);
-    }
-  };
-
-  const initMap = () => {
-    if (!mapRef.current) return;
-
-    const defaultLocation = { lat: 3.1390, lng: 101.6869 };
-    
-    const mapInstance = new window.google.maps.Map(mapRef.current, {
-      center: defaultLocation,
-      zoom: 12,
-    });
-
-    const markerInstance = new window.google.maps.Marker({
-      position: defaultLocation,
-      map: mapInstance,
-      draggable: true,
-      title: "Event Location"
-    });
-
-    markerInstance.addListener('dragend', (event) => {
-      const position = event.latLng;
-      setFormData(prev => ({
-        ...prev,
-        latitude: position.lat(),
-        longitude: position.lng()
-      }));
-      reverseGeocode(position.lat(), position.lng());
-    });
-
-    mapInstance.addListener('click', (event) => {
-      markerInstance.setPosition(event.latLng);
-      setFormData(prev => ({
-        ...prev,
-        latitude: event.latLng.lat(),
-        longitude: event.latLng.lng()
-      }));
-      reverseGeocode(event.latLng.lat(), event.latLng.lng());
-    });
-
-    const searchBox = new window.google.maps.places.SearchBox(
-      document.getElementById('map-search')
-    );
-
-    searchBox.addListener('places_changed', () => {
-      const places = searchBox.getPlaces();
-      if (places.length === 0) return;
-
-      const place = places[0];
-      const location = place.geometry.location;
-
-      markerInstance.setPosition(location);
-      mapInstance.setCenter(location);
-      mapInstance.setZoom(15);
-
-      setFormData(prev => ({
-        ...prev,
-        location: place.formatted_address,
-        latitude: location.lat(),
-        longitude: location.lng()
-      }));
-    });
-
-    setMap(mapInstance);
-    setMarker(markerInstance);
-  };
-
-  const reverseGeocode = (lat, lng) => {
-    if (!window.google) return;
-
-    const geocoder = new window.google.maps.Geocoder();
-    geocoder.geocode({ location: { lat, lng } }, (results, status) => {
-      if (status === 'OK' && results[0]) {
-        setFormData(prev => ({
-          ...prev,
-          location: results[0].formatted_address
-        }));
-      }
-    });
-  };
-
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
-  };
-
-  const handleThumbnailUpload = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      const previewUrl = URL.createObjectURL(file);
-      setFormData(prev => ({
-        ...prev,
-        thumbnail: { file, previewUrl }
-      }));
-    }
-  };
-
-  const removeThumbnail = () => {
-    setFormData(prev => ({
-      ...prev,
-      thumbnail: null
-    }));
-  };
-
-  const handleSectionChange = (sectionId, field, value) => {
-    setSections(prev => prev.map(section => 
-      section.id === sectionId 
-        ? { ...section, [field]: value }
-        : section
-    ));
-  };
-
-  const addNewSection = () => {
-    const newSection = {
-      id: sections.length + 1,
-      title: "",
-      content: "",
-      images: []
-    };
-    setSections(prev => [...prev, newSection]);
-  };
-
-  const removeSection = (sectionId) => {
-    if (sections.length > 1) {
-      setSections(prev => prev.filter(section => section.id !== sectionId));
-    }
-  };
-
-  const handleImageUpload = (sectionId, e) => {
-    const files = Array.from(e.target.files);
-    if (files.length > 0) {
-      const newImages = files.map(file => ({
-        id: Math.random().toString(36).substr(2, 9),
-        file,
-        previewUrl: URL.createObjectURL(file)
-      }));
-
-      setSections(prev => prev.map(section => 
-        section.id === sectionId 
-          ? { 
-              ...section, 
-              images: [...section.images, ...newImages] 
-            }
-          : section
-      ));
-    }
-  };
-
-  const removeImage = (sectionId, imageId) => {
-    setSections(prev => prev.map(section => 
-      section.id === sectionId 
-        ? { 
-            ...section, 
-            images: section.images.filter(img => img.id !== imageId) 
-          }
-        : section
-    ));
-  };
-
-  const handleShiftChange = (shiftId, field, value) => {
-    setShifts(prev => prev.map(shift => 
-      shift.id === shiftId 
-        ? { ...shift, [field]: value }
-        : shift
-    ));
-  };
-
-  const addNewShift = () => {
-    const newShift = {
-      id: shifts.length + 1,
-      shift_date: "",
-      start_time: "",
-      end_time: "",
-      capacity: 0
-    };
-    setShifts(prev => [...prev, newShift]);
-  };
-
-  const removeShift = (shiftId) => {
-    if (shifts.length > 1) {
-      setShifts(prev => prev.filter(shift => shift.id !== shiftId));
-    }
-  };
-
-  const totalCapacity = shifts.reduce((sum, shift) => sum + (parseInt(shift.capacity) || 0), 0);
-
-  // Preview functionality
-  const handlePreview = () => {
-    setShowPreview(true);
-  };
-
-  const handleClosePreview = () => {
+  const handleClosePreview = useCallback(() => {
     setShowPreview(false);
-  };
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -294,219 +81,9 @@ export default function CreateEventPage() {
     }
   };
 
-  // Preview Component
-  const EventPreview = () => {
-    if (!showPreview) return null;
-
-    const getEventTypeColor = (type) => {
-      switch (type) {
-        case 'volunteer': return 'bg-green-100 text-green-800';
-        case 'food_rescue': return 'bg-orange-100 text-orange-800';
-        case 'charity_run': return 'bg-blue-100 text-blue-800';
-        default: return 'bg-gray-100 text-gray-800';
-      }
-    };
-
-    const getEventTypeLabel = (type) => {
-      switch (type) {
-        case 'volunteer': return '🤝 Volunteer';
-        case 'food_rescue': return '🍴 Food Rescue';
-        case 'charity_run': return '🏃 Charity Run';
-        default: return 'Event';
-      }
-    };
-
-    return (
-      <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-        <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-          <div className="p-6 border-b border-gray-200">
-            <div className="flex items-center justify-between">
-              <h2 className="text-xl font-bold text-gray-900">Event Preview</h2>
-              <button
-                onClick={handleClosePreview}
-                className="text-gray-400 hover:text-gray-600 text-2xl"
-              >
-                ✕
-              </button>
-            </div>
-          </div>
-          
-          <div className="p-6">
-            {/* Event Header Preview */}
-            <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
-              <div className="flex items-start justify-between mb-4">
-                <div>
-                  <div className="flex items-center space-x-3 mb-3">
-                    <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${getEventTypeColor(formData.type)}`}>
-                      {getEventTypeLabel(formData.type)}
-                    </span>
-                    <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
-                      Open
-                    </span>
-                  </div>
-                  
-                  <h1 className="text-3xl font-bold text-gray-900 mb-4">
-                    {formData.title || "Event Title Preview"}
-                  </h1>
-                </div>
-                
-                <div className="text-right">
-                  <div className="text-2xl font-bold text-emerald-600 mb-1">
-                    {formData.fee > 0 ? `RM ${formData.fee}` : 'FREE'}
-                  </div>
-                  <div className="text-sm text-gray-500">
-                    {formData.points_per_participation} points
-                  </div>
-                </div>
-              </div>
-
-              {/* Event Stats */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 py-4 border-y border-gray-200">
-                <div className="flex items-center text-gray-600">
-                  <Calendar className="w-5 h-5 mr-3 text-gray-400" />
-                  <div>
-                    <div className="font-medium text-sm">Date</div>
-                    <div className="text-gray-900">
-                      {formData.start_date ? new Date(formData.start_date).toLocaleDateString('en-MY', {
-                        weekday: 'long',
-                        year: 'numeric',
-                        month: 'long',
-                        day: 'numeric'
-                      }) : "Not set"}
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="flex items-center text-gray-600">
-                  <MapPin className="w-5 h-5 mr-3 text-gray-400" />
-                  <div>
-                    <div className="font-medium text-sm">Location</div>
-                    <div className="text-gray-900">{formData.location || "Not set"}</div>
-                  </div>
-                </div>
-                
-                <div className="flex items-center text-gray-600">
-                  <Users className="w-5 h-5 mr-3 text-gray-400" />
-                  <div>
-                    <div className="font-medium text-sm">Participants</div>
-                    <div className="text-gray-900">
-                      0 / {totalCapacity > 0 ? totalCapacity : formData.capacity}
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="flex items-center text-gray-600">
-                  <Star className="w-5 h-5 mr-3 text-gray-400" />
-                  <div>
-                    <div className="font-medium text-sm">Rating</div>
-                    <div className="text-gray-900">
-                      New Event
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Thumbnail Preview */}
-            {formData.thumbnail && (
-              <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Event Thumbnail</h3>
-                <img
-                  src={formData.thumbnail.previewUrl}
-                  alt="Event thumbnail"
-                  className="w-full h-64 object-cover rounded-lg"
-                />
-              </div>
-            )}
-
-            {/* Description Preview */}
-            <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Description</h3>
-              <p className="text-gray-700 leading-relaxed">
-                {formData.description || "No description provided"}
-              </p>
-            </div>
-
-            {/* Sections Preview */}
-            {sections.map((section, index) => (
-              <div key={section.id} className="bg-white rounded-lg shadow-sm p-6 mb-6">
-                <h3 className="text-xl font-semibold text-gray-900 mb-4">
-                  {section.title || `Section ${index + 1}`}
-                </h3>
-                <p className="text-gray-700 leading-relaxed mb-4">
-                  {section.content || "No content provided"}
-                </p>
-                {section.images.length > 0 && (
-                  <div className="grid grid-cols-2 gap-4">
-                    {section.images.map((image, imgIndex) => (
-                      <img
-                        key={imgIndex}
-                        src={image.previewUrl}
-                        alt={`Section ${index + 1} image ${imgIndex + 1}`}
-                        className="rounded-lg w-full h-48 object-cover"
-                      />
-                    ))}
-                  </div>
-                )}
-              </div>
-            ))}
-
-            {/* Shifts Preview */}
-            {formData.type === 'volunteer' && shifts.length > 0 && (
-              <div className="bg-white rounded-lg shadow-sm p-6">
-                <h3 className="text-xl font-semibold text-gray-900 mb-4">Available Shifts</h3>
-                <div className="space-y-4">
-                  {shifts.map((shift, index) => (
-                    <div key={shift.id} className="p-4 border-2 border-gray-200 rounded-lg">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center space-x-4">
-                          <div className="text-center">
-                            <div className="text-sm text-gray-500">Date</div>
-                            <div className="font-semibold text-gray-900">
-                              {shift.shift_date ? new Date(shift.shift_date).toLocaleDateString('en-MY') : "Not set"}
-                            </div>
-                          </div>
-                          
-                          <div className="text-center">
-                            <div className="text-sm text-gray-500">Time</div>
-                            <div className="font-semibold text-gray-900">
-                              {shift.start_time || "00:00"} - {shift.end_time || "00:00"}
-                            </div>
-                          </div>
-                          
-                          <div className="text-center">
-                            <div className="text-sm text-gray-500">Capacity</div>
-                            <div className="font-semibold text-gray-900">
-                              {shift.capacity || 0} participants
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-          
-          <div className="p-6 border-t border-gray-200 bg-gray-50">
-            <div className="flex justify-end">
-              <button
-                onClick={handleClosePreview}
-                className="px-6 py-3 border border-gray-300 text-base font-medium rounded-lg text-gray-700 bg-white hover:bg-gray-50 transition-colors"
-              >
-                Close Preview
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  };
-
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header - Simplified without action buttons */}
+      {/* Header */}
       <div className="bg-white shadow-sm">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex items-center space-x-4">
@@ -621,110 +198,341 @@ export default function CreateEventPage() {
             </div>
           </div>
 
-          {/* Location & Date Section */}
-          <div className="bg-white rounded-lg shadow-sm p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Location & Date</h2>
-            
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <div className="space-y-6">
+          {/* Food Rescue Specific Fields */}
+          {formData.type === 'food_rescue' && (
+            <div className="bg-white rounded-lg shadow-sm p-6">
+              <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                <Package className="w-5 h-5 mr-2 text-orange-600" />
+                Food Rescue Details
+              </h2>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Location *
+                    Type of Food *
                   </label>
                   <input
                     type="text"
-                    name="location"
-                    value={formData.location}
+                    name="food_type"
+                    value={formData.food_type}
                     onChange={handleInputChange}
                     required
                     className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-                    placeholder="Event venue address"
+                    placeholder="e.g., Fresh vegetables, Cooked meals, Bakery items"
                   />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Search Location on Map
-                  </label>
-                  <input
-                    id="map-search"
-                    type="text"
-                    value={mapSearch}
-                    onChange={(e) => setMapSearch(e.target.value)}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-                    placeholder="Search for location..."
-                  />
-                  <p className="text-sm text-gray-500 mt-1">
-                    Search for location or click on the map to set pin
-                  </p>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Start Date *
-                    </label>
-                    <input
-                      type="date"
-                      name="start_date"
-                      value={formData.start_date}
-                      onChange={handleInputChange}
-                      required
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      End Date *
-                    </label>
-                    <input
-                      type="date"
-                      name="end_date"
-                      value={formData.end_date}
-                      onChange={handleInputChange}
-                      required
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-                    />
-                  </div>
-                </div>
-
-                {formData.type !== 'volunteer' && (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Capacity *
+                      Quantity *
                     </label>
                     <input
                       type="number"
-                      name="capacity"
-                      value={formData.capacity}
+                      name="quantity"
+                      value={formData.quantity}
                       onChange={handleInputChange}
                       required
                       min="1"
                       className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
                     />
                   </div>
-                )}
-              </div>
 
-              {/* Map Container */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Set Location on Map
-                </label>
-                <div 
-                  ref={mapRef}
-                  className="w-full h-80 rounded-lg border border-gray-300"
-                />
-                <div className="mt-2 text-sm text-gray-500">
-                  <MapPin className="w-4 h-4 inline mr-1" />
-                  Drag the pin to adjust location
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Unit *
+                    </label>
+                    <select
+                      name="unit"
+                      value={formData.unit}
+                      onChange={handleInputChange}
+                      required
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                    >
+                      <option value="kg">Kilograms (kg)</option>
+                      <option value="portion">Portions</option>
+                      <option value="box">Boxes</option>
+                      <option value="packet">Packets</option>
+                      <option value="unit">Units</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Collection Instructions *
+                  </label>
+                  <textarea
+                    name="collection_instructions"
+                    value={formData.collection_instructions}
+                    onChange={handleInputChange}
+                    required
+                    rows={3}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                    placeholder="Detailed instructions for food collection..."
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Contact Person *
+                  </label>
+                  <input
+                    type="text"
+                    name="contact_person"
+                    value={formData.contact_person}
+                    onChange={handleInputChange}
+                    required
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                    placeholder="Name of contact person"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Contact Phone *
+                  </label>
+                  <input
+                    type="tel"
+                    name="contact_phone"
+                    value={formData.contact_phone}
+                    onChange={handleInputChange}
+                    required
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                    placeholder="Phone number for collection"
+                  />
+                </div>
+
+                <div className="md:col-span-2">
+                  <div className="flex items-center space-x-3 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                    <Shield className="w-5 h-5 text-blue-600" />
+                    <div>
+                      <p className="text-sm font-medium text-blue-900">Location Privacy</p>
+                      <p className="text-sm text-blue-700">
+                        For security reasons, the exact location will only be shared with approved volunteers.
+                      </p>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
+          )}
 
-          {/* Shifts Management */}
+          {/* Location & Date Section - Tunjukkan untuk semua jenis event kecuali food rescue */}
+          {(formData.type !== 'food_rescue') && (
+            <div className="bg-white rounded-lg shadow-sm p-6">
+              <h2 className="text-lg font-semibold text-gray-900 mb-4">Location & Date</h2>
+              
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div className="space-y-6">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Location *
+                    </label>
+                    <input
+                      type="text"
+                      name="location"
+                      value={formData.location}
+                      onChange={handleInputChange}
+                      required
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                      placeholder="Event venue address"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Search Location on Map
+                    </label>
+                    <div className="relative">
+                      <input
+                        id="map-search"
+                        type="text"
+                        value={mapSearch}
+                        onChange={handleMapSearchChange}
+                        className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-emerald-500 focus:border-transparent pr-32"
+                        placeholder="Search for location..."
+                      />
+                      <div className="absolute right-2 top-1/2 transform -translate-y-1/2 flex items-center space-x-2">
+                        {isSearching && (
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-emerald-500"></div>
+                        )}
+                        <button
+                          type="button"
+                          onClick={handleManualSearch}
+                          className="px-3 py-1 text-sm bg-emerald-500 text-white rounded hover:bg-emerald-600 transition-colors"
+                        >
+                          Search
+                        </button>
+                      </div>
+                    </div>
+                    <p className="text-sm text-gray-500 mt-1">
+                      {isSearching ? "Searching..." : "Type to search or click on the map to set pin"}
+                    </p>
+                  </div>
+
+                  {/* Current Location Button */}
+                  <div>
+                    <button
+                      type="button"
+                      onClick={handleGetCurrentLocation}
+                      disabled={isGettingLocation}
+                      className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-lg text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >
+                      {isGettingLocation ? (
+                        <>
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-emerald-500 mr-2"></div>
+                          Getting Location...
+                        </>
+                      ) : (
+                        <>
+                          <Navigation className="w-4 h-4 mr-2" />
+                          Use My Current Location
+                        </>
+                      )}
+                    </button>
+                    
+                    {locationError && (
+                      <p className="text-sm text-red-600 mt-2">{locationError}</p>
+                    )}
+                    
+                    {formData.latitude && formData.longitude && (
+                      <p className="text-sm text-gray-600 mt-2">
+                        Coordinates: {formData.latitude.toFixed(6)}, {formData.longitude.toFixed(6)}
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Start Date *
+                      </label>
+                      <input
+                        type="date"
+                        name="start_date"
+                        value={formData.start_date}
+                        onChange={handleInputChange}
+                        required
+                        className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        End Date *
+                      </label>
+                      <input
+                        type="date"
+                        name="end_date"
+                        value={formData.end_date}
+                        onChange={handleInputChange}
+                        required
+                        className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                      />
+                    </div>
+                  </div>
+
+                  {formData.type !== 'volunteer' && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Capacity *
+                      </label>
+                      <input
+                        type="number"
+                        name="capacity"
+                        value={formData.capacity}
+                        onChange={handleInputChange}
+                        required
+                        min="1"
+                        className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                      />
+                    </div>
+                  )}
+
+                  {/* Toggle untuk show location */}
+                  <div className="flex items-center space-x-3">
+                    <input
+                      type="checkbox"
+                      name="show_location"
+                      checked={formData.show_location}
+                      onChange={handleInputChange}
+                      className="w-4 h-4 text-emerald-600 border-gray-300 rounded focus:ring-emerald-500"
+                    />
+                    <label className="text-sm font-medium text-gray-700">
+                      Show location publicly on event page
+                    </label>
+                  </div>
+                </div>
+
+                {/* Map Container */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Set Location on Map
+                  </label>
+                  <div 
+                    ref={mapRef}
+                    className="w-full h-80 rounded-lg border border-gray-300 bg-gray-100 flex items-center justify-center"
+                  >
+                    {isGettingLocation ? (
+                      <div className="text-center">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-500 mx-auto mb-2"></div>
+                        <p className="text-sm text-gray-600">Getting your location...</p>
+                      </div>
+                    ) : (
+                      <div className="text-center">
+                        <MapPin className="w-12 h-12 text-gray-400 mx-auto mb-2" />
+                        <p className="text-sm text-gray-600">Loading map...</p>
+                      </div>
+                    )}
+                  </div>
+                  <div className="mt-2 text-sm text-gray-500">
+                    <MapPin className="w-4 h-4 inline mr-1" />
+                    Drag the pin to adjust location or click "Use My Current Location"
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Untuk food rescue, tunjuk date fields sahaja */}
+          {formData.type === 'food_rescue' && (
+            <div className="bg-white rounded-lg shadow-sm p-6">
+              <h2 className="text-lg font-semibold text-gray-900 mb-4">Collection Date</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Collection Date *
+                  </label>
+                  <input
+                    type="date"
+                    name="start_date"
+                    value={formData.start_date}
+                    onChange={handleInputChange}
+                    required
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Capacity (Max Volunteers) *
+                  </label>
+                  <input
+                    type="number"
+                    name="capacity"
+                    value={formData.capacity}
+                    onChange={handleInputChange}
+                    required
+                    min="1"
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Shifts Management - untuk volunteer events sahaja */}
           {formData.type === 'volunteer' && (
             <div className="bg-white rounded-lg shadow-sm p-6">
               <div className="flex items-center justify-between mb-6">
@@ -1025,7 +833,14 @@ export default function CreateEventPage() {
       </div>
 
       {/* Preview Modal */}
-      <EventPreview />
+      <EventPreview
+        showPreview={showPreview}
+        handleClosePreview={handleClosePreview}
+        formData={formData}
+        sections={sections}
+        shifts={shifts}
+        totalCapacity={totalCapacity}
+      />
     </div>
   );
 }
