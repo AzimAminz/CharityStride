@@ -20,6 +20,7 @@ return new class extends Migration
             $table->string('cert_number', 100)->unique();
             $table->string('participant_name');
             $table->string('event_title');
+            $table->string('run_category_name', 100)->nullable();
             $table->timestamp('issued_at')->nullable();
 
             // Foreign key to Certificate Templates table

@@ -14,23 +14,24 @@ return new class extends Migration
         Schema::create('event_registrations', function (Blueprint $table) {
             $table->id();
             
-            // Foreign key to Events table
+            // Foreign keys
             $table->foreignId('event_id')->constrained('events');
-
-            // Optional foreign key to Event Shifts table
-            $table->foreignId('event_shift_id')->nullable()->constrained('event_shifts');
-
-            // User details
+            $table->foreignId('shift_id')->nullable()->constrained('event_shifts'); 
+            $table->foreignId('run_category_id')->nullable()->constrained('charity_run_categories'); 
             $table->foreignId('user_id')->constrained('users');
 
             // Registration details
             $table->enum('status', ['pending', 'accepted', 'rejected', 'confirmed', 'completed'])->default('pending');
             $table->string('qr_code')->nullable();
             $table->boolean('attendance_marked')->default(false);
-            $table->integer('points_earned')->default(0);
+            
+            // ✅ NEW: Attendance tracking fields
+            $table->timestamp('check_in_time')->nullable();
+            $table->timestamp('check_out_time')->nullable();
+            $table->decimal('total_hours', 4, 2)->nullable()->comment('Calculated hours between check-in and check-out');
+            $table->boolean('finisher_qualified')->default(false);     
+            $table->boolean('tshirt_selection_completed')->default(false); 
             $table->timestamps();
-
-
         });
     }
 

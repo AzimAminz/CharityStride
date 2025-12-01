@@ -1,7 +1,7 @@
-
+// hooks/useMap.js
 import { useState, useRef, useEffect, useCallback } from 'react';
 
-export const useMap = (formData, setFormData) => {
+export const useMap = () => {
   const mapRef = useRef(null);
   const [map, setMap] = useState(null);
   const [marker, setMarker] = useState(null);
@@ -9,6 +9,13 @@ export const useMap = (formData, setFormData) => {
   const [isSearching, setIsSearching] = useState(false);
   const [isGettingLocation, setIsGettingLocation] = useState(false);
   const [locationError, setLocationError] = useState("");
+  
+  // ✅ Return these values so parent component can use them
+  const [coordinates, setCoordinates] = useState({
+    latitude: "",
+    longitude: "",
+    location: ""
+  });
 
   // Initialize map dengan user's current location
   useEffect(() => {
@@ -23,7 +30,7 @@ export const useMap = (formData, setFormData) => {
     if (!document.querySelector('#google-maps-script')) {
       const script = document.createElement('script');
       script.id = 'google-maps-script';
-      script.src = `https://maps.googleapis.com/maps/api/js?key=${process.env.NEXT_PUBLIC_MAP_API}&libraries=places`;
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}&libraries=places`;
       script.async = true;
       script.defer = true;
       script.onload = () => {
@@ -84,7 +91,7 @@ export const useMap = (formData, setFormData) => {
   }, []);
 
   const initMapWithDefaultLocation = useCallback(() => {
-    const defaultLocation = { lat: 3.1390, lng: 101.6869 };
+    const defaultLocation = { lat: 3.1390, lng: 101.6869 }; // Kuala Lumpur
     initMap(defaultLocation);
   }, []);
 
@@ -103,7 +110,8 @@ export const useMap = (formData, setFormData) => {
       title: "Event Location"
     });
 
-    setFormData(prev => ({
+    // ✅ Update coordinates state
+    setCoordinates(prev => ({
       ...prev,
       latitude: initialLocation.lat,
       longitude: initialLocation.lng
@@ -111,7 +119,7 @@ export const useMap = (formData, setFormData) => {
 
     markerInstance.addListener('dragend', (event) => {
       const position = event.latLng;
-      setFormData(prev => ({
+      setCoordinates(prev => ({
         ...prev,
         latitude: position.lat(),
         longitude: position.lng()
@@ -121,7 +129,7 @@ export const useMap = (formData, setFormData) => {
 
     mapInstance.addListener('click', (event) => {
       markerInstance.setPosition(event.latLng);
-      setFormData(prev => ({
+      setCoordinates(prev => ({
         ...prev,
         latitude: event.latLng.lat(),
         longitude: event.latLng.lng()
@@ -145,7 +153,7 @@ export const useMap = (formData, setFormData) => {
       mapInstance.setCenter(location);
       mapInstance.setZoom(15);
 
-      setFormData(prev => ({
+      setCoordinates(prev => ({
         ...prev,
         location: place.formatted_address,
         latitude: location.lat(),
@@ -155,7 +163,7 @@ export const useMap = (formData, setFormData) => {
 
     setMap(mapInstance);
     setMarker(markerInstance);
-  }, [setFormData]);
+  }, []);
 
   const handleGetCurrentLocation = useCallback(() => {
     if (!navigator.geolocation) {
@@ -180,7 +188,7 @@ export const useMap = (formData, setFormData) => {
           map.setZoom(15);
           marker.setPosition(userLocation);
           
-          setFormData(prev => ({
+          setCoordinates(prev => ({
             ...prev,
             latitude: userLocation.lat,
             longitude: userLocation.lng
@@ -214,7 +222,7 @@ export const useMap = (formData, setFormData) => {
         maximumAge: 60000
       }
     );
-  }, [map, marker, setFormData]);
+  }, [map, marker]);
 
   const performSearch = useCallback((query) => {
     if (!window.google || !map) return;
@@ -235,7 +243,7 @@ export const useMap = (formData, setFormData) => {
         map.setCenter(location);
         map.setZoom(15);
 
-        setFormData(prev => ({
+        setCoordinates(prev => ({
           ...prev,
           location: place.formatted_address,
           latitude: location.lat(),
@@ -244,13 +252,9 @@ export const useMap = (formData, setFormData) => {
       }
       setIsSearching(false);
     });
-  }, [map, marker, setFormData]);
+  }, [map, marker]);
 
-  const handleManualSearch = useCallback(() => {
-    if (mapSearch.trim()) {
-      performSearch(mapSearch);
-    }
-  }, [mapSearch, performSearch]);
+
 
   const handleMapSearchChange = useCallback((e) => {
     const value = e.target.value;
@@ -263,22 +267,24 @@ export const useMap = (formData, setFormData) => {
     const geocoder = new window.google.maps.Geocoder();
     geocoder.geocode({ location: { lat, lng } }, (results, status) => {
       if (status === 'OK' && results[0]) {
-        setFormData(prev => ({
+        setCoordinates(prev => ({
           ...prev,
           location: results[0].formatted_address
         }));
       }
     });
-  }, [setFormData]);
+  }, []);
 
+  // ✅ Return coordinates so parent can use them
   return {
     mapRef,
     mapSearch,
     isSearching,
     isGettingLocation,
     locationError,
+    coordinates, // ✅ Add this
+    setCoordinates, // ✅ Add this
     handleGetCurrentLocation,
-    handleManualSearch,
     handleMapSearchChange
   };
 };

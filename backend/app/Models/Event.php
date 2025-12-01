@@ -22,16 +22,16 @@ class Event extends Model
         'end_date',
         'capacity',
         'fee',
-        'early_bird_discount',
-        'early_bird_deadline',
-        'regular_fee',
         'status',
-        'points',
+        'has_tshirt'
     ];
 
     protected $casts = [
         'start_date' => 'date',
         'end_date' => 'date',
+        'status' => 'string',
+        'type' => 'string',
+        'has_tshirt' => 'boolean' 
     ];
 
     public function ngo()
@@ -57,5 +57,10 @@ class Event extends Model
     public function registrations()
     {
         return $this->hasMany(EventRegistration::class);
+    }
+
+    public function eventTshirts()
+    {
+        return $this->hasMany(EventTshirt::class);
     }
 }
