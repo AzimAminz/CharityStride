@@ -1,31 +1,51 @@
 import Link from "next/link";
-import { MapPin, Users, Navigation, Clock, Heart, Utensils, Trophy } from "lucide-react";
+import {
+  MapPin,
+  Users,
+  Navigation,
+  Clock,
+  Heart,
+  Utensils,
+  Trophy,
+} from "lucide-react";
 
 const EventCard = ({ event }) => {
   const getEventIcon = (type) => {
     switch (type) {
-      case 'volunteer': return <Heart size={14} className="mr-1" />;
-      case 'food_rescue': return <Utensils size={14} className="mr-1" />;
-      case 'charity_run': return <Trophy size={14} className="mr-1" />;
-      default: return <Heart size={14} className="mr-1" />;
+      case "volunteer":
+        return <Heart size={14} className="mr-1" />;
+      case "food_rescue":
+        return <Utensils size={14} className="mr-1" />;
+      case "charity_run":
+        return <Trophy size={14} className="mr-1" />;
+      default:
+        return <Heart size={14} className="mr-1" />;
     }
   };
 
   const getEventColor = (type) => {
     switch (type) {
-      case 'volunteer': return 'bg-green-100 text-green-800';
-      case 'food_rescue': return 'bg-orange-100 text-orange-800';
-      case 'charity_run': return 'bg-blue-100 text-blue-800';
-      default: return 'bg-gray-100 text-gray-800';
+      case "volunteer":
+        return "bg-green-100 text-green-800";
+      case "food_rescue":
+        return "bg-orange-100 text-orange-800";
+      case "charity_run":
+        return "bg-blue-100 text-blue-800";
+      default:
+        return "bg-gray-100 text-gray-800";
     }
   };
 
   const getEventEmoji = (type) => {
     switch (type) {
-      case 'volunteer': return '🤝';
-      case 'food_rescue': return '🍴';
-      case 'charity_run': return '🏃';
-      default: return '🎯';
+      case "volunteer":
+        return "🤝";
+      case "food_rescue":
+        return "🍴";
+      case "charity_run":
+        return "🏃";
+      default:
+        return "🎯";
     }
   };
 
@@ -33,15 +53,42 @@ const EventCard = ({ event }) => {
     <Link href={`/events/${event.id}`} className="block">
       <div className="bg-white rounded-xl shadow-md hover:shadow-xl hover:scale-105 transform transition duration-300 overflow-hidden cursor-pointer">
         <div className="relative h-48 bg-gray-200">
-          <div className="w-full h-full bg-linear-to-br from-emerald-400 to-blue-500 flex items-center justify-center">
+          {event.thumbnail ? (
+            // Show uploaded thumbnail
+            <img
+              src={
+                event.thumbnail.includes("charitystride.test")
+                  ? event.thumbnail.replace(
+                      "http://charitystride.test",
+                      process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"
+                    )
+                  : event.thumbnail
+              }
+              alt={event.title}
+              className="w-full h-full object-cover"
+              onError={(e) => {
+                // Fallback to gradient if image fails to load
+                e.target.style.display = "none";
+                e.target.nextElementSibling.style.display = "flex";
+              }}
+            />
+          ) : null}
+          <div
+            className="w-full h-full bg-gradient-to-br from-emerald-400 to-blue-500 flex items-center justify-center"
+            style={{ display: event.thumbnail ? "none" : "flex" }}
+          >
             <div className="text-white text-center">
               <span className="text-4xl mb-2">{getEventEmoji(event.type)}</span>
               <p className="text-sm opacity-90">{event.ngo_name}</p>
             </div>
           </div>
           <div className="absolute top-3 left-3">
-            <span className={`px-2 py-1 rounded-full text-xs font-medium ${getEventColor(event.type)}`}>
-              {event.type.replace('_', ' ').toUpperCase()}
+            <span
+              className={`px-2 py-1 rounded-full text-xs font-medium ${getEventColor(
+                event.type
+              )}`}
+            >
+              {event.type.replace("_", " ").toUpperCase()}
             </span>
           </div>
           {event.fee > 0 && (
@@ -52,8 +99,12 @@ const EventCard = ({ event }) => {
         </div>
 
         <div className="p-4">
-          <h3 className="font-semibold text-lg mb-2 line-clamp-2">{event.title}</h3>
-          <p className="text-gray-600 text-sm mb-3 line-clamp-2">{event.description}</p>
+          <h3 className="font-semibold text-lg mb-2 line-clamp-2">
+            {event.title}
+          </h3>
+          <p className="text-gray-600 text-sm mb-3 line-clamp-2">
+            {event.description}
+          </p>
 
           <div className="flex items-center text-sm text-gray-500 mb-2">
             <MapPin size={14} className="mr-1" />
@@ -69,11 +120,13 @@ const EventCard = ({ event }) => {
 
           <div className="flex items-center text-sm text-gray-500 mb-3">
             <Clock size={14} className="mr-1" />
-            <span>{new Date(event.start_date).toLocaleDateString('en-MY', {
-              day: 'numeric',
-              month: 'short',
-              year: 'numeric'
-            })}</span>
+            <span>
+              {new Date(event.start_date).toLocaleDateString("en-MY", {
+                day: "numeric",
+                month: "short",
+                year: "numeric",
+              })}
+            </span>
           </div>
 
           <div className="flex justify-between items-center">

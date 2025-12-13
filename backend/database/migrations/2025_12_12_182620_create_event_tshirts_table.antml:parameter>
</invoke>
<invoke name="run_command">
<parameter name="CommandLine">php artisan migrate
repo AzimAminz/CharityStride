@@ -1,0 +1,28 @@
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    public function up(): void
+    {
+        Schema::create('event_tshirts', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('event_id')->constrained()->onDelete('cascade');
+            $table->foreignId('run_category_id')->nullable()->constrained('charity_run_categories')->onDelete('cascade');
+            $table->enum('tshirt_type', ['volunteer', 'event', 'finisher']);
+            $table->foreignId('size_id')->constrained('tshirt_sizes')->onDelete('cascade');
+            $table->string('size_code'); // Denormalized for easier display
+            $table->integer('quantity_total');
+            $table->integer('quantity_available');
+            $table->timestamps();
+        });
+    }
+
+    public function down(): void
+    {
+        Schema::dropIfExists('event_tshirts');
+    }
+};

@@ -1,0 +1,26 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+
+class ParticipantConfig extends Model
+{
+    use HasFactory;
+
+    protected $fillable = [
+        'event_id',
+        'has_categories',
+    ];
+
+    protected $casts = [
+        'has_categories' => 'boolean',
+    ];
+
+    // Relationships
+    public function event()
+    {
+        return $this->belongsTo(Event::class);
+    }
+}

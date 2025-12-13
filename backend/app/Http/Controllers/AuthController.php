@@ -36,10 +36,10 @@ class AuthController extends Controller
                 'photo' => $avatarUrl
             ]);
 
-            // 3️⃣ Hasilkan Sanctum token
+            // 3️⃣ Create Sanctum token
             $token = $user->createToken('auth_token')->plainTextToken;
 
-            // 4️⃣ Return response
+            // 4️⃣ Return response with token
             return response()->json([
                 'message' => 'User registered successfully',
                 'user' => $user,
@@ -64,15 +64,22 @@ class AuthController extends Controller
                 ]);
             }
 
-            // Hasilkan Sanctum token
+            // Check if account is blocked
+            if (!$user->status) {
+                return response()->json([
+                    'message' => 'Account blocked',
+                    'error' => 'Your account has been blocked. Please contact support.'
+                ], 403);
+            }
+
+            // Create Sanctum token
             $token = $user->createToken('auth_token')->plainTextToken;
 
-            // Return response
+            // Return response with token
             return response()->json([
                 'message' => 'User logged in successfully',
                 'user' => $user,
                 'token' => $token
-
             ], 200); 
         } catch (\Exception $e) {
             return response()->json(['message' => 'Login failed', 'error' => $e->getMessage()], 500);
@@ -112,7 +119,15 @@ class AuthController extends Controller
                 ]);
             }
 
-            // 4️⃣ Hasilkan token Sanctum
+            // Check if account is blocked
+            if (!$user->status) {
+                return response()->json([
+                    'message' => 'Account blocked',
+                    'error' => 'Your account has been blocked. Please contact support.'
+                ], 403);
+            }
+
+            // 4️⃣ Create Sanctum token
             $token = $user->createToken('auth_token')->plainTextToken;
 
             // 5️⃣ Semak sama ada profile lengkap
@@ -154,7 +169,7 @@ class AuthController extends Controller
 
     public function logout(Request $request)
     {
-        // Hapus token user sekarang
+        // Delete current access token
         $request->user()->currentAccessToken()->delete();
 
         return response()->json([

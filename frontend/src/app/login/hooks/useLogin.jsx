@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter , usePathname} from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { useState } from "react";
 import { login } from "../../lib/auth";
 
@@ -44,8 +44,8 @@ export default function useLogin() {
       console.log("Login response:", res);
 
       if (res?.user) {
-        if (res.user.role === "admin") router.push("/admin");
-        else if (res.user.role === "ngo") router.push("/ngo");
+        if (res.user.role === "admin") router.push("/admin/dashboard");
+        else if (res.user.role === "ngo") router.push("/ngo/dashboard");
         else router.push("/events");
       } else {
         setPassword("");
@@ -53,16 +53,29 @@ export default function useLogin() {
       }
     } catch (err) {
       setPassword("");
-      setPasswordError(err.response?.data?.message || "Login failed. Please try again.");
+
+      // Check if account is blocked (403 status)
+      if (err.response?.status === 403) {
+        const message =
+          err.response?.data?.error || "Your account has been blocked.";
+        router.push(`/account-blocked?message=${encodeURIComponent(message)}`);
+        return;
+      }
+
+      setPasswordError(
+        err.response?.data?.message || "Login failed. Please try again."
+      );
     } finally {
       setLoading(false);
     }
   };
 
   const back = () => {
- 
-  
-    if (window.history.length <= 1 || pathname === "/login" || pathname === '/register') {
+    if (
+      window.history.length <= 1 ||
+      pathname === "/login" ||
+      pathname === "/register"
+    ) {
       router.push("/events");
     } else {
       router.back();

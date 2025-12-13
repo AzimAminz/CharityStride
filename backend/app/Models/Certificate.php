@@ -2,31 +2,55 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-
 
 class Certificate extends Model
 {
-
+    use HasFactory;
 
     protected $fillable = [
-        'registration_id',
-        'template_id',
-        'cert_path',
+        'registerable_type',
+        'registerable_id',
+        'cert_number',
+        'participant_name',
+        'event_title',
         'issued_at',
+        'cert_template_id',
+        'generated_path',
     ];
 
     protected $casts = [
         'issued_at' => 'datetime',
     ];
 
-    public function registration()
+    // Auto-generate cert number on creation
+    protected static function boot()
     {
-        return $this->belongsTo(EventRegistration::class);
+        parent::boot();
+
+        static::creating(function ($certificate) {
+            if (empty($certificate->cert_number)) {
+                $certificate->cert_number = 'CERT-' . strtoupper(uniqid());
+            }
+        });
     }
 
-    public function template()
+    // Polymorphic relationship
+    public function registerable()
     {
-        return $this->belongsTo(CertTemplate::class, 'template_id');
+        return $this->morphTo();
+    }
+
+    // Template relationship
+    public function certTemplate()
+    {
+        return $this->belongsTo(CertTemplate::class);
+    }
+
+    // Constraint relationship for data integrity
+    public function constraint()
+    {
+        return $this->hasOne(CertificateConstraint::class);
     }
 }

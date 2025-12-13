@@ -32,7 +32,19 @@ export default function Sidebar() {
 
   const renderMenu = (items) =>
     items.map(({ icon: Icon, label, href }, index) => {
-      const isActive = pathname.startsWith(href);
+      // Strip role prefix (user/ngo/admin) from both paths before comparing
+      const stripRolePrefix = (path) => {
+        return path.replace(/^\/(user|ngo|admin)/, "") || "/";
+      };
+
+      const normalizedPathname = stripRolePrefix(pathname);
+      const normalizedHref = stripRolePrefix(href);
+
+      // Exact match OR starts with normalized path + "/"
+      const isActive =
+        normalizedPathname === normalizedHref ||
+        normalizedPathname.startsWith(normalizedHref + "/");
+
       return (
         <Link
           key={index}
@@ -177,6 +189,91 @@ export default function Sidebar() {
 
         {/* Bottom Menu */}
         <div className="p-3 border-t border-gray-200 space-y-1">
+          {/* 🌟 New NGO Register Link - Visible only to regular users */}
+          {role === "user" && (
+            <>
+              {/* Expanded view */}
+              {!collapsed && (
+                <Link
+                  href="/register/ngo"
+                  className="group block w-full px-4 py-3 rounded-xl bg-linear-to-r from-emerald-50 to-blue-50 border border-emerald-100 hover:border-emerald-300 text-emerald-800 font-medium hover:shadow-md hover:shadow-emerald-100 transition-all duration-300 hover:scale-[1.02]"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-lg bg-linear-to-br from-emerald-500 to-teal-500 text-white group-hover:from-emerald-600 group-hover:to-teal-600 transition-all">
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        className="h-5 w-5"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+                        <circle cx="9" cy="7" r="4" />
+                        <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
+                        <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                      </svg>
+                    </div>
+                    <div className="flex-1">
+                      <div className="font-semibold">Register as NGO</div>
+                      <div className="text-xs text-emerald-600 opacity-80">
+                        Join our partner network
+                      </div>
+                    </div>
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="h-4 w-4 text-emerald-500 group-hover:translate-x-1 transition-transform"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                    >
+                      <path d="M5 12h14M12 5l7 7-7 7" />
+                    </svg>
+                  </div>
+                </Link>
+              )}
+
+              {/* Collapsed view */}
+              {collapsed && (
+                <Link
+                  href="/register/ngo"
+                  className="group relative flex items-center justify-center p-3 rounded-xl bg-linear-to-r from-emerald-50 to-blue-50 border border-emerald-100 hover:border-emerald-300 text-emerald-800 hover:shadow-md hover:shadow-emerald-100 transition-all duration-300 hover:scale-110"
+                  title="Register as NGO"
+                >
+                  <div className="relative">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="h-6 w-6"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                      <circle cx="9" cy="7" r="4" />
+                      <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+                      <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                    </svg>
+                    {/* Small badge indicator */}
+                    <div className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-emerald-500 group-hover:bg-emerald-600"></div>
+                  </div>
+
+                  {/* Tooltip on hover for collapsed state */}
+                  <div className="absolute left-full ml-3 px-3 py-2 bg-emerald-900 text-white text-sm rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap z-50 shadow-lg">
+                    Register as NGO
+                    <div className="absolute top-1/2 -left-1 w-0 h-0 border-t-4 border-t-transparent border-r-4 border-r-emerald-900 border-b-4 border-b-transparent transform -translate-y-1/2"></div>
+                  </div>
+                </Link>
+              )}
+            </>
+          )}
+
+          {/* Settings */}
           {renderMenu(bottomMenuItems)}
 
           {/* ✅ Logout Button */}

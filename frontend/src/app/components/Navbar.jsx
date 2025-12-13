@@ -22,7 +22,7 @@ export default function Navbar() {
   if (!hydrated) return null;
 
   const navItems = [
-    { label: "Home", href: "/" , exact: true },
+    { label: "Home", href: "/", exact: true },
     { label: "Events", href: "/events" },
     { label: "About", href: "/about" },
   ];
@@ -30,18 +30,26 @@ export default function Navbar() {
   return (
     <nav className="bg-white border-b border-gray-200 px-4 lg:px-6 py-3">
       <div className="flex items-center justify-between">
-        <div  className={`${isLoggedIn ? "md:hidden" : "hidden"} `}></div>
-        
+        <div className={`${isLoggedIn ? "md:hidden" : "hidden"} `}></div>
+
         <Link href="/">
           <div className="flex items-center space-x-2">
-            <div className={`${isLoggedIn ? "md:hidden" : ""} w-8 h-8 bg-white rounded-lg border-2 border-emerald-500 flex items-center justify-center p-1`}>
+            <div
+              className={`${
+                isLoggedIn ? "md:hidden" : ""
+              } w-8 h-8 bg-white rounded-lg border-2 border-emerald-500 flex items-center justify-center p-1`}
+            >
               <img
                 src="/charitystride_icon.png"
                 alt="Charity Stride"
                 className="w-full h-full object-contain"
               />
             </div>
-            <span className={`${isLoggedIn ? "md:hidden" : ""} text-lg font-semibold text-emerald-900`}>
+            <span
+              className={`${
+                isLoggedIn ? "md:hidden" : ""
+              } text-lg font-semibold text-emerald-900`}
+            >
               Charity Stride
             </span>
           </div>
@@ -50,14 +58,12 @@ export default function Navbar() {
         {/* Desktop Menu */}
         <div className="hidden md:flex flex-1 justify-center">
           <div className="flex items-center space-x-4 lg:space-x-8">
-            {navItems.map(({ label, href , exact}, i) => {
+            {navItems.map(({ label, href, exact }, i) => {
               let isActive;
-        
-              if (exact) {
 
+              if (exact) {
                 isActive = pathname === href;
               } else {
-
                 isActive = pathname.startsWith(href);
               }
               return (
@@ -105,12 +111,10 @@ export default function Navbar() {
           <div className="flex flex-col space-y-2">
             {navItems.map(({ label, href, exact }, i) => {
               let isActive;
-        
-              if (exact) {
 
+              if (exact) {
                 isActive = pathname === href;
               } else {
-
                 isActive = pathname.startsWith(href);
               }
               return (

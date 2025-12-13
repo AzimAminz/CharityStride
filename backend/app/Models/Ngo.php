@@ -2,13 +2,13 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Ngo extends Model
 {
-    //
-
+    use HasFactory, SoftDeletes;
 
     protected $fillable = [
         'user_id',
@@ -34,7 +34,14 @@ class Ngo extends Model
         'status',
     ];
 
-    //relationships
+    protected $casts = [
+        'established_date' => 'date',
+        'latitude' => 'decimal:6',
+        'longitude' => 'decimal:6',
+        'deleted_at' => 'datetime',
+    ];
+
+    // Relationships
     public function user()
     {
         return $this->belongsTo(User::class);
@@ -43,5 +50,15 @@ class Ngo extends Model
     public function events()
     {
         return $this->hasMany(Event::class);
+    }
+
+    public function savedLocations()
+    {
+        return $this->hasMany(SavedLocation::class);
+    }
+
+    public function certTemplates()
+    {
+        return $this->hasMany(CertTemplate::class);
     }
 }

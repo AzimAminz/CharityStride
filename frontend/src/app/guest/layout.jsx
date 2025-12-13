@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 
 export default function GuestLayout({ children }) {
   const router = useRouter();
-  const [checked, setChecked] = useState(false); // prevent flicker
+  const [checked, setChecked] = useState(false);
 
   useEffect(() => {
     const storedUser = localStorage.getItem("user");
