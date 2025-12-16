@@ -19,9 +19,7 @@ import {
  */
 export function useParticipantModule(eventId) {
   const [config, setConfig] = useState({
-    participation_type: "free_event",
-    slot_limit_type: "unlimited",
-    total_slots: null,
+    has_categories: true, // Simplified config
   });
   const [categories, setCategories] = useState([]);
   const [feeTiers, setFeeTiers] = useState({});
@@ -40,13 +38,7 @@ export function useParticipantModule(eventId) {
     setError(null);
     try {
       const configData = await getParticipantConfig(eventId);
-      setConfig(
-        configData || {
-          participation_type: "free_event",
-          slot_limit_type: "unlimited",
-          total_slots: null,
-        }
-      );
+      setConfig(configData || { has_categories: true });
 
       const categoriesData = await getParticipantCategories(eventId);
       setCategories(categoriesData || []);

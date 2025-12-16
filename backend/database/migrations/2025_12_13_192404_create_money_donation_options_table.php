@@ -11,7 +11,7 @@ return new class extends Migration
         Schema::create('money_donation_options', function (Blueprint $table) {
             $table->id();
             $table->foreignId('event_id')->constrained('events');
-            $table->bigInteger('suggested_amount'); // In CENTS (integer for precision)
+            $table->bigInteger('suggested_amount')->nullable(); // In CENTS (integer for precision), nullable for free amount
             $table->string('description')->nullable();
             $table->timestamps();
             

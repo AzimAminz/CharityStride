@@ -58,10 +58,8 @@ class DonationController extends Controller
     public function createMoneyOption(Request $request, $eventId)
     {
         $validator = Validator::make($request->all(), [
-            'amount_type' => 'required|in:fixed,free_amount,package',
-            'amount' => 'nullable|integer|min:0',
-            'package_name' => 'nullable|string|max:100',
-            'package_description' => 'nullable|string',
+            'suggested_amount' => 'nullable|integer|min:0',  // Nullable for free amount
+            'description' => 'nullable|string|max:255',
         ]);
 
         if ($validator->fails()) {
@@ -70,35 +68,37 @@ class DonationController extends Controller
 
         $option = MoneyDonationOption::create([
             'event_id' => $eventId,
-            ...$request->only(['amount_type', 'amount', 'package_name', 'package_description'])
+            ...$request->only(['suggested_amount', 'description'])
         ]);
 
         return response()->json($option, 201);
     }
     
-    public function updateMoneyOption(Request $request, $optionId)
+    public function updateMoneyOption(Request $request, $eventId, $optionId)
     {
-        $option = MoneyDonationOption::findOrFail($optionId);
+        $option = MoneyDonationOption::where('event_id', $eventId)
+            ->where('id', $optionId)
+            ->firstOrFail();
         
         $validator = Validator::make($request->all(), [
-            'amount_type' => 'sometimes|in:fixed,free_amount,package',
-            'amount' => 'nullable|integer|min:0',
-            'package_name' => 'nullable|string|max:100',
-            'package_description' => 'nullable|string',
+            'suggested_amount' => 'nullable|integer|min:0',  // Nullable for free amount
+            'description' => 'nullable|string|max:255',
         ]);
 
         if ($validator->fails()) {
             return response()->json(['errors' => $validator->errors()], 422);
         }
 
-        $option->update($request->only(['amount_type', 'amount', 'package_name', 'package_description']));
+        $option->update($request->only(['suggested_amount', 'description']));
 
         return response()->json($option);
     }
     
-    public function deleteMoneyOption($optionId)
+    public function deleteMoneyOption($eventId, $optionId)
     {
-        $option = MoneyDonationOption::findOrFail($optionId);
+        $option = MoneyDonationOption::where('event_id', $eventId)
+            ->where('id', $optionId)
+            ->firstOrFail();
         $option->delete();
         
         return response()->json(['message' => 'Money option deleted successfully']);
@@ -129,16 +129,17 @@ class DonationController extends Controller
 
         $option = ItemDonationOption::create([
             'event_id' => $eventId,
-            'current_quantity' => 0,
             ...$request->only(['item_category', 'item_name', 'item_description', 'quantity_type', 'target_quantity', 'unit'])
         ]);
 
         return response()->json($option, 201);
     }
     
-    public function updateItemOption(Request $request, $optionId)
+    public function updateItemOption(Request $request, $eventId, $optionId)
     {
-        $option = ItemDonationOption::findOrFail($optionId);
+        $option = ItemDonationOption::where('event_id', $eventId)
+            ->where('id', $optionId)
+            ->firstOrFail();
         
         $validator = Validator::make($request->all(), [
             'item_category' => 'sometimes|in:food,clothing,medical_supplies,school_supplies',
@@ -158,9 +159,11 @@ class DonationController extends Controller
         return response()->json($option);
     }
     
-    public function deleteItemOption($optionId)
+    public function deleteItemOption($eventId, $optionId)
     {
-        $option = ItemDonationOption::findOrFail($optionId);
+        $option = ItemDonationOption::where('event_id', $eventId)
+            ->where('id', $optionId)
+            ->firstOrFail();
         $option->delete();
         
         return response()->json(['message' => 'Item option deleted successfully']);

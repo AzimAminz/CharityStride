@@ -18,6 +18,8 @@ import {
   fetchRequiredSkills,
   fetchShiftTypes,
 } from "../../lib/lookupHelpers";
+import { NumericInput, DateInput } from "../inputs";
+import { useLanguage } from "../../contexts/LanguageContext";
 
 /**
  * Component for managing volunteer roles and shifts
@@ -32,6 +34,7 @@ export default function VolunteerRoleManager({
   onUpdateShift,
   onRemoveShift,
 }) {
+  const { language } = useLanguage();
   // Lookup data from API
   const [roleTypes, setRoleTypes] = useState([]);
   const [requiredSkills, setRequiredSkills] = useState([]);
@@ -55,6 +58,7 @@ export default function VolunteerRoleManager({
   });
 
   const [showShiftForm, setShowShiftForm] = useState(null); // roleId when showing
+  const [editingShift, setEditingShift] = useState(null); // shift object when editing
   const [shiftForm, setShiftForm] = useState({
     shift_date: "",
     shift_type_id: "",
@@ -111,6 +115,7 @@ export default function VolunteerRoleManager({
       capacity: "",
     });
     setShowShiftForm(null);
+    setEditingShift(null);
   };
 
   const handleSaveRole = async () => {
@@ -140,7 +145,12 @@ export default function VolunteerRoleManager({
         ...shiftForm,
         shift_type_id: parseInt(shiftForm.shift_type_id),
       };
-      await onAddShift(roleId, shiftData);
+
+      if (editingShift) {
+        await onUpdateShift(editingShift.id, shiftData);
+      } else {
+        await onAddShift(roleId, shiftData);
+      }
       resetShiftForm();
     } catch (err) {
       alert(err.message);
@@ -248,14 +258,13 @@ export default function VolunteerRoleManager({
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Total Capacity *
               </label>
-              <input
-                type="number"
+              <NumericInput
                 value={roleForm.total_capacity}
-                onChange={(e) =>
-                  setRoleForm({ ...roleForm, total_capacity: e.target.value })
+                onChange={(value) =>
+                  setRoleForm({ ...roleForm, total_capacity: value })
                 }
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500"
                 placeholder="10"
+                language={language}
                 required
               />
             </div>
@@ -500,16 +509,17 @@ export default function VolunteerRoleManager({
                     <label className="block text-xs font-medium text-gray-700 mb-1">
                       Date *
                     </label>
-                    <input
-                      type="date"
+                    <DateInput
                       value={shiftForm.shift_date}
-                      onChange={(e) =>
+                      onChange={(value) =>
                         setShiftForm({
                           ...shiftForm,
-                          shift_date: e.target.value,
+                          shift_date: value,
                         })
                       }
-                      className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-emerald-500"
+                      disablePast={true}
+                      language={language}
+                      className="w-full px-2 py-1 text-sm"
                       required
                     />
                   </div>
@@ -582,14 +592,14 @@ export default function VolunteerRoleManager({
                     <label className="block text-xs font-medium text-gray-700 mb-1">
                       Capacity *
                     </label>
-                    <input
-                      type="number"
+                    <NumericInput
                       value={shiftForm.capacity}
-                      onChange={(e) =>
-                        setShiftForm({ ...shiftForm, capacity: e.target.value })
+                      onChange={(value) =>
+                        setShiftForm({ ...shiftForm, capacity: value })
                       }
-                      className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-emerald-500"
                       placeholder="5"
+                      language={language}
+                      className="w-full px-2 py-1 text-sm"
                       required
                     />
                   </div>
@@ -623,41 +633,191 @@ export default function VolunteerRoleManager({
               )}
 
             {(shifts[role.id] || []).map((shift) => (
-              <div
-                key={shift.id}
-                className="bg-gray-50 rounded p-2 text-sm flex items-start justify-between"
-              >
-                <div className="flex-1">
-                  <div className="flex items-center gap-3 text-gray-900">
-                    <span className="flex items-center gap-1">
-                      <Calendar className="h-3 w-3" />
-                      {shift.shift_date}
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <Clock className="h-3 w-3" />
-                      {shift.start_time} - {shift.end_time}
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <Users className="h-3 w-3" />
-                      {shift.capacity}
-                    </span>
+              <div key={shift.id}>
+                {editingShift?.id === shift.id ? (
+                  /* Inline Edit Form */
+                  <div className="bg-blue-50 border border-blue-200 rounded p-3">
+                    <h6 className="text-xs font-semibold text-blue-900 mb-2">
+                      Edit Shift
+                    </h6>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">
+                          Date *
+                        </label>
+                        <input
+                          type="date"
+                          value={shiftForm.shift_date}
+                          onChange={(e) =>
+                            setShiftForm({
+                              ...shiftForm,
+                              shift_date: e.target.value,
+                            })
+                          }
+                          className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-emerald-500"
+                          required
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">
+                          Shift Type *
+                        </label>
+                        <select
+                          value={shiftForm.shift_type_id}
+                          onChange={(e) =>
+                            setShiftForm({
+                              ...shiftForm,
+                              shift_type_id: e.target.value,
+                            })
+                          }
+                          className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-emerald-500"
+                          required
+                        >
+                          <option value="">Select...</option>
+                          {shiftTypes.map((type) => (
+                            <option key={type.id} value={type.id}>
+                              {type.name_en} / {type.name_ms} (
+                              {type.duration_hours
+                                ? `${type.duration_hours}h`
+                                : "custom"}
+                              )
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">
+                          Start Time *
+                        </label>
+                        <input
+                          type="time"
+                          value={shiftForm.start_time}
+                          onChange={(e) =>
+                            setShiftForm({
+                              ...shiftForm,
+                              start_time: e.target.value,
+                            })
+                          }
+                          className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-emerald-500"
+                          required
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">
+                          End Time *
+                        </label>
+                        <input
+                          type="time"
+                          value={shiftForm.end_time}
+                          onChange={(e) =>
+                            setShiftForm({
+                              ...shiftForm,
+                              end_time: e.target.value,
+                            })
+                          }
+                          className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-emerald-500"
+                          required
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">
+                          Capacity *
+                        </label>
+                        <input
+                          type="number"
+                          value={shiftForm.capacity}
+                          onChange={(e) =>
+                            setShiftForm({
+                              ...shiftForm,
+                              capacity: e.target.value,
+                            })
+                          }
+                          className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-emerald-500"
+                          placeholder="5"
+                          required
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex gap-2 mt-3">
+                      <button
+                        type="button"
+                        onClick={() => handleSaveShift(role.id)}
+                        className="flex items-center gap-1 px-3 py-1 text-sm bg-emerald-600 hover:bg-emerald-700 text-white rounded"
+                      >
+                        <Save className="h-3 w-3" />
+                        Save
+                      </button>
+                      <button
+                        type="button"
+                        onClick={resetShiftForm}
+                        className="flex items-center gap-1 px-3 py-1 text-sm bg-gray-200 hover:bg-gray-300 text-gray-700 rounded"
+                      >
+                        <X className="h-3 w-3" />
+                        Cancel
+                      </button>
+                    </div>
                   </div>
-                  <div className="text-xs text-gray-500 mt-1">
-                    {shiftTypes.find((t) => t.id === shift.shift_type_id)
-                      ?.name_en || "Shift"}
+                ) : (
+                  /* Display Mode */
+                  <div className="bg-gray-50 rounded p-2 text-sm flex items-start justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3 text-gray-900">
+                        <span className="flex items-center gap-1">
+                          <Calendar className="h-3 w-3" />
+                          {shift.shift_date}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <Clock className="h-3 w-3" />
+                          {shift.start_time} - {shift.end_time}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <Users className="h-3 w-3" />
+                          {shift.capacity}
+                        </span>
+                      </div>
+                      <div className="text-xs text-gray-500 mt-1">
+                        {shiftTypes.find((t) => t.id === shift.shift_type_id)
+                          ?.name_en || "Shift"}
+                      </div>
+                    </div>
+                    <div className="flex gap-1">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditingShift(shift);
+                          setShiftForm({
+                            shift_date: shift.shift_date,
+                            shift_type_id: shift.shift_type_id,
+                            start_time: shift.start_time,
+                            end_time: shift.end_time,
+                            capacity: shift.capacity,
+                          });
+                        }}
+                        className="p-1 text-blue-600 hover:bg-blue-50 rounded"
+                        title="Edit shift"
+                      >
+                        <Edit2 className="h-3 w-3" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (confirm("Delete this shift?")) {
+                            onRemoveShift(role.id, shift.id);
+                          }
+                        }}
+                        className="p-1 text-red-600 hover:bg-red-50 rounded"
+                        title="Delete shift"
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </button>
+                    </div>
                   </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (confirm("Delete this shift?")) {
-                      onRemoveShift(role.id, shift.id);
-                    }
-                  }}
-                  className="p-1 text-red-600 hover:bg-red-50 rounded"
-                >
-                  <Trash2 className="h-3 w-3" />
-                </button>
+                )}
               </div>
             ))}
           </div>

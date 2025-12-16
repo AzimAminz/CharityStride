@@ -11,13 +11,17 @@ class ItemDonationOption extends Model
 
     protected $fillable = [
         'event_id',
+        'item_category',
         'item_name',
-        'quantity_needed',
-        'description',
+        'item_description',
+        'quantity_type',
+        'target_quantity',
+        'unit',
+        'description', // Keep for backwards compatibility
     ];
 
     protected $casts = [
-        'quantity_needed' => 'integer',
+        'target_quantity' => 'integer',
     ];
 
     // Relationships

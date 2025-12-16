@@ -35,6 +35,7 @@ export function useDonationModule(eventId) {
   }, [eventId]);
 
   const loadDonationData = async () => {
+    console.log("📥 LOAD DONATION DATA CALLED for eventId:", eventId);
     setLoading(true);
     setError(null);
     try {
@@ -42,11 +43,14 @@ export function useDonationModule(eventId) {
       setConfig(configData || { accepts_money: false, accepts_items: false });
 
       const money = await getMoneyOptions(eventId);
+      console.log("💰 Money options loaded:", money);
       setMoneyOptions(money || []);
 
       const items = await getItemOptions(eventId);
+      console.log("📦 Item options loaded:", items);
       setItemOptions(items || []);
     } catch (err) {
+      console.error("❌ Load donation data error:", err);
       setError(err.response?.data?.message || "Failed to load donation config");
     } finally {
       setLoading(false);
@@ -89,11 +93,30 @@ export function useDonationModule(eventId) {
   };
 
   const removeMoneyOption = async (optionId) => {
+    console.log("🗑️ DELETE MONEY OPTION CALLED");
+    console.log("Option ID to delete:", optionId);
+    console.log("Current money options before delete:", moneyOptions);
+
     try {
       await deleteMoneyOption(eventId, optionId);
-      setMoneyOptions((prev) => prev.filter((opt) => opt.id !== optionId));
+      console.log("✅ Delete API call successful");
+
+      const newOptions = moneyOptions.filter((opt) => opt.id !== optionId);
+      console.log("New options after filter:", newOptions);
+
+      setMoneyOptions(newOptions);
+      console.log("State updated successfully");
     } catch (err) {
-      setError(err.response?.data?.message || "Failed to delete money option");
+      console.error("❌ Delete money option error:", err);
+      console.error("Error response:", err.response?.data);
+      console.error("Error status:", err.response?.status);
+      const errorMsg =
+        err.response?.data?.message ||
+        err.response?.data?.error ||
+        err.message ||
+        "Failed to delete money option";
+      setError(errorMsg);
+      alert(errorMsg); // Show error to user
       throw err;
     }
   };
@@ -127,7 +150,16 @@ export function useDonationModule(eventId) {
       await deleteItemOption(eventId, optionId);
       setItemOptions((prev) => prev.filter((opt) => opt.id !== optionId));
     } catch (err) {
-      setError(err.response?.data?.message || "Failed to delete item option");
+      console.error("Delete item option error:", err);
+      console.error("Error response:", err.response?.data);
+      console.error("Error status:", err.response?.status);
+      const errorMsg =
+        err.response?.data?.message ||
+        err.response?.data?.error ||
+        err.message ||
+        "Failed to delete item option";
+      setError(errorMsg);
+      alert(errorMsg); // Show error to user
       throw err;
     }
   };

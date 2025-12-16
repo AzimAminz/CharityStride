@@ -11,23 +11,33 @@ class ParticipantCategory extends Model
 
     protected $fillable = [
         'event_id',
-        'category_type_id',
-        'custom_category_name',
+        'category_name',
+        'event_date',
+        'event_time',
+        'capacity_type',
         'capacity',
+        'location_type',
+        'location_name',
+        'latitude',
+        'longitude',
+        'location_details',
         'has_fee',
         'fee_type',
-        'base_fee', // In CENTS
+        'base_fee',
         'description',
-        'has_tshirt',
-        'tshirt_description',
-        'version', // Optimistic locking
+        'has_event_tshirt',
+        'has_finisher_tshirt',
+        'version',
     ];
 
     protected $casts = [
         'capacity' => 'integer',
         'has_fee' => 'boolean',
-        'base_fee' => 'integer', // Integer cents
-        'has_tshirt' => 'boolean',
+        'base_fee' => 'integer',
+        'has_event_tshirt' => 'boolean',
+        'has_finisher_tshirt' => 'boolean',
+        'latitude' => 'float',
+        'longitude' => 'float',
         'version' => 'integer',
     ];
 
@@ -37,19 +47,14 @@ class ParticipantCategory extends Model
         return $this->belongsTo(Event::class);
     }
 
-    public function categoryType()
-    {
-        return $this->belongsTo(ParticipantCategoryType::class);
-    }
-
     public function feeTiers()
     {
-        return $this->hasMany(ParticipantFeeTier::class);
+        return $this->hasMany(ParticipantFeeTier::class, 'participant_category_id');
     }
 
     public function registrations()
     {
-        return $this->hasMany(ParticipantRegistration::class);
+        return $this->hasMany(ParticipantRegistration::class, 'participant_category_id');
     }
 
     // Computed current count (avoid race conditions)

@@ -67,13 +67,22 @@ class ParticipantController extends Controller
     public function createCategory(Request $request, $eventId)
     {
         $validator = Validator::make($request->all(), [
-            'category_name' => 'required|in:adult,student,senior_citizen,others',
-            'custom_category_name' => 'required_if:category_name,others|nullable|string|max:100',
-            'capacity' => 'nullable|integer|min:1',
+            'category_name' => 'required|string|max:255',
+            'event_date' => 'nullable|date',
+            'event_time' => 'nullable|date_format:H:i',
+            'capacity_type' => 'required|in:unlimited,limited',
+            'capacity' => 'required_if:capacity_type,limited|nullable|integer|min:1',
+            'location_type' => 'required|in:event_location,custom',
+            'location_name' => 'required_if:location_type,custom|nullable|string|max:255',
+            'latitude' => 'nullable|numeric|between:-90,90',
+            'longitude' => 'nullable|numeric|between:-180,180',
+            'location_details' => 'nullable|string',
             'has_fee' => 'required|boolean',
             'fee_type' => 'nullable|in:fixed,tiered',
             'base_fee' => 'nullable|integer|min:0',
             'description' => 'nullable|string',
+            'has_event_tshirt' => 'boolean',
+            'has_finisher_tshirt' => 'boolean',
         ]);
 
         if ($validator->fails()) {
@@ -82,8 +91,24 @@ class ParticipantController extends Controller
 
         $category = ParticipantCategory::create([
             'event_id' => $eventId,
-            'current_count' => 0,
-            ...$request->only(['category_name', 'custom_category_name', 'capacity', 'has_fee', 'fee_type', 'base_fee', 'description'])
+            ...$request->only([
+                'category_name',
+                'event_date',
+                'event_time',
+                'capacity_type', 
+                'capacity', 
+                'location_type',
+                'location_name',
+                'latitude',
+                'longitude',
+                'location_details',
+                'has_fee', 
+                'fee_type', 
+                'base_fee', 
+                'description',
+                'has_event_tshirt',
+                'has_finisher_tshirt'
+            ])
         ]);
 
         return response()->json($category->load('feeTiers'), 201);
@@ -94,19 +119,46 @@ class ParticipantController extends Controller
         $category = ParticipantCategory::where('event_id', $eventId)->findOrFail($categoryId);
         
         $validator = Validator::make($request->all(), [
-            'category_name' => 'sometimes|in:adult,student,senior_citizen',
+            'category_name' => 'sometimes|string|max:255',
+            'event_date' => 'nullable|date',
+            'event_time' => 'nullable|date_format:H:i',
+            'capacity_type' => 'sometimes|in:unlimited,limited',
             'capacity' => 'nullable|integer|min:1',
+            'location_type' => 'sometimes|in:event_location,custom',
+            'location_name' => 'nullable|string|max:255',
+            'latitude' => 'nullable|numeric|between:-90,90',
+            'longitude' => 'nullable|numeric|between:-180,180',
+            'location_details' => 'nullable|string',
             'has_fee' => 'sometimes|boolean',
             'fee_type' => 'nullable|in:fixed,tiered',
             'base_fee' => 'nullable|integer|min:0',
             'description' => 'nullable|string',
+            'has_event_tshirt' => 'boolean',
+            'has_finisher_tshirt' => 'boolean',
         ]);
 
         if ($validator->fails()) {
             return response()->json(['errors' => $validator->errors()], 422);
         }
 
-        $category->update($request->only(['category_name', 'capacity', 'has_fee', 'fee_type', 'base_fee', 'description']));
+        $category->update($request->only([
+            'category_name',
+            'event_date',
+            'event_time',
+            'capacity_type',
+            'capacity',
+            'location_type',
+            'location_name',
+            'latitude',
+            'longitude',
+            'location_details',
+            'has_fee',
+            'fee_type',
+            'base_fee',
+            'description',
+            'has_event_tshirt',
+            'has_finisher_tshirt'
+        ]));
 
         return response()->json($category->load('feeTiers'));
     }

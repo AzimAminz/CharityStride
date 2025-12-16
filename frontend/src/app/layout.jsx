@@ -1,6 +1,5 @@
-
 import "./globals.css";
-
+import { LanguageProvider } from "./contexts/LanguageContext";
 
 export const metadata = {
   title: {
@@ -46,7 +45,9 @@ export default function RootLayout({ children }) {
         <link rel="manifest" href="/site.webmanifest" />
       </head>
 
-      <body>{children}</body>
+      <body>
+        <LanguageProvider>{children}</LanguageProvider>
+      </body>
     </html>
   );
 }

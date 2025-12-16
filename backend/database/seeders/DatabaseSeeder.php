@@ -13,6 +13,7 @@ class DatabaseSeeder extends Seeder
     {
         // Seed lookup tables for production database
         $this->call([
+            UserSeeder::class,
             VolunteerRoleTypeSeeder::class,
             ParticipantCategoryTypeSeeder::class,
             RequiredSkillSeeder::class,

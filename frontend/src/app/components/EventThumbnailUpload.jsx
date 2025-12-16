@@ -12,6 +12,7 @@ import { api } from "../lib/api";
 export default function EventThumbnailUpload({
   currentThumbnail,
   onThumbnailChange,
+  validationError,
 }) {
   const [selectedImage, setSelectedImage] = useState(null);
   const [croppedImage, setCroppedImage] = useState(currentThumbnail || null);
@@ -104,7 +105,7 @@ export default function EventThumbnailUpload({
   return (
     <div>
       <label className="block text-sm font-medium text-gray-700 mb-2">
-        Event Thumbnail
+        Event Thumbnail *
         <span className="text-gray-500 text-xs ml-2">
           (Recommended: 1200 x 630 px)
         </span>
@@ -137,7 +138,11 @@ export default function EventThumbnailUpload({
           // Show upload area
           <div
             onClick={() => fileInputRef.current?.click()}
-            className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-emerald-400 transition-colors cursor-pointer"
+            className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors cursor-pointer ${
+              validationError
+                ? "border-red-500 bg-red-50"
+                : "border-gray-300 hover:border-emerald-400"
+            }`}
           >
             <ImageIcon className="h-12 w-12 text-gray-400 mx-auto mb-3" />
             <p className="text-sm text-gray-600 mb-1">
@@ -154,6 +159,10 @@ export default function EventThumbnailUpload({
           </div>
         )}
       </div>
+
+      {validationError && (
+        <p className="mt-1 text-sm text-red-600">{validationError}</p>
+      )}
 
       {uploading && (
         <div className="mt-2 flex items-center gap-2 text-sm text-emerald-600">

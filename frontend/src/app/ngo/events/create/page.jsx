@@ -24,16 +24,21 @@ import VolunteerRoleManager from "../../../components/event-modules/VolunteerRol
 import DonationConfigManager from "../../../components/event-modules/DonationConfigManager";
 import ParticipantCategoryManager from "../../../components/event-modules/ParticipantCategoryManager";
 import EventSectionsManager from "../../../components/EventSectionsManager";
+import LanguageToggle from "../../../components/shared/LanguageToggle";
+import { DateInput } from "../../../components/inputs";
+import { useLanguage } from "../../../contexts/LanguageContext";
 
 export default function CreateEventPage() {
   const router = useRouter();
   const { formData, handleChange, handleSubmit, loading, error } =
     useEventForm();
+  const { language } = useLanguage();
 
   const [createdEventId, setCreatedEventId] = useState(null);
   const [publishing, setPublishing] = useState(false);
   const [activeTab, setActiveTab] = useState("basic");
   const [eventSections, setEventSections] = useState([]);
+  const [validationErrors, setValidationErrors] = useState({});
 
   // Module hooks (only initialized after event created)
   const volunteerModule = useVolunteerModule(createdEventId);
@@ -42,6 +47,39 @@ export default function CreateEventPage() {
 
   const handleSaveDraft = async (e) => {
     e.preventDefault();
+
+    // Custom validation
+    const errors = {};
+    if (!formData.title?.trim()) {
+      errors.title =
+        language === "ms" ? "Tajuk diperlukan" : "Title is required";
+    }
+    if (!formData.description?.trim()) {
+      errors.description =
+        language === "ms" ? "Penerangan diperlukan" : "Description is required";
+    }
+    if (!formData.start_date) {
+      errors.start_date =
+        language === "ms" ? "Tarikh mula diperlukan" : "Start date is required";
+    }
+    if (!formData.end_date) {
+      errors.end_date =
+        language === "ms" ? "Tarikh tamat diperlukan" : "End date is required";
+    }
+    if (!formData.thumbnail) {
+      errors.thumbnail =
+        language === "ms"
+          ? "Gambar acara diperlukan"
+          : "Event thumbnail is required";
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setValidationErrors(errors);
+      return;
+    }
+
+    setValidationErrors({});
+
     try {
       const result = await handleSubmit(false);
       if (result?.event?.id) {
@@ -136,7 +174,7 @@ export default function CreateEventPage() {
 
         {/* Basic Info Tab */}
         {activeTab === "basic" && (
-          <form onSubmit={handleSaveDraft} className="space-y-6">
+          <form onSubmit={handleSaveDraft} noValidate className="space-y-6">
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               {/* Main Form */}
               <div className="lg:col-span-2 space-y-6">
@@ -144,7 +182,16 @@ export default function CreateEventPage() {
                 <div className="bg-white rounded-lg shadow-sm p-6">
                   <EventThumbnailUpload
                     currentThumbnail={formData.thumbnail}
-                    onThumbnailChange={(url) => handleChange("thumbnail", url)}
+                    onThumbnailChange={(url) => {
+                      handleChange("thumbnail", url);
+                      if (validationErrors.thumbnail) {
+                        setValidationErrors({
+                          ...validationErrors,
+                          thumbnail: null,
+                        });
+                      }
+                    }}
+                    validationError={validationErrors.thumbnail}
                   />
                 </div>
 
@@ -163,11 +210,27 @@ export default function CreateEventPage() {
                       <input
                         type="text"
                         value={formData.title}
-                        onChange={(e) => handleChange("title", e.target.value)}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                        onChange={(e) => {
+                          handleChange("title", e.target.value);
+                          if (validationErrors.title) {
+                            setValidationErrors({
+                              ...validationErrors,
+                              title: null,
+                            });
+                          }
+                        }}
+                        className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent ${
+                          validationErrors.title
+                            ? "border-red-500"
+                            : "border-gray-300"
+                        }`}
                         placeholder="e.g., Community Cleanup Drive 2025"
-                        required
                       />
+                      {validationErrors.title && (
+                        <p className="mt-1 text-sm text-red-600">
+                          {validationErrors.title}
+                        </p>
+                      )}
                     </div>
 
                     <div>
@@ -176,14 +239,28 @@ export default function CreateEventPage() {
                       </label>
                       <textarea
                         value={formData.description}
-                        onChange={(e) =>
-                          handleChange("description", e.target.value)
-                        }
+                        onChange={(e) => {
+                          handleChange("description", e.target.value);
+                          if (validationErrors.description) {
+                            setValidationErrors({
+                              ...validationErrors,
+                              description: null,
+                            });
+                          }
+                        }}
                         rows={4}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                        className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent ${
+                          validationErrors.description
+                            ? "border-red-500"
+                            : "border-gray-300"
+                        }`}
                         placeholder="Describe your event..."
-                        required
                       />
+                      {validationErrors.description && (
+                        <p className="mt-1 text-sm text-red-600">
+                          {validationErrors.description}
+                        </p>
+                      )}
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">
@@ -191,29 +268,58 @@ export default function CreateEventPage() {
                         <label className="block text-sm font-medium text-gray-700 mb-1">
                           Start Date *
                         </label>
-                        <input
-                          type="date"
+                        <DateInput
                           value={formData.start_date}
-                          onChange={(e) =>
-                            handleChange("start_date", e.target.value)
-                          }
-                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-                          required
+                          onChange={(value) => {
+                            handleChange("start_date", value);
+                            if (validationErrors.start_date) {
+                              setValidationErrors({
+                                ...validationErrors,
+                                start_date: null,
+                              });
+                            }
+                          }}
+                          disablePast={true}
+                          compareWith={formData.end_date}
+                          compareType="before"
+                          language={language}
+                          className={`${
+                            validationErrors.start_date
+                              ? "border-red-500"
+                              : "border-gray-300"
+                          }`}
                         />
+                        {validationErrors.start_date && (
+                          <p className="mt-1 text-sm text-red-600">
+                            {validationErrors.start_date}
+                          </p>
+                        )}
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">
                           End Date *
                         </label>
-                        <input
-                          type="date"
+                        <DateInput
                           value={formData.end_date}
-                          onChange={(e) =>
-                            handleChange("end_date", e.target.value)
-                          }
-                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-                          required
+                          onChange={(value) => {
+                            handleChange("end_date", value);
+                            if (validationErrors.end_date) {
+                              setValidationErrors({
+                                ...validationErrors,
+                                end_date: null,
+                              });
+                            }
+                          }}
+                          min={formData.start_date}
+                          compareWith={formData.start_date}
+                          compareType="after"
+                          language={language}
                         />
+                        {validationErrors.end_date && (
+                          <p className="mt-1 text-sm text-red-600">
+                            {validationErrors.end_date}
+                          </p>
+                        )}
                       </div>
                     </div>
                   </div>

@@ -135,7 +135,7 @@ class VolunteerController extends Controller
         return response()->json($shift, 201);
     }
     
-    public function updateShift(Request $request, $shiftId)
+    public function updateShift(Request $request, $eventId, $shiftId)
     {
         $shift = VolunteerShift::findOrFail($shiftId);
         
@@ -156,7 +156,7 @@ class VolunteerController extends Controller
         return response()->json($shift);
     }
     
-    public function deleteShift($shiftId)
+    public function deleteShift($eventId, $shiftId)
     {
         $shift = VolunteerShift::findOrFail($shiftId);
         $shift->delete();
