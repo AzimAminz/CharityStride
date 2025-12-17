@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Upload, X, Image as ImageIcon } from "lucide-react";
 import ImageCropModal from "./ImageCropModal";
 import { api } from "../lib/api";
@@ -19,6 +19,11 @@ export default function EventThumbnailUpload({
   const [showCropModal, setShowCropModal] = useState(false);
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef(null);
+
+  // Sync currentThumbnail prop with local state
+  useEffect(() => {
+    setCroppedImage(currentThumbnail);
+  }, [currentThumbnail]);
 
   const handleFileSelect = (e) => {
     const file = e.target.files?.[0];
