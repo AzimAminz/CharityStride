@@ -27,6 +27,10 @@ import EventSectionsManager from "../../../components/EventSectionsManager";
 import LanguageToggle from "../../../components/shared/LanguageToggle";
 import { DateInput } from "../../../components/inputs";
 import { useLanguage } from "../../../contexts/LanguageContext";
+import { HelpTooltip, ProgressIndicator } from "../../../components/help";
+import { translations } from "../../../lib/translations";
+import AlertModal from "../../../components/AlertModal";
+import ConfirmModal from "../../../components/ConfirmModal";
 
 export default function CreateEventPage() {
   const router = useRouter();
@@ -40,7 +44,22 @@ export default function CreateEventPage() {
   const [eventSections, setEventSections] = useState([]);
   const [validationErrors, setValidationErrors] = useState({});
 
-  // Module hooks (only initialized after event created)
+  // Modal states
+  const [alertModal, setAlertModal] = useState({
+    isOpen: false,
+    title: "",
+    message: "",
+    type: "info",
+  });
+
+  const [confirmModal, setConfirmModal] = useState({
+    isOpen: false,
+    title: "",
+    message: "",
+    onConfirm: () => {},
+  });
+
+  // Volunteer Module hooks (only initialized after event created)
   const volunteerModule = useVolunteerModule(createdEventId);
   const donationModule = useDonationModule(createdEventId);
   const participantModule = useParticipantModule(createdEventId);
@@ -93,7 +112,15 @@ export default function CreateEventPage() {
 
   const handlePublish = async () => {
     if (!createdEventId) {
-      alert("Please save event as draft first");
+      setAlertModal({
+        isOpen: true,
+        title: language === "ms" ? "Ralat" : "Error",
+        message:
+          language === "ms"
+            ? "Sila simpan event sebagai draf terlebih dahulu."
+            : "Please save event as draft first.",
+        type: "warning",
+      });
       return;
     }
 
@@ -102,7 +129,32 @@ export default function CreateEventPage() {
       await publishEvent(createdEventId);
       router.push("/ngo/events");
     } catch (err) {
-      alert(err.response?.data?.message || "Failed to publish event");
+      let errorMessage = "";
+
+      if (err.response?.data?.errors) {
+        // Parse Laravel validation errors
+        const errors = err.response.data.errors;
+        errorMessage = Object.keys(errors)
+          .map((key) => `• ${errors[key][0]}`)
+          .join("\n");
+      } else if (err.response?.data?.message) {
+        errorMessage = err.response.data.message;
+      } else {
+        errorMessage =
+          language === "ms"
+            ? "Gagal menerbitkan event. Sila cuba lagi."
+            : "Failed to publish event. Please try again.";
+      }
+
+      setAlertModal({
+        isOpen: true,
+        title:
+          language === "ms"
+            ? "Ralat Menerbitkan Event"
+            : "Error Publishing Event",
+        message: errorMessage,
+        type: "error",
+      });
     } finally {
       setPublishing(false);
     }
@@ -126,6 +178,38 @@ export default function CreateEventPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 py-8 px-4">
+      {/* Page Header with Instructions */}
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 mt-6">
+        <div className="bg-gradient-to-r from-emerald-50 to-blue-50 rounded-lg p-6 mb-6 border border-emerald-100">
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">
+            {language === "ms" ? "Cipta Event Anda" : "Create Your Event"}
+          </h2>
+          <p className="text-gray-700 mb-4">
+            {language === "ms"
+              ? "Ikuti 3 langkah mudah untuk mencipta event amal anda. Mulakan dengan maklumat asas, kemudian pilih modul yang diperlukan."
+              : "Follow 3 easy steps to create your charity event. Start with basic information, then choose the modules you need."}
+          </p>
+
+          {/* Progress Indicator */}
+          <ProgressIndicator
+            currentStep={
+              activeTab === "basic" ? 1 : activeTab === "modules" ? 2 : 3
+            }
+            language={language}
+          />
+
+          {/* Quick Tips */}
+          <div className="mt-4 pt-4 border-t border-emerald-200">
+            <p className="text-sm text-gray-600 flex items-start gap-2">
+              <span className="text-emerald-600 font-semibold">💡</span>
+              {language === "ms"
+                ? "Tip: Simpan sebagai draf dahulu, kemudian tambah butiran lanjut dalam tab Modul dan Kandungan."
+                : "Tip: Save as draft first, then add more details in the Modules and Content tabs."}
+            </p>
+          </div>
+        </div>
+      </div>
+
       <div className="max-w-6xl mx-auto">
         {/* Header */}
         <div className="mb-8">
@@ -204,9 +288,19 @@ export default function CreateEventPage() {
 
                   <div className="space-y-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Event Title *
-                      </label>
+                      <div className="flex items-center gap-2 mb-1">
+                        <label className="block text-sm font-medium text-gray-700">
+                          Event Title *
+                        </label>
+                        <HelpTooltip
+                          content={
+                            language === "ms"
+                              ? 'Tajuk yang menarik akan menarik lebih ramai peserta. Contoh: "Larian Amal 2024" atau "Kempen Derma Makanan"'
+                              : 'An attractive title will draw more participants. Example: "Charity Run 2024" or "Food Donation Campaign"'
+                          }
+                          language={language}
+                        />
+                      </div>
                       <input
                         type="text"
                         value={formData.title}
@@ -265,9 +359,19 @@ export default function CreateEventPage() {
 
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Start Date *
-                        </label>
+                        <div className="flex items-center gap-2 mb-1">
+                          <label className="block text-sm font-medium text-gray-700">
+                            Start Date *
+                          </label>
+                          <HelpTooltip
+                            content={
+                              language === "ms"
+                                ? "Tarikh lalu telah disekat. Event tidak boleh bermula sebelum hari ini."
+                                : "Past dates are disabled. Events cannot start before today."
+                            }
+                            language={language}
+                          />
+                        </div>
                         <DateInput
                           value={formData.start_date}
                           onChange={(value) => {
@@ -420,14 +524,40 @@ export default function CreateEventPage() {
         )}
 
         {/* Modules Tab */}
-        {activeTab === "modules" && createdEventId && (
+        {activeTab === "modules" && (
           <div className="space-y-6">
-            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-              <p className="text-sm text-yellow-800">
-                Configure the modules you enabled. These settings determine how
-                users can interact with your event.
+            {/* Modules Section Header */}
+            <div className="mb-6 pb-4 border-b border-gray-200">
+              <div className="flex items-center gap-2 mb-2">
+                <h3 className="text-lg font-semibold text-gray-900">
+                  {language === "ms"
+                    ? "Pilih Modul Event"
+                    : "Select Event Modules"}
+                </h3>
+                <HelpTooltip
+                  content={
+                    language === "ms"
+                      ? "Aktifkan modul yang diperlukan untuk event anda. Anda boleh menambah butiran lanjut selepas menyimpan draf."
+                      : "Enable the modules you need for your event. You can add more details after saving the draft."
+                  }
+                  language={language}
+                />
+              </div>
+              <p className="text-sm text-gray-600">
+                {language === "ms"
+                  ? "Modul membantu anda mengurus peserta, sukarelawan, dan derma dengan lebih teratur."
+                  : "Modules help you manage participants, volunteers, and donations more efficiently."}
               </p>
             </div>
+
+            {!createdEventId && (
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                <p className="text-sm text-yellow-800">
+                  Configure the modules you enabled. These settings determine
+                  how users can interact with your event.
+                </p>
+              </div>
+            )}
 
             {/* Volunteer Module */}
             {formData.has_volunteer && (
@@ -576,6 +706,24 @@ export default function CreateEventPage() {
           </div>
         )}
       </div>
+
+      {/* Alert Modal */}
+      <AlertModal
+        isOpen={alertModal.isOpen}
+        onClose={() => setAlertModal({ ...alertModal, isOpen: false })}
+        type={alertModal.type}
+        message={alertModal.message}
+      />
+
+      {/* Confirm Modal */}
+      <ConfirmModal
+        isOpen={confirmModal.isOpen}
+        onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
+        onConfirm={confirmModal.onConfirm}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        language={language}
+      />
     </div>
   );
 }

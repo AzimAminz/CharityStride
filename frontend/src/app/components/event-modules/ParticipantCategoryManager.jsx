@@ -16,6 +16,8 @@ import SavedLocationPicker from "../SavedLocationPicker";
 import { FEE_TYPES, TIER_TYPES } from "../../lib/api/participant";
 import { NumericInput, FeeInput, DateInput } from "../inputs";
 import { useLanguage } from "../../contexts/LanguageContext";
+import AlertModal from "../AlertModal";
+import ConfirmModal from "../ConfirmModal";
 
 /**
  * Component for managing participant categories and pricing
@@ -33,20 +35,41 @@ export default function ParticipantCategoryManager({
   const { language } = useLanguage();
   const [showCategoryForm, setShowCategoryForm] = useState(false);
   const [editingCategory, setEditingCategory] = useState(null);
+
+  // Field-level validation errors
+  const [categoryErrors, setCategoryErrors] = useState({});
+
+  // Alert modal
+  const [alertModal, setAlertModal] = useState({
+    isOpen: false,
+    title: "",
+    message: "",
+    type: "info",
+  });
+
+  // Confirm modal
+  const [confirmModal, setConfirmModal] = useState({
+    isOpen: false,
+    title: "",
+    message: "",
+    onConfirm: () => {},
+  });
+
   const [categoryForm, setCategoryForm] = useState({
     category_name: "",
+    has_custom_datetime: false, // Checkbox to enable custom date/time
     event_date: "",
     event_time: "",
-    capacity_type: "limited",
-    capacity: "",
+    capacity_type: "unlimited", // Radio: unlimited or limited
+    capacity: "", // Only required if capacity_type === "limited"
     location_type: "event_location",
     location_name: "",
     latitude: null,
     longitude: null,
     location_details: "",
-    has_fee: false,
-    fee_type: "",
-    base_fee: "",
+    has_fee: false, // Checkbox to enable fee
+    fee_type: "fixed", // Always fixed when has_fee is true
+    base_fee: "", // Only required if has_fee === true
     description: "",
     has_event_tshirt: false,
     has_finisher_tshirt: false,
@@ -64,9 +87,10 @@ export default function ParticipantCategoryManager({
   const resetCategoryForm = () => {
     setCategoryForm({
       category_name: "",
+      has_custom_datetime: false,
       event_date: "",
       event_time: "",
-      capacity_type: "limited",
+      capacity_type: "unlimited",
       capacity: "",
       location_type: "event_location",
       location_name: "",
@@ -74,7 +98,7 @@ export default function ParticipantCategoryManager({
       longitude: null,
       location_details: "",
       has_fee: false,
-      fee_type: "",
+      fee_type: "fixed",
       base_fee: "",
       description: "",
       has_event_tshirt: false,
@@ -95,16 +119,85 @@ export default function ParticipantCategoryManager({
     setShowTierForm(null);
   };
 
+  // Category form validation
+  const validateCategoryForm = () => {
+    const errors = {};
+
+    if (!categoryForm.category_name?.trim()) {
+      errors.category_name =
+        language === "ms"
+          ? "Nama kategori diperlukan"
+          : "Category name is required";
+    }
+
+    // Only validate date/time if custom datetime is enabled
+    if (categoryForm.has_custom_datetime) {
+      if (!categoryForm.event_date) {
+        errors.event_date =
+          language === "ms"
+            ? "Tarikh acara diperlukan"
+            : "Event date is required";
+      }
+
+      if (!categoryForm.event_time) {
+        errors.event_time =
+          language === "ms"
+            ? "Masa acara diperlukan"
+            : "Event time is required";
+      }
+    }
+
+    // Capacity only required if capacity_type === "limited"
+    if (
+      categoryForm.capacity_type === "limited" &&
+      (!categoryForm.capacity || categoryForm.capacity < 1)
+    ) {
+      errors.capacity =
+        language === "ms"
+          ? "Kapasiti mesti sekurang-kurangnya 1"
+          : "Capacity must be at least 1";
+    }
+
+    // Base fee only required if has_fee === true (minimum RM 1.00 = 100 cents)
+    if (
+      categoryForm.has_fee &&
+      (!categoryForm.base_fee || categoryForm.base_fee < 100)
+    ) {
+      errors.base_fee =
+        language === "ms"
+          ? "Yuran mesti sekurang-kurangnya RM 1.00"
+          : "Fee must be at least RM 1.00";
+    }
+
+    // This validation assumes 'location_name' is the field to check for location presence.
+    // If 'location' is a separate field, adjust accordingly.
+    if (
+      !categoryForm.location_name?.trim() &&
+      categoryForm.location_type === "custom"
+    ) {
+      errors.location_name =
+        language === "ms" ? "Lokasi diperlukan" : "Location is required";
+    }
+
+    return errors;
+  };
+
   const handleSaveCategory = async () => {
+    // Client-side validation
+    const errors = validateCategoryForm();
+    if (Object.keys(errors).length > 0) {
+      setCategoryErrors(errors);
+      return;
+    }
+
     try {
       const data = {
         ...categoryForm,
-        capacity: categoryForm.capacity
-          ? parseInt(categoryForm.capacity)
-          : null,
-        base_fee: categoryForm.base_fee
-          ? parseInt(categoryForm.base_fee)
-          : null, // Already in cents from FeeInput
+        capacity:
+          categoryForm.capacity_type === "limited"
+            ? parseInt(categoryForm.capacity)
+            : null,
+        base_fee: categoryForm.has_fee ? parseInt(categoryForm.base_fee) : null,
         latitude: categoryForm.latitude
           ? parseFloat(categoryForm.latitude)
           : null,
@@ -117,9 +210,33 @@ export default function ParticipantCategoryManager({
       } else {
         await onAddCategory(data);
       }
+      setCategoryErrors({}); // Clear errors on successful save
       resetCategoryForm();
+      setShowCategoryForm(false);
     } catch (err) {
-      alert(err.message);
+      // Parse backend validation errors
+      if (err.response?.data?.errors) {
+        const backendErrors = {};
+        const errorData = err.response.data.errors;
+
+        Object.keys(errorData).forEach((key) => {
+          backendErrors[key] = errorData[key][0];
+        });
+
+        setCategoryErrors(backendErrors);
+      } else {
+        setAlertModal({
+          isOpen: true,
+          title: language === "ms" ? "Ralat" : "Error",
+          message:
+            err.response?.data?.message ||
+            err.message ||
+            (language === "ms"
+              ? "Gagal menyimpan kategori"
+              : "Failed to save category"),
+          type: "error",
+        });
+      }
     }
   };
 
@@ -132,7 +249,15 @@ export default function ParticipantCategoryManager({
       await onAddTier(categoryId, data);
       resetTierForm();
     } catch (err) {
-      alert(err.message);
+      setAlertModal({
+        isOpen: true,
+        title: language === "ms" ? "Ralat" : "Error",
+        message:
+          err.response?.data?.message ||
+          err.message ||
+          (language === "ms" ? "Gagal menyimpan tier" : "Failed to save tier"),
+        type: "error",
+      });
     }
   };
 
@@ -162,62 +287,139 @@ export default function ParticipantCategoryManager({
             {/* Category Name - Text Input */}
             <div className="col-span-2">
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Category Name *
+                {language === "ms" ? "Nama Kategori *" : "Category Name *"}
               </label>
               <input
                 type="text"
                 value={categoryForm.category_name}
-                onChange={(e) =>
+                onChange={(e) => {
                   setCategoryForm({
                     ...categoryForm,
                     category_name: e.target.value,
-                  })
-                }
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  });
+                  if (categoryErrors.category_name) {
+                    setCategoryErrors((prev) => ({
+                      ...prev,
+                      category_name: undefined,
+                    }));
+                  }
+                }}
+                className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 ${
+                  categoryErrors.category_name
+                    ? "border-red-500"
+                    : "border-gray-300"
+                }`}
                 placeholder="e.g., 10km Fun Run, 21km Marathon, Elite Category"
-                required
               />
+              {categoryErrors.category_name && (
+                <p className="text-red-600 text-sm mt-1">
+                  {categoryErrors.category_name}
+                </p>
+              )}
             </div>
 
-            {/* Event Date & Time */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Event Date
-              </label>
-              <DateInput
-                value={categoryForm.event_date}
-                onChange={(value) =>
-                  setCategoryForm({
-                    ...categoryForm,
-                    event_date: value,
-                  })
-                }
-                disablePast={true}
-                language={language}
-              />
+            {/* Custom Event Date/Time Checkbox */}
+            <div className="col-span-2">
+              <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                <input
+                  type="checkbox"
+                  id="has_custom_datetime"
+                  checked={categoryForm.has_custom_datetime}
+                  onChange={(e) => {
+                    setCategoryForm({
+                      ...categoryForm,
+                      has_custom_datetime: e.target.checked,
+                      event_date: e.target.checked
+                        ? categoryForm.event_date
+                        : "",
+                      event_time: e.target.checked
+                        ? categoryForm.event_time
+                        : "",
+                    });
+                    // Clear errors if unchecking
+                    if (!e.target.checked) {
+                      setCategoryErrors((prev) => ({
+                        ...prev,
+                        event_date: undefined,
+                        event_time: undefined,
+                      }));
+                    }
+                  }}
+                  className="w-4 h-4 text-emerald-600 focus:ring-emerald-500 rounded"
+                />
+                <label
+                  htmlFor="has_custom_datetime"
+                  className="text-sm font-medium text-gray-700 cursor-pointer"
+                >
+                  {language === "ms"
+                    ? "Tetapkan tarikh dan masa acara khusus untuk kategori ini"
+                    : "Set custom event date and time for this category"}
+                </label>
+              </div>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Event Time
-              </label>
-              <input
-                type="time"
-                value={categoryForm.event_time}
-                onChange={(e) =>
-                  setCategoryForm({
-                    ...categoryForm,
-                    event_time: e.target.value,
-                  })
-                }
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
+            {/* Event Date & Time - Only show if checkbox is checked */}
+            {categoryForm.has_custom_datetime && (
+              <>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    {language === "ms" ? "Tarikh Acara *" : "Event Date *"}
+                  </label>
+                  <DateInput
+                    value={categoryForm.event_date}
+                    onChange={(value) => {
+                      setCategoryForm({ ...categoryForm, event_date: value });
+                      if (categoryErrors.event_date) {
+                        setCategoryErrors((prev) => ({
+                          ...prev,
+                          event_date: undefined,
+                        }));
+                      }
+                    }}
+                    disablePast={true}
+                    language={language}
+                    error={categoryErrors.event_date}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    {language === "ms" ? "Masa Acara *" : "Event Time *"}
+                  </label>
+                  <input
+                    type="time"
+                    value={categoryForm.event_time}
+                    onChange={(e) => {
+                      setCategoryForm({
+                        ...categoryForm,
+                        event_time: e.target.value,
+                      });
+                      if (categoryErrors.event_time) {
+                        setCategoryErrors((prev) => ({
+                          ...prev,
+                          event_time: undefined,
+                        }));
+                      }
+                    }}
+                    className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 ${
+                      categoryErrors.event_time
+                        ? "border-red-500"
+                        : "border-gray-300"
+                    }`}
+                  />
+                  {categoryErrors.event_time && (
+                    <p className="text-red-600 text-sm mt-1">
+                      {categoryErrors.event_time}
+                    </p>
+                  )}
+                </div>
+              </>
+            )}
 
             {/* Capacity Type Toggle */}
             <div className="col-span-2">
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Capacity Type *
+                {language === "ms" ? "Jenis Kapasiti *" : "Capacity Type *"}
               </label>
               <div className="flex gap-4">
                 <label className="flex items-center gap-2 cursor-pointer">
@@ -235,7 +437,9 @@ export default function ParticipantCategoryManager({
                     }
                     className="w-4 h-4 text-emerald-600 focus:ring-emerald-500"
                   />
-                  <span className="text-sm text-gray-700">Unlimited Slots</span>
+                  <span className="text-sm text-gray-700">
+                    {language === "ms" ? "Tanpa Had" : "Unlimited Slots"}
+                  </span>
                 </label>
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input
@@ -251,28 +455,35 @@ export default function ParticipantCategoryManager({
                     }
                     className="w-4 h-4 text-emerald-600 focus:ring-emerald-500"
                   />
-                  <span className="text-sm text-gray-700">Limited Slots</span>
+                  <span className="text-sm text-gray-700">
+                    {language === "ms" ? "Terhad" : "Limited Slots"}
+                  </span>
                 </label>
               </div>
             </div>
 
-            {/* Capacity Number - Only show if limited */}
+            {/* Capacity - Only show if limited */}
             {categoryForm.capacity_type === "limited" && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Capacity *
+                  {language === "ms"
+                    ? "Kapasiti Maksimum *"
+                    : "Maximum Capacity *"}
                 </label>
                 <NumericInput
                   value={categoryForm.capacity}
-                  onChange={(value) =>
-                    setCategoryForm({
-                      ...categoryForm,
-                      capacity: value,
-                    })
-                  }
-                  placeholder="e.g., 500"
+                  onChange={(value) => {
+                    setCategoryForm({ ...categoryForm, capacity: value });
+                    if (categoryErrors.capacity) {
+                      setCategoryErrors((prev) => ({
+                        ...prev,
+                        capacity: undefined,
+                      }));
+                    }
+                  }}
+                  placeholder="100"
                   language={language}
-                  required
+                  error={categoryErrors.capacity}
                 />
               </div>
             )}
@@ -345,7 +556,7 @@ export default function ParticipantCategoryManager({
 
             {/* Has Fee Checkbox */}
             <div className="col-span-2">
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
                 <input
                   type="checkbox"
                   id="has_fee"
@@ -354,71 +565,57 @@ export default function ParticipantCategoryManager({
                     setCategoryForm({
                       ...categoryForm,
                       has_fee: e.target.checked,
+                      base_fee: e.target.checked ? categoryForm.base_fee : "",
                     })
                   }
-                  className="h-4 w-4 text-emerald-600 focus:ring-emerald-500 border-gray-300 rounded"
+                  className="w-4 h-4 text-emerald-600 focus:ring-emerald-500 rounded"
                 />
                 <label
                   htmlFor="has_fee"
-                  className="text-sm font-medium text-gray-700"
+                  className="text-sm font-medium text-gray-700 cursor-pointer"
                 >
-                  This category has a registration fee
+                  {language === "ms"
+                    ? "Kenakan yuran pendaftaran untuk kategori ini"
+                    : "Charge registration fee for this category"}
                 </label>
               </div>
             </div>
 
-            {/* Fee Configuration */}
+            {/* Registration Fee - Only show if has_fee is checked */}
             {categoryForm.has_fee && (
-              <>
-                <div className="col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Fee Type *
-                  </label>
-                  <select
-                    value={categoryForm.fee_type}
-                    onChange={(e) =>
-                      setCategoryForm({
-                        ...categoryForm,
-                        fee_type: e.target.value,
-                      })
+              <div className="col-span-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  {language === "ms"
+                    ? "Yuran Pendaftaran (RM) *"
+                    : "Registration Fee (RM) *"}
+                  <span className="ml-2 text-xs text-gray-500">
+                    (
+                    {language === "ms"
+                      ? "Jenis: Yuran Tetap"
+                      : "Type: Fixed Fee"}
+                    )
+                  </span>
+                </label>
+                <FeeInput
+                  value={categoryForm.base_fee}
+                  onChange={(value) => {
+                    setCategoryForm({ ...categoryForm, base_fee: value });
+                    if (categoryErrors.base_fee) {
+                      setCategoryErrors((prev) => ({
+                        ...prev,
+                        base_fee: undefined,
+                      }));
                     }
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                    required
-                  >
-                    <option value="">Select...</option>
-                    {FEE_TYPES.map((type) => (
-                      <option key={type.value} value={type.value}>
-                        {type.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                {categoryForm.fee_type === "fixed" && (
-                  <div className="col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Base Fee (in cents) *
-                    </label>
-                    <FeeInput
-                      value={categoryForm.base_fee}
-                      onChange={(value) =>
-                        setCategoryForm({
-                          ...categoryForm,
-                          base_fee: value,
-                        })
-                      }
-                      placeholder={
-                        language === "ms"
-                          ? "cth: 3000 (RM 30.00)"
-                          : "e.g., 3000 (RM 30.00)"
-                      }
-                      language={language}
-                      required
-                    />
-                    
-                  </div>
-                )}
-              </>
+                  }}
+                  language={language}
+                  error={categoryErrors.base_fee}
+                  placeholder={
+                    language === "ms"
+                      ? "cth: 3000 (RM 30.00)"
+                      : "e.g., 3000 (RM 30.00)"
+                  }
+                />
+              </div>
             )}
 
             {/* T-shirt Options */}
@@ -640,9 +837,26 @@ export default function ParticipantCategoryManager({
               <button
                 type="button"
                 onClick={() => {
-                  if (confirm("Delete this category and all its tiers?")) {
-                    onRemoveCategory(category.id);
-                  }
+                  setConfirmModal({
+                    isOpen: true,
+                    title:
+                      language === "ms"
+                        ? "Padam Kategori?"
+                        : "Delete Category?",
+                    message:
+                      language === "ms"
+                        ? "Adakah anda pasti mahu memadam kategori ini dan semua tier berkaitan?"
+                        : "Are you sure you want to delete this category and all its tiers?",
+                    onConfirm: () => {
+                      onRemoveCategory(category.id);
+                      setConfirmModal({
+                        isOpen: false,
+                        title: "",
+                        message: "",
+                        onConfirm: () => {},
+                      });
+                    },
+                  });
                 }}
                 className="p-2 text-red-600 hover:bg-red-50 rounded-lg"
               >
@@ -817,12 +1031,28 @@ export default function ParticipantCategoryManager({
                   <button
                     type="button"
                     onClick={() => {
-                      if (confirm("Delete this tier?")) {
-                        onRemoveTier(category.id, tier.id);
-                      }
+                      setConfirmModal({
+                        isOpen: true,
+                        title:
+                          language === "ms" ? "Padam Tier?" : "Delete Tier?",
+                        message:
+                          language === "ms"
+                            ? "Adakah anda pasti mahu memadam tier ini?"
+                            : "Are you sure you want to delete this tier?",
+                        onConfirm: () => {
+                          onRemoveTier(tier.id);
+                          setConfirmModal({
+                            isOpen: false,
+                            title: "",
+                            message: "",
+                            onConfirm: () => {},
+                          });
+                        },
+                      });
                     }}
-                    className="p-1 text-red-600 hover:bg-red-50 rounded"
+                    className="p-2 text-red-600 hover:bg-red-50 rounded-lg"
                   >
+                    {" "}
                     <Trash2 className="h-3 w-3" />
                   </button>
                 </div>
@@ -831,6 +1061,26 @@ export default function ParticipantCategoryManager({
           )}
         </div>
       ))}
+
+      {/* Alert Modal */}
+      <AlertModal
+        isOpen={alertModal.isOpen}
+        onClose={() => setAlertModal({ ...alertModal, isOpen: false })}
+        title={alertModal.title}
+        message={alertModal.message}
+        type={alertModal.type}
+      />
+
+      {/* Confirm Modal */}
+      <ConfirmModal
+        isOpen={confirmModal.isOpen}
+        onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
+        onConfirm={confirmModal.onConfirm}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        language={language}
+        type="danger"
+      />
     </div>
   );
 }

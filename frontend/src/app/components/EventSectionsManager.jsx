@@ -1,7 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, Edit2, Trash2, Image as ImageIcon } from "lucide-react";
+import { Plus, Trash2, Edit2, Save, X, Image as ImageIcon } from "lucide-react";
+import { useLanguage } from "../contexts/LanguageContext";
+import AlertModal from "./AlertModal";
+import ConfirmModal from "./ConfirmModal";
 import MultiImageUpload from "./MultiImageUpload";
 import {
   addEventSection,
@@ -26,54 +29,166 @@ export default function EventSectionsManager({
     images: [],
   });
   const [loading, setLoading] = useState(false);
+  const { language } = useLanguage();
+
+  // Field-level validation errors
+  const [fieldErrors, setFieldErrors] = useState({});
+
+  // Alert modal
+  const [alertModal, setAlertModal] = useState({
+    isOpen: false,
+    title: "",
+    message: "",
+    type: "info",
+    onConfirm: null,
+  });
+
+  // Confirm modal
+  const [confirmModal, setConfirmModal] = useState({
+    isOpen: false,
+    title: "",
+    message: "",
+    onConfirm: () => {},
+  });
+
+  // Client-side validation
+  const validateForm = () => {
+    const errors = {};
+
+    if (!formData.title?.trim()) {
+      errors.title =
+        language === "ms" ? "Tajuk diperlukan" : "Title is required";
+    } else if (formData.title.length > 255) {
+      errors.title =
+        language === "ms"
+          ? "Tajuk tidak boleh melebihi 255 aksara"
+          : "Title cannot exceed 255 characters";
+    }
+
+    if (!formData.content?.trim()) {
+      errors.content =
+        language === "ms" ? "Kandungan diperlukan" : "Content is required";
+    }
+
+    return errors;
+  };
 
   const handleAdd = async () => {
-    if (!formData.title || !formData.content) {
-      alert("Please fill in all fields");
+    // Client-side validation
+    const errors = validateForm();
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
       return;
     }
 
     setLoading(true);
     try {
       await addEventSection(eventId, formData);
-      setFormData({ title: "", content: "" });
+      setFormData({ title: "", content: "", images: [] });
+      setFieldErrors({});
       setAdding(false);
       onUpdate?.();
     } catch (error) {
-      alert(error.response?.data?.message || "Failed to add section");
+      // Parse backend validation errors
+      if (error.response?.data?.errors) {
+        const backendErrors = {};
+        const errorData = error.response.data.errors;
+
+        Object.keys(errorData).forEach((key) => {
+          backendErrors[key] = errorData[key][0];
+        });
+
+        setFieldErrors(backendErrors);
+      } else {
+        // Show general error in modal
+        setAlertModal({
+          isOpen: true,
+          title: language === "ms" ? "Ralat" : "Error",
+          message:
+            error.response?.data?.message ||
+            error.message ||
+            (language === "ms"
+              ? "Gagal menambah bahagian"
+              : "Failed to add section"),
+          type: "error",
+        });
+      }
     } finally {
       setLoading(false);
     }
   };
 
   const handleUpdate = async (sectionId) => {
-    if (!formData.title || !formData.content) {
-      alert("Please fill in all fields");
+    // Client-side validation
+    const errors = validateForm();
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
       return;
     }
 
     setLoading(true);
     try {
       await updateEventSection(eventId, sectionId, formData);
-      setFormData({ title: "", content: "" });
+      setFormData({ title: "", content: "", images: [] });
+      setFieldErrors({});
       setEditing(null);
       onUpdate?.();
     } catch (error) {
-      alert(error.response?.data?.message || "Failed to update section");
+      // Parse backend validation errors
+      if (error.response?.data?.errors) {
+        const backendErrors = {};
+        const errorData = error.response.data.errors;
+
+        Object.keys(errorData).forEach((key) => {
+          backendErrors[key] = errorData[key][0];
+        });
+
+        setFieldErrors(backendErrors);
+      } else {
+        setAlertModal({
+          isOpen: true,
+          title: language === "ms" ? "Ralat" : "Error",
+          message:
+            error.response?.data?.message ||
+            error.message ||
+            (language === "ms"
+              ? "Gagal mengemaskini bahagian"
+              : "Failed to update section"),
+          type: "error",
+        });
+      }
     } finally {
       setLoading(false);
     }
   };
 
   const handleDelete = async (sectionId) => {
-    if (!confirm("Are you sure you want to delete this section?")) return;
-
-    try {
-      await deleteEventSection(eventId, sectionId);
-      onUpdate?.();
-    } catch (error) {
-      alert(error.response?.data?.message || "Failed to delete section");
-    }
+    setConfirmModal({
+      isOpen: true,
+      title: language === "ms" ? "Padam Bahagian?" : "Delete Section?",
+      message:
+        language === "ms"
+          ? "Adakah anda pasti mahu memadam bahagian ini?"
+          : "Are you sure you want to delete this section?",
+      onConfirm: async () => {
+        try {
+          await deleteEventSection(eventId, sectionId);
+          onUpdate?.();
+        } catch (error) {
+          setAlertModal({
+            isOpen: true,
+            title: language === "ms" ? "Ralat" : "Error",
+            message:
+              error.response?.data?.message ||
+              error.message ||
+              (language === "ms"
+                ? "Gagal memadam bahagian"
+                : "Failed to delete section"),
+            type: "error",
+          });
+        }
+      },
+    });
   };
 
   const startEdit = (section) => {
@@ -90,6 +205,7 @@ export default function EventSectionsManager({
     setEditing(null);
     setAdding(false);
     setFormData({ title: "", content: "", images: [] });
+    setFieldErrors({});
   };
 
   return (
@@ -114,15 +230,29 @@ export default function EventSectionsManager({
             {editing ? "Edit Section" : "New Section"}
           </h4>
           <div className="space-y-3">
-            <input
-              type="text"
-              value={formData.title}
-              onChange={(e) =>
-                setFormData({ ...formData, title: e.target.value })
-              }
-              placeholder="Section Title"
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-            />
+            {/* Title Field */}
+            <div>
+              <input
+                type="text"
+                value={formData.title}
+                onChange={(e) => {
+                  setFormData({ ...formData, title: e.target.value });
+                  // Clear error when typing
+                  if (fieldErrors.title) {
+                    setFieldErrors((prev) => ({ ...prev, title: undefined }));
+                  }
+                }}
+                placeholder={
+                  language === "ms" ? "Tajuk Bahagian" : "Section Title"
+                }
+                className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent ${
+                  fieldErrors.title ? "border-red-500" : "border-gray-300"
+                }`}
+              />
+              {fieldErrors.title && (
+                <p className="text-red-600 text-sm mt-1">{fieldErrors.title}</p>
+              )}
+            </div>
 
             {/* Multi-Image Upload */}
             <div>
@@ -138,15 +268,31 @@ export default function EventSectionsManager({
               />
             </div>
 
-            <textarea
-              value={formData.content}
-              onChange={(e) =>
-                setFormData({ ...formData, content: e.target.value })
-              }
-              placeholder="Section Content"
-              rows={4}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-            />
+            {/* Content Field */}
+            <div>
+              <textarea
+                value={formData.content}
+                onChange={(e) => {
+                  setFormData({ ...formData, content: e.target.value });
+                  // Clear error when typing
+                  if (fieldErrors.content) {
+                    setFieldErrors((prev) => ({ ...prev, content: undefined }));
+                  }
+                }}
+                placeholder={
+                  language === "ms" ? "Kandungan Bahagian" : "Section Content"
+                }
+                rows={4}
+                className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent ${
+                  fieldErrors.content ? "border-red-500" : "border-gray-300"
+                }`}
+              />
+              {fieldErrors.content && (
+                <p className="text-red-600 text-sm mt-1">
+                  {fieldErrors.content}
+                </p>
+              )}
+            </div>
             <div className="flex gap-2">
               <button
                 onClick={cancelEdit}
@@ -222,6 +368,26 @@ export default function EventSectionsManager({
           ))
         )}
       </div>
+
+      {/* Alert Modal */}
+      <AlertModal
+        isOpen={alertModal.isOpen}
+        onClose={() => setAlertModal({ ...alertModal, isOpen: false })}
+        title={alertModal.title}
+        message={alertModal.message}
+        type={alertModal.type}
+      />
+
+      {/* Confirm Modal */}
+      <ConfirmModal
+        isOpen={confirmModal.isOpen}
+        onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
+        onConfirm={confirmModal.onConfirm}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        language={language}
+        type="danger"
+      />
     </div>
   );
 }

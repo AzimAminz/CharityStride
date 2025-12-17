@@ -20,6 +20,7 @@ import {
 } from "../../lib/lookupHelpers";
 import { NumericInput, DateInput } from "../inputs";
 import { useLanguage } from "../../contexts/LanguageContext";
+import ConfirmModal from "../ConfirmModal";
 
 /**
  * Component for managing volunteer roles and shifts
@@ -59,6 +60,19 @@ export default function VolunteerRoleManager({
 
   const [showShiftForm, setShowShiftForm] = useState(null); // roleId when showing
   const [editingShift, setEditingShift] = useState(null); // shift object when editing
+
+  // Validation errors
+  const [roleErrors, setRoleErrors] = useState({});
+  const [shiftErrors, setShiftErrors] = useState({});
+
+  // Confirm modal state
+  const [confirmModal, setConfirmModal] = useState({
+    isOpen: false,
+    title: "",
+    message: "",
+    onConfirm: null,
+  });
+
   const [shiftForm, setShiftForm] = useState({
     shift_date: "",
     shift_type_id: "",
@@ -118,7 +132,57 @@ export default function VolunteerRoleManager({
     setEditingShift(null);
   };
 
+  // Role validation function
+  const validateRoleForm = () => {
+    const errors = {};
+
+    if (!roleForm.role_type_id) {
+      errors.role_type_id =
+        language === "ms"
+          ? "Jenis peranan diperlukan"
+          : "Role type is required";
+    }
+
+    // Custom role name required only if role type is "others"
+    // Check using the same logic as JSX conditional rendering
+    const selectedRoleType = roleTypes.find(
+      (t) => t.id === parseInt(roleForm.role_type_id)
+    );
+    if (
+      selectedRoleType?.code === "others" &&
+      !roleForm.custom_role_name?.trim()
+    ) {
+      errors.custom_role_name =
+        language === "ms"
+          ? "Nama peranan khas diperlukan"
+          : "Custom role name is required";
+    }
+
+    if (!roleForm.required_skill_id) {
+      errors.required_skill_id =
+        language === "ms"
+          ? "Kemahiran diperlukan"
+          : "Required skill is required";
+    }
+
+    if (!roleForm.total_capacity || roleForm.total_capacity < 1) {
+      errors.total_capacity =
+        language === "ms"
+          ? "Kapasiti mesti sekurang-kurangnya 1"
+          : "Capacity must be at least 1";
+    }
+
+    return errors;
+  };
+
   const handleSaveRole = async () => {
+    // Validate form
+    const errors = validateRoleForm();
+    if (Object.keys(errors).length > 0) {
+      setRoleErrors(errors);
+      return;
+    }
+
     try {
       // Convert IDs to integers
       const roleData = {
@@ -132,18 +196,100 @@ export default function VolunteerRoleManager({
       } else {
         await onAddRole(roleData);
       }
+      setRoleErrors({});
       resetRoleForm();
     } catch (err) {
-      alert(err.message);
+      if (err.response?.data?.errors) {
+        const backendErrors = {};
+        Object.keys(err.response.data.errors).forEach((key) => {
+          backendErrors[key] = err.response.data.errors[key][0];
+        });
+        setRoleErrors(backendErrors);
+      } else {
+        setAlertModal({
+          isOpen: true,
+          title: language === "ms" ? "Ralat" : "Error",
+          message:
+            err.response?.data?.message ||
+            err.message ||
+            (language === "ms"
+              ? "Gagal menyimpan peranan"
+              : "Failed to save role"),
+          type: "error",
+        });
+      }
     }
   };
 
+  // Shift validation function
+  const validateShiftForm = (roleId) => {
+    const errors = {};
+    const role = roles.find((r) => r.id === roleId);
+
+    if (!shiftForm.shift_date) {
+      errors.shift_date =
+        language === "ms"
+          ? "Tarikh shift diperlukan"
+          : "Shift date is required";
+    }
+
+    if (!shiftForm.shift_type_id) {
+      errors.shift_type_id =
+        language === "ms" ? "Jenis shift diperlukan" : "Shift type is required";
+    }
+
+    if (!shiftForm.start_time) {
+      errors.start_time =
+        language === "ms" ? "Masa mula diperlukan" : "Start time is required";
+    }
+
+    if (!shiftForm.end_time) {
+      errors.end_time =
+        language === "ms" ? "Masa tamat diperlukan" : "End time is required";
+    }
+
+    if (
+      shiftForm.start_time &&
+      shiftForm.end_time &&
+      shiftForm.start_time >= shiftForm.end_time
+    ) {
+      errors.end_time =
+        language === "ms"
+          ? "Masa tamat mesti selepas masa mula"
+          : "End time must be after start time";
+    }
+
+    if (!shiftForm.capacity || shiftForm.capacity < 1) {
+      errors.capacity =
+        language === "ms"
+          ? "Kapasiti mesti sekurang-kurangnya 1"
+          : "Capacity must be at least 1";
+    }
+
+    // Capacity cannot exceed role total capacity
+    if (role && parseInt(shiftForm.capacity) > parseInt(role.total_capacity)) {
+      errors.capacity =
+        language === "ms"
+          ? `Kapasiti shift tidak boleh melebihi kapasiti peranan (${role.total_capacity})`
+          : `Shift capacity cannot exceed role capacity (${role.total_capacity})`;
+    }
+
+    return errors;
+  };
+
   const handleSaveShift = async (roleId) => {
+    // Validate form
+    const errors = validateShiftForm(roleId);
+    if (Object.keys(errors).length > 0) {
+      setShiftErrors(errors);
+      return;
+    }
+
     try {
-      // Convert shift_type_id to integer
       const shiftData = {
         ...shiftForm,
         shift_type_id: parseInt(shiftForm.shift_type_id),
+        capacity: parseInt(shiftForm.capacity),
       };
 
       if (editingShift) {
@@ -151,9 +297,28 @@ export default function VolunteerRoleManager({
       } else {
         await onAddShift(roleId, shiftData);
       }
+      setShiftErrors({});
       resetShiftForm();
     } catch (err) {
-      alert(err.message);
+      if (err.response?.data?.errors) {
+        const backendErrors = {};
+        Object.keys(err.response.data.errors).forEach((key) => {
+          backendErrors[key] = err.response.data.errors[key][0];
+        });
+        setShiftErrors(backendErrors);
+      } else {
+        setAlertModal({
+          isOpen: true,
+          title: language === "ms" ? "Ralat" : "Error",
+          message:
+            err.response?.data?.message ||
+            err.message ||
+            (language === "ms"
+              ? "Gagal menyimpan shift"
+              : "Failed to save shift"),
+          type: "error",
+        });
+      }
     }
   };
 
@@ -182,19 +347,26 @@ export default function VolunteerRoleManager({
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Role Type *
+                {language === "ms" ? "Jenis Peranan *" : "Role Type *"}
               </label>
               <select
                 value={roleForm.role_type_id}
-                onChange={(e) =>
-                  setRoleForm({ ...roleForm, role_type_id: e.target.value })
-                }
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500"
-                required
+                onChange={(e) => {
+                  setRoleForm({ ...roleForm, role_type_id: e.target.value });
+                  if (roleErrors.role_type_id) {
+                    setRoleErrors((prev) => ({
+                      ...prev,
+                      role_type_id: undefined,
+                    }));
+                  }
+                }}
+                className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-emerald-500 ${
+                  roleErrors.role_type_id ? "border-red-500" : "border-gray-300"
+                }`}
                 disabled={loadingLookups}
               >
                 <option value="">
-                  {loadingLookups ? "Loading..." : "Select role..."}
+                  {loadingLookups ? "Loading..." : "Select role type..."}
                 </option>
                 {roleTypes.map((type) => (
                   <option key={type.id} value={type.id}>
@@ -202,45 +374,76 @@ export default function VolunteerRoleManager({
                   </option>
                 ))}
               </select>
+              {roleErrors.role_type_id && (
+                <p className="text-red-600 text-sm mt-1">
+                  {roleErrors.role_type_id}
+                </p>
+              )}
             </div>
 
             {/* Custom Role Name - Only show when "Others" is selected */}
-            {roleTypes.find((t) => t.id === parseInt(roleForm.role_type_id))
-              ?.code === "others" && (
+            {roleForm.role_type_id === "4" && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Custom Role Name *
+                  {language === "ms"
+                    ? "Nama Peranan Khas *"
+                    : "Custom Role Name *"}
                 </label>
                 <input
                   type="text"
                   value={roleForm.custom_role_name}
-                  onChange={(e) =>
+                  onChange={(e) => {
                     setRoleForm({
                       ...roleForm,
                       custom_role_name: e.target.value,
-                    })
-                  }
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500"
-                  placeholder="e.g., Sound Engineer, MC"
-                  required
+                    });
+                    if (roleErrors.custom_role_name) {
+                      setRoleErrors((prev) => ({
+                        ...prev,
+                        custom_role_name: undefined,
+                      }));
+                    }
+                  }}
+                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-emerald-500 ${
+                    roleErrors.custom_role_name
+                      ? "border-red-500"
+                      : "border-gray-300"
+                  }`}
+                  placeholder="Enter custom role name"
                 />
+                {roleErrors.custom_role_name && (
+                  <p className="text-red-600 text-sm mt-1">
+                    {roleErrors.custom_role_name}
+                  </p>
+                )}
               </div>
             )}
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Required Skill *
+                {language === "ms"
+                  ? "Kemahiran Diperlukan *"
+                  : "Required Skill *"}
               </label>
               <select
                 value={roleForm.required_skill_id}
-                onChange={(e) =>
+                onChange={(e) => {
                   setRoleForm({
                     ...roleForm,
                     required_skill_id: e.target.value,
-                  })
-                }
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500"
-                required
+                  });
+                  if (roleErrors.required_skill_id) {
+                    setRoleErrors((prev) => ({
+                      ...prev,
+                      required_skill_id: undefined,
+                    }));
+                  }
+                }}
+                className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-emerald-500 ${
+                  roleErrors.required_skill_id
+                    ? "border-red-500"
+                    : "border-gray-300"
+                }`}
                 disabled={loadingLookups}
               >
                 <option value="">
@@ -252,23 +455,34 @@ export default function VolunteerRoleManager({
                   </option>
                 ))}
               </select>
+              {roleErrors.required_skill_id && (
+                <p className="text-red-600 text-sm mt-1">
+                  {roleErrors.required_skill_id}
+                </p>
+              )}
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Total Capacity *
+                {language === "ms" ? "Jumlah Kapasiti *" : "Total Capacity *"}
               </label>
               <NumericInput
                 value={roleForm.total_capacity}
-                onChange={(value) =>
-                  setRoleForm({ ...roleForm, total_capacity: value })
-                }
-                placeholder="10"
+                onChange={(value) => {
+                  setRoleForm({ ...roleForm, total_capacity: value });
+                  if (roleErrors.total_capacity) {
+                    setRoleErrors((prev) => ({
+                      ...prev,
+                      total_capacity: undefined,
+                    }));
+                  }
+                }}
+                placeholder="50"
                 language={language}
-                required
+                error={roleErrors.total_capacity}
+                className="w-full px-3 py-2"
               />
             </div>
-
             <div className="col-span-2">
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Description
@@ -476,9 +690,24 @@ export default function VolunteerRoleManager({
               <button
                 type="button"
                 onClick={() => {
-                  if (confirm("Delete this role and all its shifts?")) {
-                    onRemoveRole(role.id);
-                  }
+                  setConfirmModal({
+                    isOpen: true,
+                    title:
+                      language === "ms" ? "Padam Peranan?" : "Delete Role?",
+                    message:
+                      language === "ms"
+                        ? "Adakah anda pasti mahu memadam peranan ini dan semua shift berkaitan?"
+                        : "Are you sure you want to delete this role and all its shifts?",
+                    onConfirm: () => {
+                      onRemoveRole(role.id);
+                      setConfirmModal({
+                        isOpen: false,
+                        title: "",
+                        message: "",
+                        onConfirm: null,
+                      });
+                    },
+                  });
                 }}
                 className="p-2 text-red-600 hover:bg-red-50 rounded-lg"
               >
@@ -507,37 +736,49 @@ export default function VolunteerRoleManager({
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="block text-xs font-medium text-gray-700 mb-1">
-                      Date *
+                      {language === "ms" ? "Tarikh *" : "Date *"}
                     </label>
                     <DateInput
                       value={shiftForm.shift_date}
-                      onChange={(value) =>
-                        setShiftForm({
-                          ...shiftForm,
-                          shift_date: value,
-                        })
-                      }
+                      onChange={(value) => {
+                        setShiftForm({ ...shiftForm, shift_date: value });
+                        if (shiftErrors.shift_date) {
+                          setShiftErrors((prev) => ({
+                            ...prev,
+                            shift_date: undefined,
+                          }));
+                        }
+                      }}
                       disablePast={true}
                       language={language}
+                      error={shiftErrors.shift_date}
                       className="w-full px-2 py-1 text-sm"
-                      required
                     />
                   </div>
 
                   <div>
                     <label className="block text-xs font-medium text-gray-700 mb-1">
-                      Shift Type *
+                      {language === "ms" ? "Jenis Shift *" : "Shift Type *"}
                     </label>
                     <select
                       value={shiftForm.shift_type_id}
-                      onChange={(e) =>
+                      onChange={(e) => {
                         setShiftForm({
                           ...shiftForm,
                           shift_type_id: e.target.value,
-                        })
-                      }
-                      className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-emerald-500"
-                      required
+                        });
+                        if (shiftErrors.shift_type_id) {
+                          setShiftErrors((prev) => ({
+                            ...prev,
+                            shift_type_id: undefined,
+                          }));
+                        }
+                      }}
+                      className={`w-full px-2 py-1 text-sm border rounded focus:ring-2 focus:ring-emerald-500 ${
+                        shiftErrors.shift_type_id
+                          ? "border-red-500"
+                          : "border-gray-300"
+                      }`}
                       disabled={loadingLookups}
                     >
                       <option value="">
@@ -553,54 +794,96 @@ export default function VolunteerRoleManager({
                         </option>
                       ))}
                     </select>
+                    {shiftErrors.shift_type_id && (
+                      <p className="text-red-600 text-xs mt-1">
+                        {shiftErrors.shift_type_id}
+                      </p>
+                    )}
                   </div>
 
                   <div>
                     <label className="block text-xs font-medium text-gray-700 mb-1">
-                      Start Time *
+                      {language === "ms" ? "Masa Mula *" : "Start Time *"}
                     </label>
                     <input
                       type="time"
                       value={shiftForm.start_time}
-                      onChange={(e) =>
+                      onChange={(e) => {
                         setShiftForm({
                           ...shiftForm,
                           start_time: e.target.value,
-                        })
-                      }
-                      className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-emerald-500"
-                      required
+                        });
+                        if (shiftErrors.start_time) {
+                          setShiftErrors((prev) => ({
+                            ...prev,
+                            start_time: undefined,
+                          }));
+                        }
+                      }}
+                      className={`w-full px-2 py-1 text-sm border rounded focus:ring-2 focus:ring-emerald-500 ${
+                        shiftErrors.start_time
+                          ? "border-red-500"
+                          : "border-gray-300"
+                      }`}
                     />
+                    {shiftErrors.start_time && (
+                      <p className="text-red-600 text-xs mt-1">
+                        {shiftErrors.start_time}
+                      </p>
+                    )}
                   </div>
 
                   <div>
                     <label className="block text-xs font-medium text-gray-700 mb-1">
-                      End Time *
+                      {language === "ms" ? "Masa Tamat *" : "End Time *"}
                     </label>
                     <input
                       type="time"
                       value={shiftForm.end_time}
-                      onChange={(e) =>
-                        setShiftForm({ ...shiftForm, end_time: e.target.value })
-                      }
-                      className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-emerald-500"
-                      required
+                      onChange={(e) => {
+                        setShiftForm({
+                          ...shiftForm,
+                          end_time: e.target.value,
+                        });
+                        if (shiftErrors.end_time) {
+                          setShiftErrors((prev) => ({
+                            ...prev,
+                            end_time: undefined,
+                          }));
+                        }
+                      }}
+                      className={`w-full px-2 py-1 text-sm border rounded focus:ring-2 focus:ring-emerald-500 ${
+                        shiftErrors.end_time
+                          ? "border-red-500"
+                          : "border-gray-300"
+                      }`}
                     />
+                    {shiftErrors.end_time && (
+                      <p className="text-red-600 text-xs mt-1">
+                        {shiftErrors.end_time}
+                      </p>
+                    )}
                   </div>
 
                   <div>
                     <label className="block text-xs font-medium text-gray-700 mb-1">
-                      Capacity *
+                      {language === "ms" ? "Kapasiti *" : "Capacity *"}
                     </label>
                     <NumericInput
                       value={shiftForm.capacity}
-                      onChange={(value) =>
-                        setShiftForm({ ...shiftForm, capacity: value })
-                      }
+                      onChange={(value) => {
+                        setShiftForm({ ...shiftForm, capacity: value });
+                        if (shiftErrors.capacity) {
+                          setShiftErrors((prev) => ({
+                            ...prev,
+                            capacity: undefined,
+                          }));
+                        }
+                      }}
                       placeholder="5"
                       language={language}
+                      error={shiftErrors.capacity}
                       className="w-full px-2 py-1 text-sm"
-                      required
                     />
                   </div>
                 </div>
@@ -638,41 +921,54 @@ export default function VolunteerRoleManager({
                   /* Inline Edit Form */
                   <div className="bg-blue-50 border border-blue-200 rounded p-3">
                     <h6 className="text-xs font-semibold text-blue-900 mb-2">
-                      Edit Shift
+                      {language === "ms" ? "Edit Shift" : "Edit Shift"}
                     </h6>
                     <div className="grid grid-cols-2 gap-3">
                       <div>
                         <label className="block text-xs font-medium text-gray-700 mb-1">
-                          Date *
+                          {language === "ms" ? "Tarikh *" : "Date *"}
                         </label>
-                        <input
-                          type="date"
+                        <DateInput
                           value={shiftForm.shift_date}
-                          onChange={(e) =>
-                            setShiftForm({
-                              ...shiftForm,
-                              shift_date: e.target.value,
-                            })
-                          }
-                          className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-emerald-500"
-                          required
+                          onChange={(value) => {
+                            setShiftForm({ ...shiftForm, shift_date: value });
+                            if (shiftErrors.shift_date) {
+                              setShiftErrors((prev) => ({
+                                ...prev,
+                                shift_date: undefined,
+                              }));
+                            }
+                          }}
+                          disablePast={true}
+                          language={language}
+                          error={shiftErrors.shift_date}
+                          className="w-full px-2 py-1 text-sm"
                         />
                       </div>
 
                       <div>
                         <label className="block text-xs font-medium text-gray-700 mb-1">
-                          Shift Type *
+                          {language === "ms" ? "Jenis Shift *" : "Shift Type *"}
                         </label>
                         <select
                           value={shiftForm.shift_type_id}
-                          onChange={(e) =>
+                          onChange={(e) => {
                             setShiftForm({
                               ...shiftForm,
                               shift_type_id: e.target.value,
-                            })
-                          }
-                          className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-emerald-500"
-                          required
+                            });
+                            if (shiftErrors.shift_type_id) {
+                              setShiftErrors((prev) => ({
+                                ...prev,
+                                shift_type_id: undefined,
+                              }));
+                            }
+                          }}
+                          className={`w-full px-2 py-1 text-sm border rounded focus:ring-2 focus:ring-emerald-500 ${
+                            shiftErrors.shift_type_id
+                              ? "border-red-500"
+                              : "border-gray-300"
+                          }`}
                         >
                           <option value="">Select...</option>
                           {shiftTypes.map((type) => (
@@ -685,60 +981,96 @@ export default function VolunteerRoleManager({
                             </option>
                           ))}
                         </select>
+                        {shiftErrors.shift_type_id && (
+                          <p className="text-red-600 text-xs mt-1">
+                            {shiftErrors.shift_type_id}
+                          </p>
+                        )}
                       </div>
 
                       <div>
                         <label className="block text-xs font-medium text-gray-700 mb-1">
-                          Start Time *
+                          {language === "ms" ? "Masa Mula *" : "Start Time *"}
                         </label>
                         <input
                           type="time"
                           value={shiftForm.start_time}
-                          onChange={(e) =>
+                          onChange={(e) => {
                             setShiftForm({
                               ...shiftForm,
                               start_time: e.target.value,
-                            })
-                          }
-                          className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-emerald-500"
-                          required
+                            });
+                            if (shiftErrors.start_time) {
+                              setShiftErrors((prev) => ({
+                                ...prev,
+                                start_time: undefined,
+                              }));
+                            }
+                          }}
+                          className={`w-full px-2 py-1 text-sm border rounded focus:ring-2 focus:ring-emerald-500 ${
+                            shiftErrors.start_time
+                              ? "border-red-500"
+                              : "border-gray-300"
+                          }`}
                         />
+                        {shiftErrors.start_time && (
+                          <p className="text-red-600 text-xs mt-1">
+                            {shiftErrors.start_time}
+                          </p>
+                        )}
                       </div>
 
                       <div>
                         <label className="block text-xs font-medium text-gray-700 mb-1">
-                          End Time *
+                          {language === "ms" ? "Masa Tamat *" : "End Time *"}
                         </label>
                         <input
                           type="time"
                           value={shiftForm.end_time}
-                          onChange={(e) =>
+                          onChange={(e) => {
                             setShiftForm({
                               ...shiftForm,
                               end_time: e.target.value,
-                            })
-                          }
-                          className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-emerald-500"
-                          required
+                            });
+                            if (shiftErrors.end_time) {
+                              setShiftErrors((prev) => ({
+                                ...prev,
+                                end_time: undefined,
+                              }));
+                            }
+                          }}
+                          className={`w-full px-2 py-1 text-sm border rounded focus:ring-2 focus:ring-emerald-500 ${
+                            shiftErrors.end_time
+                              ? "border-red-500"
+                              : "border-gray-300"
+                          }`}
                         />
+                        {shiftErrors.end_time && (
+                          <p className="text-red-600 text-xs mt-1">
+                            {shiftErrors.end_time}
+                          </p>
+                        )}
                       </div>
 
                       <div>
                         <label className="block text-xs font-medium text-gray-700 mb-1">
-                          Capacity *
+                          {language === "ms" ? "Kapasiti *" : "Capacity *"}
                         </label>
-                        <input
-                          type="number"
+                        <NumericInput
                           value={shiftForm.capacity}
-                          onChange={(e) =>
-                            setShiftForm({
-                              ...shiftForm,
-                              capacity: e.target.value,
-                            })
-                          }
-                          className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-emerald-500"
+                          onChange={(value) => {
+                            setShiftForm({ ...shiftForm, capacity: value });
+                            if (shiftErrors.capacity) {
+                              setShiftErrors((prev) => ({
+                                ...prev,
+                                capacity: undefined,
+                              }));
+                            }
+                          }}
                           placeholder="5"
-                          required
+                          language={language}
+                          error={shiftErrors.capacity}
+                          className="w-full px-2 py-1 text-sm"
                         />
                       </div>
                     </div>
@@ -747,18 +1079,16 @@ export default function VolunteerRoleManager({
                       <button
                         type="button"
                         onClick={() => handleSaveShift(role.id)}
-                        className="flex items-center gap-1 px-3 py-1 text-sm bg-emerald-600 hover:bg-emerald-700 text-white rounded"
+                        className="px-3 py-1 text-sm bg-emerald-600 hover:bg-emerald-700 text-white rounded"
                       >
-                        <Save className="h-3 w-3" />
-                        Save
+                        {language === "ms" ? "Simpan" : "Save Shift"}
                       </button>
                       <button
                         type="button"
                         onClick={resetShiftForm}
-                        className="flex items-center gap-1 px-3 py-1 text-sm bg-gray-200 hover:bg-gray-300 text-gray-700 rounded"
+                        className="px-3 py-1 text-sm bg-gray-200 hover:bg-gray-300 text-gray-700 rounded"
                       >
-                        <X className="h-3 w-3" />
-                        Cancel
+                        {language === "ms" ? "Batal" : "Cancel"}
                       </button>
                     </div>
                   </div>
@@ -806,9 +1136,26 @@ export default function VolunteerRoleManager({
                       <button
                         type="button"
                         onClick={() => {
-                          if (confirm("Delete this shift?")) {
-                            onRemoveShift(role.id, shift.id);
-                          }
+                          setConfirmModal({
+                            isOpen: true,
+                            title:
+                              language === "ms"
+                                ? "Padam Shift?"
+                                : "Delete Shift?",
+                            message:
+                              language === "ms"
+                                ? "Adakah anda pasti mahu memadam shift ini?"
+                                : "Are you sure you want to delete this shift?",
+                            onConfirm: () => {
+                              onRemoveShift(role.id, shift.id);
+                              setConfirmModal({
+                                isOpen: false,
+                                title: "",
+                                message: "",
+                                onConfirm: null,
+                              });
+                            },
+                          });
                         }}
                         className="p-1 text-red-600 hover:bg-red-50 rounded"
                         title="Delete shift"
@@ -823,6 +1170,17 @@ export default function VolunteerRoleManager({
           </div>
         </div>
       ))}
+
+      {/* Confirm Modal */}
+      <ConfirmModal
+        isOpen={confirmModal.isOpen}
+        onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
+        onConfirm={confirmModal.onConfirm}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        language={language}
+        type="danger"
+      />
     </div>
   );
 }

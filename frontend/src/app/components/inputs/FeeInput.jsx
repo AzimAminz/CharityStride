@@ -41,8 +41,8 @@ export default function FeeInput({
   const helperText =
     showHelper && value && value !== "0"
       ? language === "ms"
-        ? `${value} sen = RM ${displayValue}`
-        : `${value} cents = RM ${displayValue}`
+        ? `${value} = RM ${displayValue}`
+        : `${value} = RM ${displayValue}`
       : "";
 
   return (

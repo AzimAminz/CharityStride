@@ -116,7 +116,7 @@ export function useDonationModule(eventId) {
         err.message ||
         "Failed to delete money option";
       setError(errorMsg);
-      alert(errorMsg); // Show error to user
+      // Error will be caught by component and shown in modal
       throw err;
     }
   };
@@ -159,7 +159,7 @@ export function useDonationModule(eventId) {
         err.message ||
         "Failed to delete item option";
       setError(errorMsg);
-      alert(errorMsg); // Show error to user
+      // Error will be caught by component and shown in modal
       throw err;
     }
   };
