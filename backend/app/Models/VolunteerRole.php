@@ -15,7 +15,6 @@ class VolunteerRole extends Model
         'custom_role_name',
         'required_skill_id',
         'role_description',
-        'total_capacity',
         'location',
         'latitude',
         'longitude',
@@ -25,7 +24,6 @@ class VolunteerRole extends Model
     ];
 
     protected $casts = [
-        'total_capacity' => 'integer',
         'latitude' => 'decimal:7',
         'longitude' => 'decimal:7',
         'has_tshirt' => 'boolean',

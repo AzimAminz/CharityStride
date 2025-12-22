@@ -25,17 +25,64 @@ class VolunteerController extends Controller
     public function createRole(Request $request, $eventId)
     {
         $validator = Validator::make($request->all(), [
-            'role_type_id' => 'required|exists:volunteer_role_types,id',
-            'custom_role_name' => 'nullable|string|max:100',
+            'role_type_id' => [
+                'required',
+                'exists:volunteer_role_types,id',
+                function ($attribute, $value, $fail) use ($eventId) {
+                    // Check if this is "Others" role type
+                    $roleType = \App\Models\VolunteerRoleType::find($value);
+                    $isOthersType = $roleType && strtolower($roleType->code) === 'others';
+                    
+                    // For non-Others roles, ensure role type is unique per event
+                    if (!$isOthersType) {
+                        $exists = VolunteerRole::where('event_id', $eventId)
+                            ->where('role_type_id', $value)
+                            ->exists();
+                        
+                        if ($exists) {
+                            $fail('This role type already exists in this event. Each event can only have one of each role type.');
+                        }
+                    }
+                },
+            ],
+            'custom_role_name' => [
+                'nullable',
+                'string',
+                'max:255',
+                function ($attribute, $value, $fail) use ($request, $eventId) {
+                    // Check if this is "Others" role type
+                    $roleType = \App\Models\VolunteerRoleType::find($request->role_type_id);
+                    $isOthersType = $roleType && strtolower($roleType->code) === 'others';
+                    
+                    // If role type is "Others", custom name is required and must be unique per event
+                    if ($isOthersType) {
+                        if (empty($value)) {
+                            $fail('Custom role name is required for "Others" role type.');
+                            return;
+                        }
+                        
+                        // Check for duplicate custom role name in the same event
+                        $exists = VolunteerRole::where('event_id', $eventId)
+                            ->whereHas('roleType', function($query) {
+                                $query->where('code', 'others');
+                            })
+                            ->whereRaw('LOWER(custom_role_name) = ?', [strtolower($value)])
+                            ->exists();
+                        
+                        if ($exists) {
+                            $fail('This custom role name already exists in this event.');
+                        }
+                    }
+                },
+            ],
             'required_skill_id' => 'required|exists:required_skills,id',
             'role_description' => 'nullable|string',
-            'total_capacity' => 'required|integer|min:1',
             'location' => 'nullable|string|max:255',
-            'latitude' => 'nullable|numeric|between:-90,90',
-            'longitude' => 'nullable|numeric|between:-180,180',
+            'latitude' => 'nullable|numeric',
+            'longitude' => 'nullable|numeric',
             'location_details' => 'nullable|string',
             'has_tshirt' => 'boolean',
-            'tshirt_description' => 'nullable|string|max:255',
+            'tshirt_description' => 'nullable|string',
         ]);
 
         if ($validator->fails()) {
@@ -49,7 +96,6 @@ class VolunteerController extends Controller
                 'custom_role_name', 
                 'required_skill_id', 
                 'role_description', 
-                'total_capacity', 
                 'location', 
                 'latitude', 
                 'longitude', 
@@ -67,17 +113,67 @@ class VolunteerController extends Controller
         $role = VolunteerRole::where('event_id', $eventId)->findOrFail($roleId);
         
         $validator = Validator::make($request->all(), [
-            'role_type_id' => 'sometimes|exists:volunteer_role_types,id',
-            'custom_role_name' => 'nullable|string|max:100',
+            'role_type_id' => [
+                'sometimes',
+                'exists:volunteer_role_types,id',
+                function ($attribute, $value, $fail) use ($eventId, $roleId) {
+                    // Check if this is "Others" role type
+                    $roleType = \App\Models\VolunteerRoleType::find($value);
+                    $isOthersType = $roleType && strtolower($roleType->code) === 'others';
+                    
+                    // For non-Others roles, ensure role type is unique per event (exclude current role)
+                    if (!$isOthersType) {
+                        $exists = VolunteerRole::where('event_id', $eventId)
+                            ->where('role_type_id', $value)
+                            ->where('id', '!=', $roleId) // Exclude current role
+                            ->exists();
+                        
+                        if ($exists) {
+                            $fail('This role type already exists in this event. Each event can only have one of each role type.');
+                        }
+                    }
+                },
+            ],
+            'custom_role_name' => [
+                'nullable',
+                'string',
+                'max:255',
+                function ($attribute, $value, $fail) use ($request, $eventId, $roleId) {
+                    // Get current role_type_id (from request or existing role)
+                    $roleTypeId = $request->role_type_id ?? VolunteerRole::find($roleId)->role_type_id;
+                    $roleType = \App\Models\VolunteerRoleType::find($roleTypeId);
+                    $isOthersType = $roleType && strtolower($roleType->code) === 'others';
+                    
+                    // If role type is "Others", custom name is required and must be unique per event
+                    if ($isOthersType) {
+                        if (empty($value)) {
+                            $fail('Custom role name is required for "Others" role type.');
+                            return;
+                        }
+                        
+                        // Check for duplicate custom role name in the same event (exclude current role)
+                        $exists = VolunteerRole::where('event_id', $eventId)
+                            ->whereHas('roleType', function($query) {
+                                $query->where('code', 'others');
+                            })
+                            ->where('id', '!=', $roleId) // Exclude current role
+                            ->whereRaw('LOWER(custom_role_name) = ?', [strtolower($value)])
+                            ->exists();
+                        
+                        if ($exists) {
+                            $fail('This custom role name already exists in this event.');
+                        }
+                    }
+                },
+            ],
             'required_skill_id' => 'sometimes|exists:required_skills,id',
             'role_description' => 'nullable|string',
-            'total_capacity' => 'sometimes|integer|min:1',
             'location' => 'nullable|string|max:255',
-            'latitude' => 'nullable|numeric|between:-90,90',
-            'longitude' => 'nullable|numeric|between:-180,180',
+            'latitude' => 'nullable|numeric',
+            'longitude' => 'nullable|numeric',
             'location_details' => 'nullable|string',
             'has_tshirt' => 'boolean',
-            'tshirt_description' => 'nullable|string|max:255',
+            'tshirt_description' => 'nullable|string',
         ]);
 
         if ($validator->fails()) {
@@ -89,7 +185,6 @@ class VolunteerController extends Controller
             'custom_role_name',
             'required_skill_id',
             'role_description',
-            'total_capacity',
             'location',
             'latitude',
             'longitude',

@@ -21,7 +21,17 @@ class EventSectionController extends Controller
 
         $validator = Validator::make($request->all(), [
             'title' => 'required|string|max:255',
-            'content' => 'required|string',
+            'content' => [
+                'nullable',
+                'string',
+                function ($attribute, $value, $fail) use ($request) {
+                    // Content is required only if there are no images
+                    if (empty($value) && (!$request->has('images') || count($request->images ?? []) === 0)) {
+                        $fail('Content or images is required.');
+                    }
+                },
+            ],
+            'category' => 'required|in:overview,participant_details,volunteer_details,donation_details',
             'images' => 'nullable|array',
             'images.*' => 'string',  // Array of image URLs
         ]);
@@ -30,10 +40,11 @@ class EventSectionController extends Controller
             return response()->json(['message' => 'Validation failed', 'errors' => $validator->errors()], 422);
         }
 
-        $section =EventSection::create([
+        $section = EventSection::create([
             'event_id' => $eventId,
             'title' => $request->title,
             'content' => $request->content,
+            'category' => $request->category ?? 'overview',
             'images' => $request->images ?? [],
         ]);
 
@@ -55,16 +66,27 @@ class EventSectionController extends Controller
 
         $validator = Validator::make($request->all(), [
             'title' => 'string|max:255',
-            'content' => 'string',
+            'content' => [
+                'nullable',
+                'string',
+                function ($attribute, $value, $fail) use ($request) {
+                    // Content is required only if there are no images
+                    if (empty($value) && (!$request->has('images') || count($request->images ?? []) === 0)) {
+                        $fail('Content or images is required.');
+                    }
+                },
+            ],
+            'category' => 'in:overview,participant_details,volunteer_details,donation_details',
             'images' => 'nullable|array',
             'images.*' => 'string',
+            'order' => 'nullable|integer',
         ]);
 
         if ($validator->fails()) {
             return response()->json(['message' => 'Validation failed', 'errors' => $validator->errors()], 422);
         }
 
-        $section->update($request->only(['title', 'content', 'images']));
+        $section->update($request->only(['title', 'content', 'category', 'images', 'order']));
 
         return response()->json(['message' => 'Section updated', 'section' => $section]);
     }

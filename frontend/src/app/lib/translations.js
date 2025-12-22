@@ -12,7 +12,7 @@ export const translations = {
     required: "This field is required",
     invalidDate: "Invalid date",
     dateMustBeFuture: "Date must be in the future",
-    startDateBeforeEnd: "Start date must be before end date",
+    startDateBeforeEnd: "End date must be after start date",
     invalidNumber: "Please enter a valid number",
     mustBePositive: "Must be a positive number",
 
@@ -37,7 +37,7 @@ export const translations = {
     required: "Medan ini diperlukan",
     invalidDate: "Tarikh tidak sah",
     dateMustBeFuture: "Tarikh mesti pada masa hadapan",
-    startDateBeforeEnd: "Tarikh mula mesti sebelum tarikh tamat",
+    startDateBeforeEnd: "Tarikh tamat mesti selepas tarikh mula",
     invalidNumber: "Sila masukkan nombor yang sah",
     mustBePositive: "Mesti nombor positif",
 

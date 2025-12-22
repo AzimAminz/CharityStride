@@ -48,7 +48,6 @@ export default function VolunteerRoleManager({
     role_type_id: "",
     custom_role_name: "",
     required_skill_id: "",
-    total_capacity: "",
     role_description: "",
     location: "",
     latitude: null,
@@ -107,7 +106,6 @@ export default function VolunteerRoleManager({
       role_type_id: "",
       custom_role_name: "",
       required_skill_id: "",
-      total_capacity: "",
       role_description: "",
       location: "",
       latitude: null,
@@ -136,40 +134,71 @@ export default function VolunteerRoleManager({
   const validateRoleForm = () => {
     const errors = {};
 
+    // Role Type
     if (!roleForm.role_type_id) {
       errors.role_type_id =
         language === "ms"
           ? "Jenis peranan diperlukan"
           : "Role type is required";
+    } else {
+      // Check for duplicate role types (except Others type)
+      const selectedType = roleTypes.find((t) => t.id == roleForm.role_type_id);
+      const isOthersType =
+        selectedType?.name_en?.toLowerCase().includes("others") ||
+        selectedType?.code?.toLowerCase() === "others" ||
+        parseInt(roleForm.role_type_id) === 4;
+
+      if (!isOthersType) {
+        // For regular roles, check if this role type already exists in this event
+        const isDuplicateRoleType = roles.some(
+          (r) =>
+            r.id !== editingRole?.id && // Exclude current role when editing
+            r.role_type_id === parseInt(roleForm.role_type_id)
+        );
+
+        if (isDuplicateRoleType) {
+          errors.role_type_id =
+            language === "ms"
+              ? "Jenis peranan ini sudah wujud dalam event ini"
+              : "This role type already exists in this event";
+        }
+      }
     }
 
-    // Custom role name required only if role type is "others"
-    // Check using the same logic as JSX conditional rendering
-    const selectedRoleType = roleTypes.find(
-      (t) => t.id === parseInt(roleForm.role_type_id)
-    );
-    if (
-      selectedRoleType?.code === "others" &&
-      !roleForm.custom_role_name?.trim()
-    ) {
-      errors.custom_role_name =
-        language === "ms"
-          ? "Nama peranan khas diperlukan"
-          : "Custom role name is required";
-    }
+    // Custom Role Name - Required if role type is "Others" (ID 4)
+    const roleTypeName = roleTypes
+      .find((t) => t.id === parseInt(roleForm.role_type_id))
+      ?.name_en?.toLowerCase();
 
+    if (roleForm.role_type_id == "4" || roleTypeName?.includes("others")) {
+      if (!roleForm.custom_role_name?.trim()) {
+        errors.custom_role_name =
+          language === "ms"
+            ? "Nama peranan khas diperlukan untuk jenis 'Others'"
+            : "Custom role name is required for 'Others' type";
+      } else {
+        // Check for duplicate custom role names in the same event
+        const isDuplicate = roles.some(
+          (r) =>
+            r.id !== editingRole?.id && // Exclude current role when editing
+            r.role_type_id == 4 && // Use == for type coercion
+            r.custom_role_name?.trim().toLowerCase() ===
+              roleForm.custom_role_name.trim().toLowerCase()
+        );
+
+        if (isDuplicate) {
+          errors.custom_role_name =
+            language === "ms"
+              ? "Nama peranan khas ini sudah wujud dalam event ini"
+              : "This custom role name already exists in this event";
+        }
+      }
+    }
     if (!roleForm.required_skill_id) {
       errors.required_skill_id =
         language === "ms"
           ? "Kemahiran diperlukan"
           : "Required skill is required";
-    }
-
-    if (!roleForm.total_capacity || roleForm.total_capacity < 1) {
-      errors.total_capacity =
-        language === "ms"
-          ? "Kapasiti mesti sekurang-kurangnya 1"
-          : "Capacity must be at least 1";
     }
 
     return errors;
@@ -264,14 +293,6 @@ export default function VolunteerRoleManager({
         language === "ms"
           ? "Kapasiti mesti sekurang-kurangnya 1"
           : "Capacity must be at least 1";
-    }
-
-    // Capacity cannot exceed role total capacity
-    if (role && parseInt(shiftForm.capacity) > parseInt(role.total_capacity)) {
-      errors.capacity =
-        language === "ms"
-          ? `Kapasiti shift tidak boleh melebihi kapasiti peranan (${role.total_capacity})`
-          : `Shift capacity cannot exceed role capacity (${role.total_capacity})`;
     }
 
     return errors;
@@ -382,7 +403,16 @@ export default function VolunteerRoleManager({
             </div>
 
             {/* Custom Role Name - Only show when "Others" is selected */}
-            {roleForm.role_type_id === "4" && (
+            {(() => {
+              const selectedType = roleTypes.find(
+                (t) => t.id == roleForm.role_type_id
+              );
+              const isOthersType =
+                selectedType?.name_en?.toLowerCase().includes("others") ||
+                selectedType?.code?.toLowerCase() === "others" ||
+                roleForm.role_type_id == 4; // Fallback to ID 4
+              return isOthersType;
+            })() && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   {language === "ms"
@@ -462,27 +492,6 @@ export default function VolunteerRoleManager({
               )}
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                {language === "ms" ? "Jumlah Kapasiti *" : "Total Capacity *"}
-              </label>
-              <NumericInput
-                value={roleForm.total_capacity}
-                onChange={(value) => {
-                  setRoleForm({ ...roleForm, total_capacity: value });
-                  if (roleErrors.total_capacity) {
-                    setRoleErrors((prev) => ({
-                      ...prev,
-                      total_capacity: undefined,
-                    }));
-                  }
-                }}
-                placeholder="50"
-                language={language}
-                error={roleErrors.total_capacity}
-                className="w-full px-3 py-2"
-              />
-            </div>
             <div className="col-span-2">
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Description
@@ -616,8 +625,7 @@ export default function VolunteerRoleManager({
               <p className="text-sm text-gray-600">
                 Skill:{" "}
                 {requiredSkills.find((s) => s.id === role.required_skill_id)
-                  ?.name_en || "N/A"}{" "}
-                • Capacity: {role.total_capacity}
+                  ?.name_en || "N/A"}
               </p>
 
               {/* Location Display */}
@@ -672,7 +680,6 @@ export default function VolunteerRoleManager({
                     role_type_id: role.role_type_id,
                     custom_role_name: role.custom_role_name || "",
                     required_skill_id: role.required_skill_id,
-                    total_capacity: role.total_capacity,
                     role_description: role.role_description || "",
                     location: role.location || "",
                     latitude: role.latitude || null,

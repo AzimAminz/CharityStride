@@ -17,6 +17,8 @@ class Event extends Model
         'thumbnail',
         'start_date',
         'end_date',
+        'event_date',
+        'has_event_date',
         'is_published',
         'has_volunteer',
         'has_donation',
@@ -26,6 +28,8 @@ class Event extends Model
     protected $casts = [
         'start_date' => 'date',
         'end_date' => 'date',
+        'event_date' => 'date',
+        'has_event_date' => 'boolean',
         'is_published' => 'boolean',
         'has_volunteer' => 'boolean',
         'has_donation' => 'boolean',

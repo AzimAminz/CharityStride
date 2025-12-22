@@ -1,7 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { Upload, X, GripVertical, Crop } from "lucide-react";
+import {
+  Upload,
+  X,
+  GripVertical,
+  Crop,
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-react";
 import ImageCropModal from "./ImageCropModal";
 
 /**
@@ -80,6 +87,19 @@ export default function MultiImageUpload({
     setDraggedIndex(null);
   };
 
+  // Move image left or right with arrow buttons
+  const moveImage = (index, direction) => {
+    if (direction === "left" && index === 0) return;
+    if (direction === "right" && index === images.length - 1) return;
+
+    const newIndex = direction === "left" ? index - 1 : index + 1;
+    const newImages = [...images];
+    const [moved] = newImages.splice(index, 1);
+    newImages.splice(newIndex, 0, moved);
+
+    onChange(newImages);
+  };
+
   return (
     <div className="space-y-4">
       {/* Upload Button */}
@@ -130,21 +150,50 @@ export default function MultiImageUpload({
               </div>
 
               {/* Actions Overlay */}
-              <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                <button
-                  onClick={() => handleRecrop(index)}
-                  className="p-2 bg-white/90 hover:bg-white rounded-lg transition-colors"
-                  title="Re-crop"
-                >
-                  <Crop className="h-4 w-4 text-gray-700" />
-                </button>
-                <button
-                  onClick={() => handleRemove(index)}
-                  className="p-2 bg-red-500/90 hover:bg-red-600 rounded-lg transition-colors"
-                  title="Remove"
-                >
-                  <X className="h-4 w-4 text-white" />
-                </button>
+              <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-2">
+                {/* Reorder Arrows */}
+                <div className="flex gap-2">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      moveImage(index, "left");
+                    }}
+                    disabled={index === 0}
+                    className="p-2 bg-white/90 hover:bg-white rounded-lg transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                    title="Move left"
+                  >
+                    <ChevronLeft className="h-4 w-4 text-gray-700" />
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      moveImage(index, "right");
+                    }}
+                    disabled={index === images.length - 1}
+                    className="p-2 bg-white/90 hover:bg-white rounded-lg transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                    title="Move right"
+                  >
+                    <ChevronRight className="h-4 w-4 text-gray-700" />
+                  </button>
+                </div>
+
+                {/* Crop & Remove */}
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => handleRecrop(index)}
+                    className="p-2 bg-white/90 hover:bg-white rounded-lg transition-colors"
+                    title="Re-crop"
+                  >
+                    <Crop className="h-4 w-4 text-gray-700" />
+                  </button>
+                  <button
+                    onClick={() => handleRemove(index)}
+                    className="p-2 bg-red-500/90 hover:bg-red-600 rounded-lg transition-colors"
+                    title="Remove"
+                  >
+                    <X className="h-4 w-4 text-white" />
+                  </button>
+                </div>
               </div>
 
               {/* Order Number */}

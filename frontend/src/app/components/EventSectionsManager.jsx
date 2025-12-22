@@ -1,7 +1,15 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, Trash2, Edit2, Save, X, Image as ImageIcon } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  Plus,
+  Trash2,
+  Edit2,
+  ChevronUp,
+  ChevronDown,
+  Image as ImageIcon,
+} from "lucide-react";
 import { useLanguage } from "../contexts/LanguageContext";
 import AlertModal from "./AlertModal";
 import ConfirmModal from "./ConfirmModal";
@@ -20,12 +28,14 @@ export default function EventSectionsManager({
   eventId,
   sections = [],
   onUpdate,
+  event, // Pass event to check enabled modules
 }) {
   const [editing, setEditing] = useState(null);
   const [adding, setAdding] = useState(false);
   const [formData, setFormData] = useState({
     title: "",
     content: "",
+    category: "overview",
     images: [],
   });
   const [loading, setLoading] = useState(false);
@@ -65,9 +75,15 @@ export default function EventSectionsManager({
           : "Title cannot exceed 255 characters";
     }
 
-    if (!formData.content?.trim()) {
+    // Content is required only if there are no images
+    if (
+      !formData.content?.trim() &&
+      (!formData.images || formData.images.length === 0)
+    ) {
       errors.content =
-        language === "ms" ? "Kandungan diperlukan" : "Content is required";
+        language === "ms"
+          ? "Kandungan atau gambar diperlukan"
+          : "Content or images required";
     }
 
     return errors;
@@ -84,7 +100,7 @@ export default function EventSectionsManager({
     setLoading(true);
     try {
       await addEventSection(eventId, formData);
-      setFormData({ title: "", content: "", images: [] });
+      setFormData({ title: "", content: "", category: "overview", images: [] });
       setFieldErrors({});
       setAdding(false);
       onUpdate?.();
@@ -129,7 +145,7 @@ export default function EventSectionsManager({
     setLoading(true);
     try {
       await updateEventSection(eventId, sectionId, formData);
-      setFormData({ title: "", content: "", images: [] });
+      setFormData({ title: "", content: "", category: "overview", images: [] });
       setFieldErrors({});
       setEditing(null);
       onUpdate?.();
@@ -196,6 +212,7 @@ export default function EventSectionsManager({
     setFormData({
       title: section.title,
       content: section.content,
+      category: section.category || "overview",
       images: section.images || [],
     });
     setAdding(false);
@@ -204,8 +221,96 @@ export default function EventSectionsManager({
   const cancelEdit = () => {
     setEditing(null);
     setAdding(false);
-    setFormData({ title: "", content: "", images: [] });
+    setFormData({ title: "", content: "", category: "overview", images: [] });
     setFieldErrors({});
+  };
+
+  // Group sections by category
+  const groupedSections = {
+    overview: sections
+      .filter((s) => s.category === "overview" || !s.category)
+      .sort((a, b) => (a.order || 0) - (b.order || 0)),
+    participant_details: sections
+      .filter((s) => s.category === "participant_details")
+      .sort((a, b) => (a.order || 0) - (b.order || 0)),
+    volunteer_details: sections
+      .filter((s) => s.category === "volunteer_details")
+      .sort((a, b) => (a.order || 0) - (b.order || 0)),
+    donation_details: sections
+      .filter((s) => s.category === "donation_details")
+      .sort((a, b) => (a.order || 0) - (b.order || 0)),
+  };
+
+  const categoryConfig = {
+    overview: {
+      label: language === "ms" ? "Overview" : "Overview",
+      color: "bg-blue-50 border-blue-200",
+      enabled: true,
+    },
+    participant_details: {
+      label: language === "ms" ? "Arahan Peserta" : "Participant Instructions",
+      color: "bg-purple-50 border-purple-200",
+      enabled: event?.has_participant,
+    },
+    volunteer_details: {
+      label:
+        language === "ms" ? "Arahan Sukarelawan" : "Volunteer Instructions",
+      color: "bg-green-50 border-green-200",
+      enabled: event?.has_volunteer,
+    },
+    donation_details: {
+      label: language === "ms" ? "Arahan Derma" : "Donation Instructions",
+      color: "bg-rose-50 border-rose-200",
+      enabled: event?.has_donation,
+    },
+  };
+
+  // Move section up or down
+  const moveSection = async (category, sectionId, direction) => {
+    const categorySections = groupedSections[category];
+    const currentIndex = categorySections.findIndex((s) => s.id === sectionId);
+
+    if (currentIndex === -1) return;
+    if (direction === "up" && currentIndex === 0) return;
+    if (direction === "down" && currentIndex === categorySections.length - 1)
+      return;
+
+    const newIndex = direction === "up" ? currentIndex - 1 : currentIndex + 1;
+    const reordered = [...categorySections];
+    const [moved] = reordered.splice(currentIndex, 1);
+    reordered.splice(newIndex, 0, moved);
+
+    // INSTANT UPDATE: Refresh UI immediately (optimistic update)
+    onUpdate?.();
+
+    // Update backend in background
+    try {
+      for (let i = 0; i < reordered.length; i++) {
+        const section = reordered[i];
+        await updateEventSection(eventId, section.id, {
+          title: section.title,
+          content: section.content,
+          category: section.category || "overview",
+          images: section.images || [],
+          order: i,
+        });
+      }
+      // Refresh again after backend confirms (in case there were changes)
+      onUpdate?.();
+    } catch (error) {
+      console.error("Failed to update order:", error);
+      // Revert UI on error
+      onUpdate?.();
+      setAlertModal({
+        isOpen: true,
+        title: language === "ms" ? "Ralat" : "Error",
+        message:
+          language === "ms"
+            ? "Gagal mengemas kini susunan"
+            : "Failed to update order",
+        type: "error",
+      });
+    }
   };
 
   return (
@@ -252,6 +357,46 @@ export default function EventSectionsManager({
               {fieldErrors.title && (
                 <p className="text-red-600 text-sm mt-1">{fieldErrors.title}</p>
               )}
+            </div>
+
+            {/* Category Selector */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                {language === "ms" ? "Paparkan Dalam" : "Display In"}
+              </label>
+              <select
+                value={formData.category}
+                onChange={(e) =>
+                  setFormData({ ...formData, category: e.target.value })
+                }
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+              >
+                <option value="overview">
+                  {language === "ms" ? "Tab Overview" : "Overview Tab"}
+                </option>
+                {event?.has_participant && (
+                  <option value="participant_details">
+                    {language === "ms" ? "Modul Peserta" : "Participant Module"}
+                  </option>
+                )}
+                {event?.has_volunteer && (
+                  <option value="volunteer_details">
+                    {language === "ms"
+                      ? "Modul Sukarelawan"
+                      : "Volunteer Module"}
+                  </option>
+                )}
+                {event?.has_donation && (
+                  <option value="donation_details">
+                    {language === "ms" ? "Modul Derma" : "Donation Module"}
+                  </option>
+                )}
+              </select>
+              <p className="text-xs text-gray-500 mt-1">
+                {language === "ms"
+                  ? "Hanya modul yang diaktifkan ditunjukkan"
+                  : "Only enabled modules are shown"}
+              </p>
             </div>
 
             {/* Multi-Image Upload */}
@@ -312,60 +457,142 @@ export default function EventSectionsManager({
         </div>
       )}
 
-      {/* Sections List */}
-      <div className="space-y-3">
+      {/* Sections List - Grouped by Category */}
+      <div className="space-y-6">
         {sections.length === 0 ? (
           <div className="text-center py-8 bg-gray-50 rounded-lg">
             <ImageIcon className="h-12 w-12 text-gray-300 mx-auto mb-2" />
             <p className="text-gray-600">
-              No sections yet. Add your first section!
+              {language === "ms"
+                ? "Tiada bahagian lagi. Tambah bahagian pertama!"
+                : "No sections yet. Add your first section!"}
             </p>
           </div>
         ) : (
-          sections.map((section) => (
-            <div
-              key={section.id}
-              className="bg-white border rounded-lg p-4 hover:shadow-sm transition-shadow"
-            >
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <h4 className="font-semibold text-gray-900 mb-1">
-                    {section.title}
-                  </h4>
+          Object.entries(categoryConfig).map(([category, config]) => {
+            const categorySections = groupedSections[category];
 
-                  {/* Display Images if available */}
-                  {section.images && section.images.length > 0 && (
-                    <div className="flex gap-2 mb-2 flex-wrap">
-                      {section.images.map((img, idx) => (
-                        <img
-                          key={idx}
-                          src={img}
-                          alt={`Section image ${idx + 1}`}
-                          className="w-16 h-16 object-cover rounded border border-gray-200"
-                        />
-                      ))}
-                    </div>
-                  )}
+            // Only show if enabled and has sections
+            if (!config.enabled || categorySections.length === 0) return null;
 
-                  <p className="text-gray-600 text-sm">{section.content}</p>
-                </div>
-                <div className="flex gap-2 ml-4">
-                  <button
-                    onClick={() => startEdit(section)}
-                    className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            return (
+              <div
+                key={category}
+                className={`border-2 rounded-xl p-5 ${config.color}`}
+              >
+                <h4 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
+                  <span
+                    className={`px-3 py-1 rounded-lg text-sm ${
+                      category === "overview"
+                        ? "bg-blue-100 text-blue-700"
+                        : category === "participant_details"
+                        ? "bg-purple-100 text-purple-700"
+                        : category === "volunteer_details"
+                        ? "bg-green-100 text-green-700"
+                        : "bg-rose-100 text-rose-700"
+                    }`}
                   >
-                    <Edit2 className="h-4 w-4 text-gray-600" />
-                  </button>
-                  <button
-                    onClick={() => handleDelete(section.id)}
-                    className="p-2 hover:bg-red-50 rounded-lg transition-colors"
-                  >
-                    <Trash2 className="h-4 w-4 text-red-600" />
-                  </button>
+                    {config.label}
+                  </span>
+                  <span className="text-xs text-gray-500">
+                    ({categorySections.length})
+                  </span>
+                </h4>
+
+                <div className="space-y-3">
+                  {categorySections.map((section, index) => (
+                    <motion.div
+                      key={section.id}
+                      layout
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -20 }}
+                      transition={{ duration: 0.2 }}
+                      className="bg-white border rounded-lg p-4 hover:shadow-sm transition-shadow"
+                    >
+                      <div className="flex items-start gap-3">
+                        {/* Number + Up/Down Arrows */}
+                        <div className="flex flex-col items-center gap-1 flex-shrink-0">
+                          <span className="text-xs font-bold text-gray-500 bg-gray-100 rounded-full h-6 w-6 flex items-center justify-center">
+                            {index + 1}
+                          </span>
+                          <div className="flex flex-col gap-0.5">
+                            <button
+                              onClick={() =>
+                                moveSection(category, section.id, "up")
+                              }
+                              disabled={index === 0}
+                              className="p-0.5 hover:bg-gray-200 rounded disabled:opacity-30 disabled:cursor-not-allowed"
+                              title={
+                                language === "ms" ? "Alih ke atas" : "Move up"
+                              }
+                            >
+                              <ChevronUp className="h-4 w-4 text-gray-600" />
+                            </button>
+                            <button
+                              onClick={() =>
+                                moveSection(category, section.id, "down")
+                              }
+                              disabled={index === categorySections.length - 1}
+                              className="p-0.5 hover:bg-gray-200 rounded disabled:opacity-30 disabled:cursor-not-allowed"
+                              title={
+                                language === "ms"
+                                  ? "Alih ke bawah"
+                                  : "Move down"
+                              }
+                            >
+                              <ChevronDown className="h-4 w-4 text-gray-600" />
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Content */}
+                        <div className="flex-1 min-w-0">
+                          <h4 className="font-semibold text-gray-900 mb-1 truncate">
+                            {section.title}
+                          </h4>
+
+                          {/* Display Images if available */}
+                          {section.images && section.images.length > 0 && (
+                            <div className="flex gap-2 mb-2 flex-wrap">
+                              {section.images.map((img, idx) => (
+                                <img
+                                  key={idx}
+                                  src={img}
+                                  alt={`Section image ${idx + 1}`}
+                                  className="w-16 h-16 object-cover rounded border border-gray-200"
+                                />
+                              ))}
+                            </div>
+                          )}
+
+                          <p className="text-gray-600 text-sm line-clamp-2">
+                            {section.content}
+                          </p>
+                        </div>
+
+                        {/* Actions */}
+                        <div className="flex gap-2 flex-shrink-0">
+                          <button
+                            onClick={() => startEdit(section)}
+                            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                          >
+                            <Edit2 className="h-4 w-4 text-gray-600" />
+                          </button>
+                          <button
+                            onClick={() => handleDelete(section.id)}
+                            className="p-2 hover:bg-red-50 rounded-lg transition-colors"
+                          >
+                            <Trash2 className="h-4 w-4 text-red-600" />
+                          </button>
+                        </div>
+                      </div>
+                    </motion.div>
+                  ))}
                 </div>
               </div>
-            </div>
-          ))
+            );
+          })
         )}
       </div>
 

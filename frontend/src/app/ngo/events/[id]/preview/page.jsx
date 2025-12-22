@@ -1,381 +1,477 @@
 "use client";
 
 import { useEventDetail } from "../../../../hooks/useEventDetail";
-import { useRouter, useParams } from "next/navigation";
-import { useState, useEffect, useRef } from "react";
+import { useParams, useRouter } from "next/navigation";
+import { useState, useEffect } from "react";
+import Image from "next/image";
+import { motion, AnimatePresence } from "framer-motion";
 import {
-  ArrowLeft,
   Calendar,
   MapPin,
-  Clock,
   Users,
+  Clock,
   Heart,
-  Trophy,
-  Edit,
-  Eye,
-  Package,
-  Shirt,
-  Award,
-  CheckCircle2,
-  ChevronDown,
-  Info,
   Share2,
-  Sparkles,
-  ArrowRight,
-  X,
+  Bookmark,
+  Building,
+  DollarSign,
+  ArrowLeft,
+  CheckCircle,
+  Star,
+  Info,
+  ChevronRight,
+  Edit,
+  Mail,
+  Phone,
 } from "lucide-react";
+import { format, parseISO, isAfter } from "date-fns";
 import Link from "next/link";
 
-/**
- * Premium Minimalist Event Preview Page
- * "The Art Gallery" Aesthetic - Clean, spacious, focus on content and typography
- */
 export default function EventPreviewPage() {
   const router = useRouter();
   const params = useParams();
   const id = params.id;
 
+  // Fetch actual event data
   const { event, loading, error } = useEventDetail(id);
-  const [activeModule, setActiveModule] = useState(null); // null by default, interactions only
-  const [isMobile, setIsMobile] = useState(false);
-  const interactionSectionRef = useRef(null);
 
-  // Responsive check
-  useEffect(() => {
-    const checkMobile = () => setIsMobile(window.innerWidth < 1024);
-    checkMobile();
-    window.addEventListener("resize", checkMobile);
-    return () => window.removeEventListener("resize", checkMobile);
-  }, []);
+  const [activeTab, setActiveTab] = useState("overview");
+  const [selectedModule, setSelectedModule] = useState(null);
+  const [isLiked, setIsLiked] = useState(false);
+  const [isBookmarked, setIsBookmarked] = useState(false);
+  const [showShareModal, setShowShareModal] = useState(false);
 
-  // Scroll to interaction section when module is activated
+  // Set initial module when event loads
   useEffect(() => {
-    if (activeModule && interactionSectionRef.current) {
-      setTimeout(() => {
-        interactionSectionRef.current?.scrollIntoView({
-          behavior: "smooth",
-          block: "start",
-        });
-      }, 100);
+    if (event && !selectedModule) {
+      const initialModule = event.has_participant
+        ? "participant"
+        : event.has_volunteer
+        ? "volunteer"
+        : event.has_donation
+        ? "donation"
+        : null;
+      setSelectedModule(initialModule);
     }
-  }, [activeModule]);
+  }, [event, selectedModule]);
+
+  const handleModuleChange = (module) => {
+    setSelectedModule(module);
+    setActiveTab("details"); // Auto-switch to Details tab
+  };
+
+  const handleRegister = (moduleType = "participant") => {
+    alert(
+      `PREVIEW MODE: This would redirect to ${moduleType} registration.\n\nIn actual public page, users will be redirected to registration flow.`
+    );
+  };
+
+  const handleLike = () => {
+    setIsLiked(!isLiked);
+  };
+
+  const handleBookmark = () => {
+    setIsBookmarked(!isBookmarked);
+  };
+
+  const handleShare = () => {
+    if (navigator.share) {
+      navigator.share({
+        title: event?.title,
+        text: event?.description?.substring(0, 100) + "...",
+        url: window.location.href,
+      });
+    } else {
+      alert("Share link: " + window.location.href);
+    }
+  };
 
   if (loading) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
-        <div className="flex flex-col items-center gap-4 animate-pulse">
-          <div className="h-12 w-12 rounded-full border-2 border-gray-100 border-t-black animate-spin" />
-          <p className="text-xs font-bold tracking-[0.2em] text-gray-400 uppercase">
-            Curating Experience
-          </p>
-        </div>
+        <div className="w-12 h-12 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
 
   if (error || !event) {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center p-6">
-        <div className="text-center max-w-md space-y-6">
-          <div className="inline-flex p-4 rounded-full bg-gray-50 mb-4">
-            <Info className="h-8 w-8 text-gray-400" />
-          </div>
-          <h2 className="text-3xl font-light text-gray-900 tracking-tight">
-            Event Not Found
-          </h2>
-          <p className="text-gray-500 font-light leading-relaxed">
-            {error || "We couldn't locate the event you're looking for."}
-          </p>
-          <Link
-            href="/ngo/events"
-            className="inline-flex items-center justify-center px-8 py-3 bg-black text-white hover:bg-gray-800 transition-all rounded-full text-sm font-medium tracking-wide"
-          >
-            Return to Gallery
-          </Link>
-        </div>
+      <div className="min-h-screen flex items-center justify-center">
+        <p className="text-gray-500">Event not found</p>
       </div>
     );
   }
 
-  const moduleOptions = [
-    {
-      id: "volunteer",
-      label: "Volunteer",
-      description: "Join the team",
-      icon: Users,
-      color: "bg-blue-50 text-blue-600",
-      available: event.has_volunteer,
-    },
-    {
-      id: "participant",
-      label: "Participate",
-      description: "Book your slot",
-      icon: Trophy,
-      color: "bg-purple-50 text-purple-600",
-      available: event.has_participant,
-    },
-    {
-      id: "donation",
-      label: "Donate",
-      description: "Support the cause",
-      icon: Heart,
-      color: "bg-rose-50 text-rose-600",
-      available: event.has_donation,
-    },
-  ].filter((opt) => opt.available);
+  const isRegistrationOpen = true; // Always show as open in preview
+  const isEventUpcoming = isAfter(
+    parseISO(event.end_date || new Date().toISOString()),
+    new Date()
+  );
+  const registrationProgress = event.participant_categories
+    ? (event.participant_categories.reduce(
+        (sum, cat) => sum + (cat.current_registrations || 0),
+        0
+      ) /
+        event.participant_categories.reduce(
+          (sum, cat) => sum + (cat.capacity || 100),
+          0
+        )) *
+      100
+    : 0;
+  const daysUntilDeadline = event.end_date
+    ? Math.ceil((parseISO(event.end_date) - new Date()) / (1000 * 60 * 60 * 24))
+    : 0;
+
+  const registrationStatus = null; // Always show as not registered in preview
 
   return (
-    <div className="min-h-screen bg-white text-gray-900 font-sans selection:bg-black selection:text-white">
-      {/* 1. ELEGANT PREVIEW BANNER (Floating) */}
-      <div className="fixed top-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 px-4 py-2 bg-black/80 backdrop-blur-md rounded-full text-white shadow-2xl transition-all hover:bg-black group">
-        <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_10px_rgba(52,211,153,0.5)]"></span>
-        <span className="text-xs font-medium tracking-wide pr-2 border-r border-white/20">
-          PREVIEW MODE
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-teal-50/30">
+      {/* PREVIEW MODE HEADER */}
+      <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 px-5 py-2.5 bg-black/70 from-slate-900 via-slate-800 to-teal-900 rounded-lg text-white shadow-lg shadow-teal-500/20 border border-teal-500/20">
+        <span className="relative flex h-2 w-2">
+          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+          <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-400"></span>
         </span>
+        <span className="text-xs font-bold tracking-wider uppercase bg-gradient-to-r from-teal-800 to-emerald-100 bg-clip-text text-white">
+          Preview Mode
+        </span>
+        <div className="w-px h-4 bg-white/20"></div>
         <Link
           href={`/ngo/events/${id}/edit`}
-          className="text-xs font-semibold hover:text-gray-300 transition-colors pl-1 flex items-center gap-1"
+          className="text-xs font-semibold hover:text-emerald-300 flex items-center gap-1.5 transition-all hover:gap-2"
         >
-          <Edit className="h-3 w-3" /> Edit
+          <Edit className="h-3.5 w-3.5" /> Edit Event
         </Link>
       </div>
 
-      <div className="max-w-[1600px] mx-auto">
-        <div className="grid grid-cols-1 lg:grid-cols-12 min-h-screen">
-          {/* 2. LEFT IMMERSIVE CONTENT (7 cols) */}
-          <div className="lg:col-span-8 p-8 lg:p-16 xl:p-24 pb-32 lg:pb-24 relative">
-            {/* Minimal Header */}
-            <header className="mb-16 space-y-8 animate-in fade-in slide-in-from-bottom-8 duration-700">
-              <div className="flex flex-wrap items-center gap-3">
-                <span className="px-3 py-1 border border-gray-200 rounded-full text-[10px] font-bold tracking-[0.2em] uppercase text-gray-500">
-                  {new Date(event.start_date).getFullYear()}
-                </span>
-                <span className="px-3 py-1 bg-black text-white rounded-full text-[10px] font-bold tracking-[0.2em] uppercase">
-                  {event.status}
-                </span>
-              </div>
+      {/* Back Button */}
+      <div className="sticky top-0 z-40 bg-white border-b border-gray-200">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
+          <button
+            onClick={() => router.push("/ngo/events")}
+            className="flex items-center gap-2 text-gray-700 hover:text-gray-900 transition-colors group"
+          >
+            <ArrowLeft className="h-4 w-4 group-hover:-translate-x-0.5 transition-transform" />
+            <span className="text-sm font-medium">Back to My Events</span>
+          </button>
+        </div>
+      </div>
 
-              <h1 className="text-5xl sm:text-6xl lg:text-7xl font-light tracking-tight text-gray-900 leading-[1.05]">
-                {event.title}
-              </h1>
-
-              <div className="flex flex-col sm:flex-row sm:items-center gap-6 text-gray-500 pt-8 border-t border-gray-100">
-                <div className="flex items-center gap-3 group">
-                  <div className="p-2 bg-gray-50 rounded-full group-hover:bg-black group-hover:text-white transition-colors duration-300">
-                    <Calendar className="h-5 w-5" />
-                  </div>
-                  <div>
-                    <p className="text-xs font-bold tracking-wider uppercase mb-0.5">
-                      Date
-                    </p>
-                    <p className="text-gray-900 font-medium">
-                      {new Date(event.start_date).toLocaleDateString("en-US", {
-                        month: "long",
-                        day: "numeric",
-                        weekday: "long",
-                      })}
-                    </p>
-                  </div>
-                </div>
-                {/* Decorative separator */}
-                <div className="hidden sm:block w-px h-10 bg-gray-100"></div>
-                {/* Add Location if available */}
-                <div className="flex items-center gap-3 group">
-                  <div className="p-2 bg-gray-50 rounded-full group-hover:bg-black group-hover:text-white transition-colors duration-300">
-                    <MapPin className="h-5 w-5" />
-                  </div>
-                  <div>
-                    <p className="text-xs font-bold tracking-wider uppercase mb-0.5">
-                      Location
-                    </p>
-                    <p className="text-gray-900 font-medium">
-                      {event.location_name || "See details below"}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </header>
-
-            {/* Cinematic Hero Image */}
-            <div className="relative aspect-[21/9] w-full overflow-hidden rounded-3xl bg-gray-100 mb-16 group shadow-sm animate-in zoom-in-95 duration-1000 delay-200 fill-mode-both">
-              {event.thumbnail ? (
-                <>
-                  <img
-                    src={event.thumbnail}
-                    alt={event.title}
-                    className="w-full h-full object-cover transition-transform duration-[2s] group-hover:scale-105"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700"></div>
-                </>
-              ) : (
-                <div className="w-full h-full flex items-center justify-center bg-gray-50">
-                  <div className="text-center">
-                    <Sparkles className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-                    <p className="text-gray-400 font-light tracking-widest text-sm uppercase">
-                      No Imagery Provided
-                    </p>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* DYNAMIC INTERACTION ZONE (Appears when active) */}
-            {activeModule && (
-              <div
-                ref={interactionSectionRef}
-                className="mb-24 scroll-mt-24 animate-in fade-in slide-in-from-bottom-8 duration-500"
-              >
-                <div className="relative bg-white border border-gray-200 shadow-[0_20px_50px_-12px_rgba(0,0,0,0.1)] rounded-[2.5rem] p-8 lg:p-12 overflow-hidden">
-                  {/* Decorative Background Blob */}
-                  <div
-                    className={`absolute top-0 right-0 w-64 h-64 bg-gradient-to-br opacity-5 rounded-bl-full pointer-events-none 
-                    ${
-                      activeModule === "volunteer"
-                        ? "from-blue-400 to-blue-600"
-                        : activeModule === "participant"
-                        ? "from-purple-400 to-purple-600"
-                        : "from-rose-400 to-rose-600"
-                    }`}
-                  />
-
-                  <div className="flex justify-between items-start mb-8">
-                    <div>
-                      <p className="text-xs font-bold tracking-[0.2em] text-gray-400 uppercase mb-2">
-                        Active Session
-                      </p>
-                      <h2 className="text-3xl font-light text-gray-900">
-                        {activeModule === "volunteer" &&
-                          "Volunteer Application"}
-                        {activeModule === "participant" &&
-                          "Participant Registration"}
-                        {activeModule === "donation" && "Make a Donation"}
-                      </h2>
-                    </div>
-                    <button
-                      onClick={() => setActiveModule(null)}
-                      className="p-3 bg-gray-50 hover:bg-gray-100 rounded-full transition-colors group"
-                      title="Close"
-                    >
-                      <X className="h-5 w-5 text-gray-400 group-hover:text-black transition-colors" />
-                    </button>
-                  </div>
-
-                  <div className="py-4">
-                    {activeModule === "volunteer" && (
-                      <VolunteerView event={event} />
-                    )}
-                    {activeModule === "participant" && (
-                      <ParticipantView event={event} />
-                    )}
-                    {activeModule === "donation" && (
-                      <DonationView event={event} />
-                    )}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* PERMANENT EVENT NARRATIVE (Always Visible) */}
-            <EventDetailsView
-              event={event}
-              hasActiveInteraction={!!activeModule}
+      {/* Hero Section */}
+      <div className="relative">
+        {/* Event Banner */}
+        <div className="relative h-[380px] lg:h-[480px] overflow-hidden bg-gradient-to-br from-teal-100 via-slate-100 to-emerald-100">
+          {event.thumbnail ? (
+            <Image
+              src={event.thumbnail}
+              alt={event.title}
+              fill
+              className="object-cover"
+              priority
             />
+          ) : (
+            <div className="absolute inset-0 bg-gradient-to-br from-teal-500 via-emerald-500 to-teal-600" />
+          )}
+
+          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-br from-teal-500/10 via-transparent to-emerald-500/10" />
+
+          {/* Floating Action Buttons */}
+          <div className="absolute top-4 right-4 flex gap-2 z-10">
+            <button
+              onClick={handleLike}
+              className={`p-2.5 rounded-lg backdrop-blur-md border ${
+                isLiked
+                  ? "bg-white/95 border-red-500/20 text-red-500"
+                  : "bg-white/10 border-white/20 text-white hover:bg-white/20"
+              } transition-all shadow-sm`}
+            >
+              <Heart className={`h-4 w-4 ${isLiked ? "fill-current" : ""}`} />
+            </button>
+
+            <button
+              onClick={handleBookmark}
+              className={`p-2.5 rounded-lg backdrop-blur-md border ${
+                isBookmarked
+                  ? "bg-white/95 border-amber-500/20 text-amber-500"
+                  : "bg-white/10 border-white/20 text-white hover:bg-white/20"
+              } transition-all shadow-sm`}
+            >
+              <Bookmark
+                className={`h-4 w-4 ${isBookmarked ? "fill-current" : ""}`}
+              />
+            </button>
+
+            <button
+              onClick={handleShare}
+              className="p-2.5 rounded-lg backdrop-blur-md bg-white/10 border border-white/20 text-white hover:bg-white/20 transition-all shadow-sm"
+            >
+              <Share2 className="h-4 w-4" />
+            </button>
           </div>
+        </div>
 
-          {/* 3. RIGHT PREMIUM SIDEBAR (5 cols) */}
-          <div className="lg:col-span-4 lg:sticky lg:top-0 lg:h-screen bg-white/80 backdrop-blur-2xl border-l border-white/50 flex flex-col p-8 lg:p-12 xl:p-16 fixed bottom-0 left-0 right-0 z-40 lg:relative shadow-2xl lg:shadow-none transition-all duration-300">
-            <div className="my-auto space-y-10 max-w-sm mx-auto w-full">
-              {moduleOptions.length > 0 ? (
-                <div className="space-y-4">
-                  <h3 className="text-xs font-bold bg-clip-text text-transparent bg-gradient-to-r from-gray-900 to-gray-500 uppercase tracking-[0.2em] mb-6">
-                    Experience Menu
-                  </h3>
+        {/* Event Info Card */}
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-16 relative z-10">
+          <div className="bg-white rounded-lg shadow-lg border border-gray-200 p-6 md:p-8">
+            <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-8">
+              {/* Left: Event Info */}
+              <div className="flex-1">
+                {/* Status Badges */}
+                <div className="flex flex-wrap gap-2 mb-5">
+                  <span className="px-3 py-1 rounded-md bg-emerald-100 text-emerald-700 border border-emerald-200 text-xs font-semibold">
+                    {event.is_published ? "Published" : "Draft"}
+                  </span>
 
-                  {/* Custom Elegant Selector UI */}
-                  <div className="space-y-4">
-                    {moduleOptions.map((opt) => (
-                      <button
-                        key={opt.id}
-                        onClick={() =>
-                          setActiveModule((prev) =>
-                            prev === opt.id ? null : opt.id
-                          )
-                        }
-                        className={`w-full group relative flex items-center gap-5 p-5 rounded-3xl border transition-all duration-500 text-left ${
-                          activeModule === opt.id
-                            ? "bg-white border-transparent shadow-[0_20px_40px_-12px_rgba(0,0,0,0.1)] scale-100"
-                            : "bg-transparent border-transparent hover:bg-white/60 hover:border-gray-100 hover:shadow-lg opacity-70 hover:opacity-100 scale-95 hover:scale-100"
-                        }`}
-                      >
-                        <span
-                          className={`p-4 rounded-2xl transition-all duration-500 shadow-sm ${
-                            activeModule === opt.id
-                              ? opt.color
-                              : "bg-white text-gray-400 group-hover:text-gray-900 group-hover:bg-gray-50"
-                          }`}
-                        >
-                          <opt.icon className="h-6 w-6" />
-                        </span>
-                        <div className="flex-1">
-                          <p
-                            className={`font-semibold text-base mb-1 transition-colors ${
-                              activeModule === opt.id
-                                ? "text-gray-900"
-                                : "text-gray-600 group-hover:text-gray-900"
-                            }`}
-                          >
-                            {opt.label}
-                          </p>
-                          <p className="text-[10px] text-gray-400 font-bold tracking-widest uppercase group-hover:text-gray-500 transition-colors">
-                            {opt.description}
-                          </p>
-                        </div>
+                  {isRegistrationOpen && (
+                    <span className="px-3 py-1 rounded-md bg-green-100 text-green-700 border border-green-200 text-xs font-semibold">
+                      Registration Open
+                    </span>
+                  )}
 
-                        {/* Status Indicator */}
-                        <div
-                          className={`h-2 w-2 rounded-full transition-all duration-500 ${
-                            activeModule === opt.id
-                              ? "bg-black scale-100"
-                              : "bg-gray-200 scale-0 group-hover:scale-100"
-                          }`}
-                        />
-                      </button>
-                    ))}
+                  {daysUntilDeadline <= 7 && daysUntilDeadline > 0 && (
+                    <span className="px-3 py-1 rounded-md bg-red-100 text-red-700 border border-red-200 text-xs font-semibold">
+                      ⏰ Closing Soon
+                    </span>
+                  )}
+                </div>
+
+                {/* Title */}
+                <h1 className="text-3xl lg:text-4xl font-bold text-gray-900 mb-5">
+                  {event.title}
+                </h1>
+
+                {/* Organizer */}
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-emerald-100 bg-emerald-50 flex items-center justify-center">
+                    {event.ngo?.logo_url ? (
+                      <Image
+                        src={event.ngo.logo_url}
+                        alt={event.ngo.name}
+                        width={40}
+                        height={40}
+                        className="object-cover"
+                      />
+                    ) : (
+                      <Building className="h-5 w-5 text-emerald-500" />
+                    )}
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-500">Organized by</p>
+                    <p className="font-semibold text-gray-800">
+                      {event.ngo?.name || "Organization"}
+                    </p>
                   </div>
                 </div>
-              ) : (
-                <div className="p-8 bg-gray-50/50 rounded-[2rem] border border-dashed border-gray-200 text-center">
-                  <p className="text-sm font-medium text-gray-400 italic">
-                    "Information Display Only"
-                  </p>
-                </div>
-              )}
 
-              {/* Context Info Box */}
-              <div
-                className={`transition-all duration-700 delay-100 ${
-                  activeModule
-                    ? "opacity-100 translate-y-0"
-                    : "opacity-0 translate-y-4"
-                }`}
-              >
-                {activeModule && (
-                  <div className="bg-gradient-to-b from-white/80 to-white/40 p-8 rounded-[2rem] border border-white shadow-xl backdrop-blur-sm">
-                    <ContextDescription
-                      activeModule={activeModule}
-                      event={event}
+                {/* Quick Info Grid */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+                  <InfoCard
+                    icon={<Calendar className="h-5 w-5" />}
+                    label="Date"
+                    value={format(
+                      parseISO(event.start_date || new Date().toISOString()),
+                      "dd MMM yyyy"
+                    )}
+                  />
+                  {event.location && (
+                    <InfoCard
+                      icon={<MapPin className="h-5 w-5" />}
+                      label="Location"
+                      value={event.location}
                     />
+                  )}
+                  {event.participant_categories?.length > 0 && (
+                    <InfoCard
+                      icon={<Users className="h-5 w-5" />}
+                      label="Capacity"
+                      value={
+                        event.participant_categories.reduce(
+                          (sum, cat) => sum + (cat.capacity || 0),
+                          0
+                        ) || "TBD"
+                      }
+                    />
+                  )}
+                  <InfoCard
+                    icon={<Clock className="h-5 w-5" />}
+                    label="Ends"
+                    value={format(
+                      parseISO(event.end_date || new Date().toISOString()),
+                      "dd MMM yyyy"
+                    )}
+                  />
+                </div>
+
+                {/* Progress Bar */}
+                {registrationProgress > 0 && (
+                  <div className="mb-6">
+                    <div className="flex justify-between text-xs text-gray-700 mb-2 font-semibold">
+                      <span>Registration Progress</span>
+                      <span className="text-teal-600">
+                        {Math.round(registrationProgress)}% Filled
+                      </span>
+                    </div>
+                    <div className="h-2.5 bg-slate-100 rounded-full overflow-hidden shadow-inner">
+                      <motion.div
+                        initial={{ width: 0 }}
+                        animate={{ width: `${registrationProgress}%` }}
+                        transition={{ duration: 1.2, ease: "easeOut" }}
+                        className="h-full bg-gradient-to-r from-teal-500 via-emerald-500 to-teal-600 rounded-full shadow-lg shadow-teal-500/50"
+                      />
+                    </div>
                   </div>
                 )}
               </div>
-            </div>
 
-            {/* Footer Credit */}
-            <div className="mt-auto pt-8 border-t border-gray-100/50 text-center lg:text-left">
-              <p className="text-[10px] font-bold tracking-[0.2em] text-gray-300 uppercase">
-                Powered by CharityStride
-              </p>
+              {/* Right: Action Card */}
+              <div className="lg:w-96">
+                <div className="bg-gradient-to-br from-white via-teal-50/30 to-emerald-50/30 rounded-xl border border-teal-200/50 p-6 shadow-md hover:shadow-lg transition-shadow">
+                  <h3 className="text-xl font-bold text-gray-900 mb-4">
+                    Join This Event
+                  </h3>
+
+                  {/* Registration Status */}
+                  {registrationStatus ? (
+                    <div className="mb-5 p-4 bg-white rounded-lg border border-emerald-500/20">
+                      <div className="flex items-center gap-3">
+                        <CheckCircle className="h-6 w-6 text-emerald-500" />
+                        <div>
+                          <p className="font-semibold text-gray-800">
+                            Already Registered
+                          </p>
+                          <p className="text-sm text-gray-600">
+                            Registration Confirmed
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="mb-5 p-3.5 bg-amber-50/50 rounded-lg border border-amber-200/60">
+                      <div className="flex items-center gap-2.5">
+                        <Info className="h-5 w-5 text-amber-600 flex-shrink-0" />
+                        <div>
+                          <p className="text-sm font-semibold text-gray-900">
+                            Not Registered Yet
+                          </p>
+                          <p className="text-xs text-gray-600">
+                            Choose how you want to participate below
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Custom Module Selector Dropdown */}
+                  <ModuleDropdown
+                    event={event}
+                    selectedModule={selectedModule}
+                    onModuleChange={handleModuleChange}
+                  />
+
+                  {/* Action Buttons */}
+                  <div className="space-y-2 mb-5">
+                    {(event.has_participant || event.has_volunteer) &&
+                      selectedModule !== "donation" && (
+                        <button
+                          onClick={() => handleRegister(selectedModule)}
+                          className="w-full px-4 py-3 rounded-lg bg-teal-700 hover:bg-teal-800 text-white font-bold shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2"
+                        >
+                          <Users className="h-5 w-5" />
+                          Register Now
+                        </button>
+                      )}
+                    {event.has_donation && selectedModule === "donation" && (
+                      <button
+                        onClick={() => handleRegister("donation")}
+                        className="w-full px-4 py-3 rounded-lg bg-rose-700 hover:bg-rose-800 text-white font-bold shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2"
+                      >
+                        <DollarSign className="h-5 w-5" />
+                        Donate Now
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Quick Stats */}
+                  <div className="border-t pt-4">
+                    <div className="grid grid-cols-3 gap-4 text-center">
+                      <StatCard
+                        value={
+                          event.participant_categories?.reduce(
+                            (sum, cat) =>
+                              sum + (cat.current_registrations || 0),
+                            0
+                          ) || 0
+                        }
+                        label="Participants"
+                      />
+                      <StatCard
+                        value={((event.total_donations || 0) / 100).toFixed(0)}
+                        label="Donations"
+                        prefix="RM"
+                      />
+                      <StatCard
+                        value={
+                          event.volunteer_roles?.reduce((sum, role) => {
+                            const filled = role.current_volunteers || 0;
+                            const total = role.total_capacity || 0;
+                            return sum + Math.max(0, total - filled);
+                          }, 0) || 0
+                        }
+                        label="Volunteers Needed"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Main Content - Tabs */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+        <div className="border-b border-gray-200 mb-6">
+          <nav className="-mb-px flex space-x-6">
+            {["overview", "details", "organizer"].map((tab) => (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab)}
+                className={`py-3 px-1 font-semibold text-sm border-b-2 transition-colors capitalize ${
+                  activeTab === tab
+                    ? "border-slate-900 text-slate-900"
+                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                }`}
+              >
+                {tab}
+              </button>
+            ))}
+          </nav>
+        </div>
+
+        {/* Tab Content */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div className="lg:col-span-2">
+            <AnimatePresence mode="wait">
+              {activeTab === "overview" && (
+                <OverviewTab key="overview" event={event} />
+              )}
+              {activeTab === "details" && (
+                <DetailsTab
+                  key="details"
+                  event={event}
+                  selectedModule={selectedModule}
+                />
+              )}
+              {activeTab === "organizer" && (
+                <OrganizerTab key="organizer" event={event} />
+              )}
+            </AnimatePresence>
+          </div>
+
+          {/* Sidebar */}
+          <div className="space-y-8">
+            <OrganizerSidebar event={event} setActiveTab={setActiveTab} />
           </div>
         </div>
       </div>
@@ -383,322 +479,1042 @@ export default function EventPreviewPage() {
   );
 }
 
-// --- REFINED SUB-VIEWS ---
-
-function EventDetailsView({ event, hasActiveInteraction }) {
+// Helper Components
+function InfoCard({ icon, label, value }) {
   return (
-    <div
-      className={`space-y-20 max-w-4xl transition-opacity duration-700 ${
-        hasActiveInteraction ? "opacity-40 hover:opacity-100" : "opacity-100"
+    <div className="group flex items-start gap-2.5 p-3.5 bg-gradient-to-br from-white to-teal-50/20 rounded-lg border border-teal-100/40 hover:border-teal-200 hover:shadow-sm transition-all">
+      <div className="text-teal-600 mt-0.5 group-hover:scale-110 transition-transform">
+        {icon}
+      </div>
+      <div className="min-w-0">
+        <p className="text-xs text-gray-500 mb-1 font-medium uppercase tracking-wide">
+          {label}
+        </p>
+        <p className="text-sm font-bold text-gray-900 line-clamp-1">{value}</p>
+      </div>
+    </div>
+  );
+}
+
+// Custom Module Dropdown Component
+function ModuleDropdown({ event, selectedModule, onModuleChange }) {
+  const [isOpen, setIsOpen] = useState(false);
+
+  const modules = [
+    event.has_participant && {
+      value: "participant",
+      icon: <Users className="h-5 w-5" />,
+      title: "Join as Participant",
+      description: "Register to run/walk",
+      bgGradient: "from-teal-50 to-emerald-50",
+      iconGradient: "from-teal-500 to-emerald-500",
+      borderColor: "border-teal-300",
+    },
+    event.has_volunteer && {
+      value: "volunteer",
+      icon: <Heart className="h-5 w-5" />,
+      title: "Volunteer",
+      description: "Help organize the event",
+      bgGradient: "from-blue-50 to-indigo-50",
+      iconGradient: "from-blue-500 to-indigo-500",
+      borderColor: "border-blue-300",
+    },
+    event.has_donation && {
+      value: "donation",
+      icon: <DollarSign className="h-5 w-5" />,
+      title: "Make a Donation",
+      description: "Support financially",
+      bgGradient: "from-rose-50 to-pink-50",
+      iconGradient: "from-rose-500 to-pink-500",
+      borderColor: "border-rose-300",
+    },
+  ].filter(Boolean);
+
+  const currentModule = modules.find((m) => m.value === selectedModule);
+
+  return (
+    <div className="mb-5 relative">
+      <label className="block text-sm font-semibold text-gray-700 mb-2">
+        Select Registration Type
+      </label>
+
+      {/* Dropdown Button */}
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className={`w-full p-3.5 rounded-xl border-2 transition-all ${
+          isOpen
+            ? "border-teal-400 ring-2 ring-teal-200/50"
+            : "border-gray-300 hover:border-gray-400"
+        } bg-white flex items-center justify-between`}
+      >
+        {currentModule ? (
+          <div className="flex items-center gap-3">
+            <div
+              className={`h-10 w-10 rounded-lg bg-gradient-to-br ${currentModule.iconGradient} flex items-center justify-center text-white shadow-sm`}
+            >
+              {currentModule.icon}
+            </div>
+            <div className="text-left">
+              <p className="font-semibold text-gray-900 text-sm">
+                {currentModule.title}
+              </p>
+              <p className="text-xs text-gray-500">
+                {currentModule.description}
+              </p>
+            </div>
+          </div>
+        ) : (
+          <span className="text-gray-500">Select a module...</span>
+        )}
+        <ChevronRight
+          className={`h-5 w-5 text-gray-400 transition-transform ${
+            isOpen ? "rotate-90" : ""
+          }`}
+        />
+      </button>
+
+      {/* Dropdown Options */}
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            className="absolute z-50 w-full mt-2 bg-white rounded-xl border-2 border-gray-200 shadow-xl overflow-hidden"
+          >
+            {modules.map((module) => (
+              <button
+                key={module.value}
+                onClick={() => {
+                  onModuleChange(module.value);
+                  setIsOpen(false);
+                }}
+                className={`w-full p-3.5 flex items-center gap-3 transition-all border-b border-gray-100 last:border-0 ${
+                  selectedModule === module.value
+                    ? `bg-gradient-to-br ${module.bgGradient}`
+                    : "hover:bg-gray-50"
+                }`}
+              >
+                <div
+                  className={`h-10 w-10 rounded-lg bg-gradient-to-br ${module.iconGradient} flex items-center justify-center text-white shadow-sm`}
+                >
+                  {module.icon}
+                </div>
+                <div className="text-left flex-1">
+                  <p className="font-semibold text-gray-900 text-sm">
+                    {module.title}
+                  </p>
+                  <p className="text-xs text-gray-600">{module.description}</p>
+                </div>
+                {selectedModule === module.value && (
+                  <CheckCircle className="h-5 w-5 text-teal-600" />
+                )}
+              </button>
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <p className="text-xs text-gray-500 mt-2">
+        Select to view details in the Details tab
+      </p>
+    </div>
+  );
+}
+
+function ModuleCard({ icon, title, description, onClick, disabled }) {
+  const getModuleColor = (title) => {
+    if (title.includes("Participant"))
+      return {
+        bg: "bg-gradient-to-br from-teal-50 to-emerald-50",
+        iconBg: "bg-gradient-to-br from-teal-500 to-emerald-500",
+        hoverBorder: "hover:border-teal-300",
+        hoverShadow: "hover:shadow-teal-100",
+      };
+    if (title.includes("Volunteer"))
+      return {
+        bg: "bg-gradient-to-br from-blue-50 to-indigo-50",
+        iconBg: "bg-gradient-to-br from-blue-500 to-indigo-500",
+        hoverBorder: "hover:border-blue-300",
+        hoverShadow: "hover:shadow-blue-100",
+      };
+    return {
+      bg: "bg-gradient-to-br from-rose-50 to-pink-50",
+      iconBg: "bg-gradient-to-br from-rose-500 to-pink-500",
+      hoverBorder: "hover:border-rose-300",
+      hoverShadow: "hover:shadow-rose-100",
+    };
+  };
+
+  const colors = getModuleColor(title);
+
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      className={`group w-full text-left p-4 rounded-xl border-2 transition-all duration-300 flex items-center gap-3.5 ${
+        disabled
+          ? "border-gray-200 bg-gray-50/50 cursor-not-allowed opacity-60"
+          : `${colors.bg} border-transparent ${colors.hoverBorder} hover:shadow-md ${colors.hoverShadow} transform hover:scale-[1.02]`
       }`}
     >
+      <div
+        className={`h-12 w-12 rounded-xl ${colors.iconBg} flex items-center justify-center flex-shrink-0 text-white shadow-md group-hover:scale-110 transition-transform duration-300`}
+      >
+        {icon}
+      </div>
+      <div className="flex-1 min-w-0">
+        <h4 className="text-sm font-bold text-gray-900 group-hover:text-teal-900 transition-colors">
+          {title}
+        </h4>
+        <p className="text-xs text-gray-600">{description}</p>
+      </div>
+      <ChevronRight className="h-5 w-5 text-gray-400 group-hover:text-teal-600 group-hover:translate-x-1 transition-all flex-shrink-0" />
+    </button>
+  );
+}
+
+function StatCard({ value, label, prefix = "" }) {
+  return (
+    <div>
+      <p className="text-2xl font-bold text-gray-900">
+        {prefix}
+        {value}
+      </p>
+      <p className="text-xs text-gray-500 font-medium">{label}</p>
+    </div>
+  );
+}
+
+// Tab Components
+function OverviewTab({ event }) {
+  const overviewSections =
+    event.sections
+      ?.filter((s) => s.category === "overview")
+      .sort((a, b) => (a.order || 0) - (b.order || 0)) || [];
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -20 }}
+      className="space-y-8"
+    >
+      {/* Event Title & Description - Always First */}
       <section>
-        <SectionTitle>The Narrative</SectionTitle>
-        <div className="prose prose-xl prose-gray max-w-none">
-          <p className="text-gray-600 leading-[1.8] font-light text-justify whitespace-pre-wrap">
-            {event.description}
-          </p>
+        <h2 className="text-3xl px-4 font-bold text-gray-900 mb-4">
+          About This Event
+        </h2>
+        <h3 className="text-2xl font-semibold px-4 text-gray-900 ">
+          {event.title}
+        </h3>
+        <p className="text-gray-700 text-lg px-4 leading-relaxed whitespace-pre-wrap">
+          {event.description}
+        </p>
+      </section>
+
+      {/* Overview Sections - Ordered by database order field */}
+      {overviewSections.map((section) => (
+        <section key={section.id}>
+          {section.title && (
+            <h3 className="text-2xl px-4 font-semibold text-gray-900 ">
+              {section.title}
+            </h3>
+          )}
+          {section.content && (
+            <p className="text-gray-700 text-lg px-4 leading-relaxed  whitespace-pre-wrap">
+              {section.content}
+            </p>
+          )}
+          {section.images?.length > 0 && (
+            <div className="flex flex-col gap-4 mt-4">
+              {section.images.map((img, idx) => (
+                <div
+                  key={idx}
+                  className="relative aspect-square rounded-xl overflow-hidden bg-gray-100 w-full max-w-md md:max-w-lg lg:max-w-xl mx-auto"
+                >
+                  <Image
+                    src={img}
+                    alt={section.title || "Event image"}
+                    fill
+                    className="object-contain"
+                  />
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+      ))}
+    </motion.div>
+  );
+}
+
+function DetailsTab({ event, selectedModule: propSelectedModule }) {
+  const [localSelectedModule, setLocalSelectedModule] = useState(
+    propSelectedModule ||
+      (event.has_participant
+        ? "participant"
+        : event.has_volunteer
+        ? "volunteer"
+        : event.has_donation
+        ? "donation"
+        : null)
+  );
+
+  // Volunteer filtering state
+  const [selectedRole, setSelectedRole] = useState("all");
+  const [selectedDate, setSelectedDate] = useState("all");
+  const [currentPage, setCurrentPage] = useState(1);
+  const SHIFTS_PER_PAGE = 3;
+
+  // Participant filtering state
+  const [selectedCategory, setSelectedCategory] = useState("all");
+
+  // Use prop if available, otherwise use local state
+  const selectedModule = propSelectedModule || localSelectedModule;
+
+  const getModuleSections = () => {
+    if (!selectedModule) return [];
+    const categoryMap = {
+      participant: "participant_details",
+      volunteer: "volunteer_details",
+      donation: "donation_details",
+    };
+    return (
+      event.sections?.filter(
+        (s) => s.category === categoryMap[selectedModule]
+      ) || []
+    );
+  };
+
+  const moduleSections = getModuleSections();
+  const hasAnyModule =
+    event.has_participant || event.has_volunteer || event.has_donation;
+
+  // Get all shifts from all volunteer roles
+  const allShifts =
+    event.volunteer_roles?.flatMap(
+      (role) => role.shifts?.map((shift) => ({ ...shift, role })) || []
+    ) || [];
+
+  // Filter shifts
+  const filteredShifts = allShifts.filter((shift) => {
+    const matchesRole =
+      selectedRole === "all" || shift.role.id === parseInt(selectedRole);
+    const matchesDate =
+      selectedDate === "all" || shift.shift_date === selectedDate;
+    return matchesRole && matchesDate;
+  });
+
+  // Pagination
+  const totalPages = Math.ceil(filteredShifts.length / SHIFTS_PER_PAGE);
+  const paginatedShifts = filteredShifts.slice(
+    (currentPage - 1) * SHIFTS_PER_PAGE,
+    currentPage * SHIFTS_PER_PAGE
+  );
+
+  // Reset page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [selectedRole, selectedDate]);
+
+  // Get unique dates
+  const uniqueDates = [...new Set(allShifts.map((s) => s.shift_date))].sort();
+
+  // Get selected shift for map
+  const selectedShift = paginatedShifts[0]; // Show first shift's location
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -10 }}
+      className="space-y-6"
+    >
+      {/* Module-Specific Details */}
+      {hasAnyModule && (
+        <section>
+          <h3 className="text-xl font-bold text-gray-900 mb-4">
+            Registration Details
+          </h3>
+
+          {/* Volunteer Specific Content */}
+          {selectedModule === "volunteer" && (
+            <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-6">
+              {event.volunteer_roles?.length > 0 ? (
+                <>
+                  {/* Filters */}
+                  <div>
+                    <h4 className="font-semibold text-gray-900 mb-3">
+                      Filter Shifts
+                    </h4>
+                    <div className="grid md:grid-cols-2 gap-4">
+                      {/* Role Filter */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Volunteer Role
+                        </label>
+                        <select
+                          value={selectedRole}
+                          onChange={(e) => setSelectedRole(e.target.value)}
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        >
+                          <option value="all">All Roles</option>
+                          {event.volunteer_roles.map((role) => (
+                            <option key={role.id} value={role.id}>
+                              {role.role_type?.name_en || role.custom_role_name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      {/* Date Filter */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Shift Date
+                        </label>
+                        <select
+                          value={selectedDate}
+                          onChange={(e) => setSelectedDate(e.target.value)}
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        >
+                          <option value="all">All Dates</option>
+                          {uniqueDates.map((date) => (
+                            <option key={date} value={date}>
+                              {format(parseISO(date), "dd MMM yyyy")}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                    <p className="text-sm text-gray-500 mt-2">
+                      Select a role and date to view available shifts and
+                      location
+                    </p>
+                  </div>
+
+                  {/* Shifts List */}
+                  {filteredShifts.length > 0 ? (
+                    <div className="space-y-4">
+                      <h4 className="font-semibold text-gray-900">
+                        Available Shifts ({filteredShifts.length})
+                      </h4>
+
+                      {paginatedShifts.map((shift) => {
+                        const registered = 0; // TODO: Get from registrations
+                        const capacity = shift.capacity;
+                        const percentage = (registered / capacity) * 100;
+
+                        // Convert to 12-hour format
+                        const formatTime12Hour = (time24) => {
+                          if (!time24) return "";
+                          const [hours, minutes] = time24.split(":");
+                          const hour = parseInt(hours);
+                          const ampm = hour >= 12 ? "PM" : "AM";
+                          const hour12 = hour % 12 || 12;
+                          return `${hour12}:${minutes} ${ampm}`;
+                        };
+
+                        return (
+                          <div
+                            key={shift.id}
+                            className="border border-gray-200 rounded-lg p-4 hover:border-blue-300 transition-colors"
+                          >
+                            <div className="flex justify-between items-start mb-2">
+                              <div>
+                                <h5 className="font-semibold text-gray-900">
+                                  {shift.role.role_type?.name_en ||
+                                    shift.role.custom_role_name ||
+                                    "Volunteer Role"}
+                                </h5>
+                                <p className="text-sm text-gray-600">
+                                  {format(
+                                    parseISO(shift.shift_date),
+                                    "EEEE, dd MMM yyyy"
+                                  )}
+                                </p>
+                                <p className="text-sm text-gray-600">
+                                  {formatTime12Hour(shift.start_time)} -{" "}
+                                  {formatTime12Hour(shift.end_time)}
+                                </p>
+                              </div>
+                              <span
+                                className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                                  capacity - registered > 0
+                                    ? "bg-green-100 text-green-700"
+                                    : "bg-red-100 text-red-700"
+                                }`}
+                              >
+                                {capacity - registered > 0
+                                  ? "Available"
+                                  : "Full"}
+                              </span>
+                            </div>
+
+                            {/* Capacity Progress Bar */}
+                            <div className="mt-3">
+                              <div className="flex justify-between text-sm mb-1">
+                                <span className="text-gray-600">Capacity</span>
+                                <span className="font-medium text-gray-900">
+                                  {registered} / {capacity} filled
+                                </span>
+                              </div>
+                              <div className="w-full bg-gray-200 rounded-full h-2">
+                                <div
+                                  className="bg-teal-600 h-2 rounded-full transition-all"
+                                  style={{ width: `${percentage}%` }}
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+
+                      {/* Pagination */}
+                      {totalPages > 1 && (
+                        <div className="flex items-center justify-between pt-4 border-t">
+                          <button
+                            onClick={() =>
+                              setCurrentPage((p) => Math.max(1, p - 1))
+                            }
+                            disabled={currentPage === 1}
+                            className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            ← Previous
+                          </button>
+                          <span className="text-sm text-gray-600">
+                            Page {currentPage} of {totalPages}
+                          </span>
+                          <button
+                            onClick={() =>
+                              setCurrentPage((p) => Math.min(totalPages, p + 1))
+                            }
+                            disabled={currentPage === totalPages}
+                            className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            Next →
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="text-center py-8 text-gray-500">
+                      No shifts available for selected filters
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div className="text-center py-8 bg-gray-50 rounded">
+                  <p className="text-gray-500">
+                    No volunteer roles created yet. Add roles in edit mode
+                    first.
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Donation Specific Content */}
+          {selectedModule === "donation" && (
+            <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-6">
+              {event.donation_config &&
+              (event.donation_config.accepts_money ||
+                event.donation_config.accepts_items) ? (
+                <>
+                  {/* Money Donations */}
+                  {event.donation_config.accepts_money &&
+                    event.money_donation_options?.length > 0 && (
+                      <div>
+                        <h4 className="font-semibold text-gray-900 mb-4 flex items-center">
+                          <span className="text-2xl mr-2">💰</span>
+                          Money Donation Options
+                        </h4>
+                        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+                          {event.money_donation_options.map((option, idx) => (
+                            <div
+                              key={idx}
+                              className="border border-gray-200 rounded-lg p-5 hover:border-emerald-300 transition-colors bg-gradient-to-br from-emerald-50 to-white"
+                            >
+                              <div className="text-3xl font-bold text-emerald-700 mb-2">
+                                RM{" "}
+                                {(
+                                  (parseInt(option.suggested_amount) || 0) / 100
+                                ).toFixed(2)}
+                              </div>
+                              {option.description && (
+                                <p className="text-sm text-gray-600 mt-2">
+                                  {option.description}
+                                </p>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                  {/* Item Donations */}
+                  {event.donation_config.accepts_items &&
+                    event.item_donation_options?.length > 0 && (
+                      <div className="mt-6">
+                        <h4 className="font-semibold text-gray-900 mb-4 flex items-center">
+                          <span className="text-2xl mr-2">📦</span>
+                          Item Donation Options
+                        </h4>
+                        <div className="space-y-3">
+                          {event.item_donation_options.map((option, idx) => (
+                            <div
+                              key={idx}
+                              className="border border-gray-200 rounded-lg p-4 hover:border-blue-300 transition-colors bg-gradient-to-r from-blue-50 to-white"
+                            >
+                              <div className="flex justify-between items-start">
+                                <div className="flex-1">
+                                  <div className="flex items-center gap-2 mb-1">
+                                    {option.item_category && (
+                                      <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs rounded-full font-medium">
+                                        {option.item_category}
+                                      </span>
+                                    )}
+                                    <h5 className="font-semibold text-gray-900">
+                                      {option.item_name}
+                                    </h5>
+                                  </div>
+                                  {option.item_description && (
+                                    <p className="text-sm text-gray-600 mt-1">
+                                      {option.item_description}
+                                    </p>
+                                  )}
+                                </div>
+                                {option.target_quantity && (
+                                  <div className="text-right ml-4">
+                                    <div className="text-sm text-gray-500">
+                                      Target
+                                    </div>
+                                    <div className="font-semibold text-gray-900">
+                                      {option.target_quantity}{" "}
+                                      {option.unit || "units"}
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                </>
+              ) : (
+                <div className="text-center py-8 bg-gray-50 rounded">
+                  <p className="text-gray-500">
+                    No donation options configured yet.
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Participant Specific Content */}
+          {selectedModule === "participant" && (
+            <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-6">
+              {event.participant_categories?.length > 0 ? (
+                <>
+                  {/* Category Filter */}
+                  <div>
+                    <h4 className="font-semibold text-gray-900 mb-3">
+                      Select Category
+                    </h4>
+                    <select
+                      value={selectedCategory}
+                      onChange={(e) => setSelectedCategory(e.target.value)}
+                      className="w-full md:w-1/2 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+                    >
+                      <option value="all">All Categories</option>
+                      {event.participant_categories.map((cat) => (
+                        <option key={cat.id} value={cat.id}>
+                          {cat.category_name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Categories Display */}
+                  <div className="space-y-4">
+                    {(selectedCategory === "all"
+                      ? event.participant_categories
+                      : event.participant_categories.filter(
+                          (c) => c.id == selectedCategory
+                        )
+                    ).map((category) => {
+                      const registered = 0; // TODO: Get from registrations
+                      const capacity = category.capacity;
+                      const isUnlimited = !capacity || capacity === 0;
+                      const percentage = isUnlimited
+                        ? 0
+                        : (registered / capacity) * 100;
+
+                      return (
+                        <div
+                          key={category.id}
+                          className="border border-gray-200 rounded-lg p-5 hover:border-teal-300 transition-colors"
+                        >
+                          <div className="flex justify-between items-start mb-3">
+                            <div>
+                              <h5 className="font-semibold text-gray-900 text-lg">
+                                {category.category_name}
+                              </h5>
+                              <p className="text-sm text-gray-600 mt-1">
+                                Fee:{" "}
+                                {Number(category.base_fee) === 0 ||
+                                !category.base_fee
+                                  ? "Free"
+                                  : `RM ${(
+                                      (Number(category.base_fee) || 0) / 100
+                                    ).toFixed(2)}`}
+                              </p>
+                            </div>
+                            <span
+                              className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                                isUnlimited
+                                  ? "bg-blue-100 text-blue-700"
+                                  : capacity - registered > 0
+                                  ? "bg-green-100 text-green-700"
+                                  : "bg-red-100 text-red-700"
+                              }`}
+                            >
+                              {isUnlimited
+                                ? "Unlimited"
+                                : capacity - registered > 0
+                                ? "Available"
+                                : "Full"}
+                            </span>
+                          </div>
+
+                          {/* Progress Bar or Registration Count */}
+                          {isUnlimited ? (
+                            <div className="mt-3 bg-blue-50 border border-blue-200 rounded-lg p-3">
+                              <div className="flex items-center justify-between">
+                                <span className="text-sm text-gray-600">
+                                  Registered Participants
+                                </span>
+                                <span className="text-2xl font-bold text-blue-700">
+                                  {registered}
+                                </span>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="mt-3">
+                              <div className="flex justify-between text-sm mb-1">
+                                <span className="text-gray-600">Capacity</span>
+                                <span className="font-medium text-gray-900">
+                                  {registered} / {capacity} filled
+                                </span>
+                              </div>
+                              <div className="w-full bg-gray-200 rounded-full h-2">
+                                <div
+                                  className="bg-teal-600 h-2 rounded-full transition-all"
+                                  style={{ width: `${percentage}%` }}
+                                />
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </>
+              ) : (
+                <div className="text-center py-8 bg-gray-50 rounded">
+                  <p className="text-gray-500">
+                    No participant categories created yet.
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Module Sections */}
+          {moduleSections.length > 0 && (
+            <div className="mt-6 space-y-4">
+              <h4 className="font-semibold text-gray-900">
+                Additional Information
+              </h4>
+              {moduleSections.map((section) => (
+                <div
+                  key={section.id}
+                  className="bg-white rounded-xl border border-gray-200 p-6"
+                >
+                  {section.title && (
+                    <h5 className="text-lg font-semibold text-gray-900 mb-2">
+                      {section.title}
+                    </h5>
+                  )}
+                  {section.content && (
+                    <p className="text-gray-700 whitespace-pre-wrap mb-4">
+                      {section.content}
+                    </p>
+                  )}
+                  {section.images?.length > 0 && (
+                    <div className="flex flex-col gap-4">
+                      {section.images.map((img, idx) => (
+                        <div
+                          key={idx}
+                          className="relative aspect-square rounded-xl overflow-hidden bg-gray-100 w-full max-w-md mx-auto"
+                        >
+                          <Image
+                            src={img}
+                            alt={section.title || "Section image"}
+                            fill
+                            className="object-contain"
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Dynamic Map - Only show when specific role selected and has coordinates */}
+          {selectedModule === "volunteer" &&
+          selectedRole !== "all" &&
+          filteredShifts.length > 0 ? (
+            selectedShift?.role?.latitude && selectedShift?.role?.longitude ? (
+              <div className="mt-6 bg-white rounded-xl border border-gray-200 overflow-hidden">
+                <div className="p-4 border-b border-gray-200">
+                  <h4 className="font-semibold text-gray-900">Location</h4>
+                  <p className="text-sm text-gray-600 mt-1">
+                    {selectedShift.role.location || "Event location"}
+                  </p>
+                </div>
+                <div className="w-full h-[400px]">
+                  <iframe
+                    src={`https://www.google.com/maps?q=${selectedShift.role.latitude},${selectedShift.role.longitude}&output=embed&z=15`}
+                    width="100%"
+                    height="100%"
+                    style={{ border: 0 }}
+                    allowFullScreen
+                    loading="lazy"
+                    referrerPolicy="no-referrer-when-downgrade"
+                  />
+                </div>
+              </div>
+            ) : null
+          ) : null}
+
+          {/* Dynamic Map for Participant Category */}
+          {selectedModule === "participant" &&
+            selectedCategory !== "all" &&
+            (() => {
+              const category = event.participant_categories?.find(
+                (c) => c.id == selectedCategory
+              );
+              return category?.latitude && category?.longitude ? (
+                <div className="mt-6 bg-white rounded-xl border border-gray-200 overflow-hidden">
+                  <div className="p-4 border-b border-gray-200">
+                    <h4 className="font-semibold text-gray-900">
+                      Event Location
+                    </h4>
+                    <p className="text-sm text-gray-600 mt-1">
+                      {category.location || event.location || "Event location"}
+                    </p>
+                  </div>
+                  <div className="w-full h-[400px]">
+                    <iframe
+                      src={`https://www.google.com/maps?q=${category.latitude},${category.longitude}&output=embed&z=15`}
+                      width="100%"
+                      height="100%"
+                      style={{ border: 0 }}
+                      allowFullScreen
+                      loading="lazy"
+                      referrerPolicy="no-referrer-when-downgrade"
+                    />
+                  </div>
+                </div>
+              ) : null;
+            })()}
+
+          {/* Empty State */}
+          {!selectedModule && (
+            <div className="text-center py-12 bg-gray-50 rounded-xl">
+              <p className="text-gray-600">
+                Select a registration type to view details
+              </p>
+            </div>
+          )}
+        </section>
+      )}
+    </motion.div>
+  );
+}
+
+function DetailRow({ label, value }) {
+  return (
+    <div className="flex justify-between py-3 border-b border-gray-100">
+      <span className="text-gray-600 font-medium">{label}</span>
+      <span className="text-gray-900 font-semibold">{value}</span>
+    </div>
+  );
+}
+
+function OrganizerTab({ event }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -10 }}
+      className="space-y-6"
+    >
+      <section>
+        <h3 className="text-2xl font-bold text-gray-900 mb-4">
+          About the Organizer
+        </h3>
+        <div className="p-6 bg-gray-50 rounded-2xl">
+          <div className="flex items-center gap-4 mb-4">
+            {event.ngo?.logo_url ? (
+              <Image
+                src={event.ngo.logo_url}
+                alt={event.ngo.name}
+                width={64}
+                height={64}
+                className="rounded-full"
+              />
+            ) : (
+              <div className="w-16 h-16 rounded-full bg-emerald-100 flex items-center justify-center">
+                <Building className="h-8 w-8 text-emerald-600" />
+              </div>
+            )}
+            <div>
+              <h4 className="font-bold text-gray-900 text-lg">
+                {event.ngo?.name || "Organization Name"}
+              </h4>
+              <p className="text-sm text-gray-600">
+                Reg: {event.ngo?.registration_no || "N/A"}
+              </p>
+            </div>
+          </div>
+          {event.ngo?.description && (
+            <p className="text-gray-700 text-sm leading-relaxed">
+              {event.ngo.description}
+            </p>
+          )}
         </div>
       </section>
 
-      {event.sections?.map((section) => (
-        <section key={section.id} className="group">
-          <SectionTitle>{section.title}</SectionTitle>
-          <div className="bg-gray-50/50 p-10 rounded-[2.5rem] transition-all hover:bg-gray-50 mb-8 border border-transparent hover:border-gray-100">
-            <p className="text-gray-600 text-lg leading-relaxed mb-10 font-light">
-              {section.content}
-            </p>
-            {section.images?.length > 0 && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                {section.images.map((img, idx) => (
-                  <div
-                    key={idx}
-                    className="overflow-hidden rounded-2xl shadow-sm relative aspect-[4/3] group/img"
-                  >
-                    <img
-                      src={img}
-                      alt=""
-                      className="w-full h-full object-cover transform group-hover/img:scale-110 transition-transform duration-[1.5s]"
-                    />
-                    <div className="absolute inset-0 bg-black/0 group-hover/img:bg-black/10 transition-colors duration-500" />
+      {/* NGO Office Address & Map */}
+      {(event.ngo?.address || event.ngo?.latitude) && (
+        <section>
+          <h3 className="text-2xl font-bold text-gray-900 mb-4">
+            Office Location
+          </h3>
+          <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+            {/* Map */}
+            {event.ngo?.latitude && event.ngo?.longitude && (
+              <div className="w-full h-[300px] relative">
+                <iframe
+                  src={`https://www.google.com/maps?q=${event.ngo.latitude},${event.ngo.longitude}&output=embed&z=15`}
+                  width="100%"
+                  height="100%"
+                  style={{ border: 0 }}
+                  allowFullScreen
+                  loading="lazy"
+                  referrerPolicy="no-referrer-when-downgrade"
+                  className="w-full h-full"
+                />
+              </div>
+            )}
+
+            {/* Address Details */}
+            {event.ngo?.address && (
+              <div className="p-6 border-t border-gray-200">
+                <div className="flex items-start gap-3">
+                  <MapPin className="h-5 w-5 text-teal-600 mt-0.5 flex-shrink-0" />
+                  <div className="flex-1">
+                    <p className="font-semibold text-gray-900 mb-2">Address</p>
+                    <p className="text-gray-700 text-sm leading-relaxed">
+                      {event.ngo.address}
+                      {event.ngo.city && `, ${event.ngo.city}`}
+                      {event.ngo.state && `, ${event.ngo.state}`}
+                      {event.ngo.postcode && ` ${event.ngo.postcode}`}
+                    </p>
                   </div>
-                ))}
+                </div>
+
+                {/* Contact Info */}
+                <div className="grid md:grid-cols-2 gap-4 mt-4 pt-4 border-t border-gray-100">
+                  {event.ngo?.contact_email && (
+                    <div className="flex items-center gap-2">
+                      <Mail className="h-4 w-4 text-gray-500" />
+                      <a
+                        href={`mailto:${event.ngo.contact_email}`}
+                        className="text-sm text-teal-600 hover:text-teal-700 font-medium"
+                      >
+                        {event.ngo.contact_email}
+                      </a>
+                    </div>
+                  )}
+                  {event.ngo?.contact_phone && (
+                    <div className="flex items-center gap-2">
+                      <Phone className="h-4 w-4 text-gray-500" />
+                      <a
+                        href={`tel:${event.ngo.contact_phone}`}
+                        className="text-sm text-teal-600 hover:text-teal-700 font-medium"
+                      >
+                        {event.ngo.contact_phone}
+                      </a>
+                    </div>
+                  )}
+                </div>
               </div>
             )}
           </div>
         </section>
-      ))}
-    </div>
+      )}
+    </motion.div>
   );
 }
 
-function VolunteerView({ event }) {
-  const roles = event.volunteer_roles || [];
-
-  if (roles.length === 0)
-    return (
-      <EmptyState
-        title="Positions Filled"
-        sub="Check back later for openings"
-      />
-    );
-
+function OrganizerSidebar({ event, setActiveTab }) {
   return (
-    <div className="grid gap-6">
-      {roles.map((role) => (
-        <div
-          key={role.id}
-          className="group relative bg-white border border-gray-200 rounded-3xl p-8 hover:border-blue-200 transition-all duration-300"
-        >
-          <div className="flex flex-col md:flex-row gap-6 justify-between items-start mb-6">
-            <div>
-              <h3 className="text-xl font-bold text-gray-900 mb-2">
-                {role.role_name}
-              </h3>
-              <p className="text-gray-500 font-light text-sm leading-relaxed max-w-xl">
-                {role.description}
-              </p>
+    <div className="bg-white rounded-lg border border-gray-200 p-5">
+      <h3 className="text-base font-bold text-gray-900 mb-4">
+        About the Organizer
+      </h3>
+      <div className="space-y-4">
+        <div className="flex items-center gap-3">
+          {event.ngo?.logo_url ? (
+            <Image
+              src={event.ngo.logo_url}
+              alt={event.ngo.name}
+              width={44}
+              height={44}
+              className="rounded-lg"
+            />
+          ) : (
+            <div className="w-11 h-11 rounded-lg bg-slate-100 flex items-center justify-center border border-slate-200">
+              <Building className="h-5 w-5 text-slate-600" />
             </div>
-            <span className="shrink-0 px-4 py-1.5 bg-blue-50 text-blue-700 text-xs font-bold rounded-full tracking-wide uppercase">
-              {role.shifts?.length || 0} Shift Options
-            </span>
-          </div>
-
-          <div className="space-y-3">
-            {role.shifts?.map((shift) => (
-              <div
-                key={shift.id}
-                className="flex items-center justify-between p-4 bg-gray-50/50 rounded-2xl hover:bg-blue-50/30 transition-colors group/shift"
-              >
-                <div className="flex items-center gap-4 text-sm max-w-full overflow-hidden">
-                  <div className="flex flex-col">
-                    <span className="font-bold text-gray-900">
-                      {new Date(shift.shift_date).toLocaleDateString("en-US", {
-                        weekday: "short",
-                        day: "numeric",
-                        month: "short",
-                      })}
-                    </span>
-                    <span className="text-xs text-gray-500">
-                      {shift.start_time} - {shift.end_time}
-                    </span>
-                  </div>
-                </div>
-                <button className="ml-4 px-6 py-2 bg-white border border-gray-200 text-gray-900 text-xs font-bold rounded-xl shadow-sm hover:bg-blue-600 hover:text-white hover:border-blue-600 transition-all">
-                  Select
-                </button>
-              </div>
-            ))}
+          )}
+          <div>
+            <p className="font-semibold text-gray-900 text-sm">
+              {event.ngo?.name || "Organization"}
+            </p>
+            <p className="text-xs text-gray-500">Event Organizer</p>
           </div>
         </div>
-      ))}
-    </div>
-  );
-}
 
-function ParticipantView({ event }) {
-  const categories = event.participant_categories || [];
-
-  if (categories.length === 0)
-    return (
-      <EmptyState title="Registration Closed" sub="Event capacity reached" />
-    );
-
-  return (
-    <div className="grid gap-6">
-      {categories.map((cat) => (
-        <div
-          key={cat.id}
-          className="group relative bg-white border border-gray-200 rounded-3xl p-8 hover:border-purple-200 hover:shadow-xl transition-all duration-300"
-        >
-          <div className="flex justify-between items-start mb-6">
-            <div>
-              <h3 className="text-2xl font-bold text-gray-900 mb-2">
-                {cat.category_name}
-              </h3>
-              <div className="flex gap-2">
-                {cat.has_event_tshirt && (
-                  <Badge icon={Shirt} label="Tee" color="blue" />
-                )}
-                {cat.has_finisher_tshirt && (
-                  <Badge icon={Award} label="Finisher" color="orange" />
-                )}
-              </div>
-            </div>
-            <div className="text-right">
-              <span className="block text-2xl font-bold text-gray-900">
-                {cat.has_fee ? `RM ${(cat.base_fee / 100).toFixed(0)}` : "Free"}
-              </span>
-              <span className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">
-                Entry Fee
-              </span>
-            </div>
-          </div>
-
-          <p className="text-gray-500 font-light text-sm leading-relaxed mb-6">
-            {cat.description}
+        {event.ngo?.description && (
+          <p className="text-gray-700 text-xs leading-relaxed line-clamp-3">
+            {event.ngo.description}
           </p>
+        )}
 
-          <button className="w-full py-4 bg-gray-900 text-white rounded-2xl font-bold text-sm tracking-wide uppercase hover:bg-purple-600 transition-colors">
-            Register for {cat.category_name}
-          </button>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function DonationView({ event }) {
-  return (
-    <div className="space-y-10">
-      {event.money_donation_options?.length > 0 && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {event.money_donation_options.map((opt) => (
-            <button
-              key={opt.id}
-              className="group relative p-6 bg-white border border-gray-200 rounded-3xl hover:border-rose-400 hover:shadow-lg transition-all text-left flex flex-col justify-between min-h-[160px]"
-            >
-              <div>
-                <span className="block text-3xl font-light text-gray-900 mb-2">
-                  <span className="text-lg font-bold text-gray-300 mr-1">
-                    RM
-                  </span>
-                  {(opt.suggested_amount / 100).toFixed(0)}
-                </span>
-                <span className="text-xs text-gray-400 uppercase font-bold tracking-widest">
-                  {opt.description || "Support"}
-                </span>
-              </div>
-              <div className="mt-4 flex items-center gap-2 text-rose-500 text-xs font-bold opacity-0 group-hover:opacity-100 transition-opacity transform translate-y-2 group-hover:translate-y-0">
-                Donate <ArrowRight className="h-3 w-3" />
-              </div>
-            </button>
-          ))}
-          <button className="p-6 border border-dashed border-gray-300 rounded-3xl hover:border-gray-500 hover:bg-gray-50 transition-all flex flex-col items-center justify-center text-center">
-            <Heart className="h-6 w-6 text-gray-300 mb-2" />
-            <span className="text-sm font-bold text-gray-900">
-              Custom Amount
-            </span>
-          </button>
-        </div>
-      )}
-
-      {event.item_donation_options?.length > 0 && (
-        <div className="pt-6 border-t border-gray-100">
-          <h4 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-6">
-            Item Wishlist
-          </h4>
-          <div className="space-y-3">
-            {event.item_donation_options.map((item) => (
-              <div
-                key={item.id}
-                className="flex justify-between items-center p-4 bg-gray-50 rounded-2xl border border-transparent hover:border-rose-100 hover:bg-rose-50/30 transition-colors"
-              >
-                <div className="flex items-center gap-4">
-                  <div className="p-2 bg-white rounded-xl text-rose-400">
-                    <Package className="h-4 w-4" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-bold text-gray-900">
-                      {item.item_name}
-                    </p>
-                    <p className="text-[10px] text-gray-500 uppercase">
-                      {item.category}
-                    </p>
-                  </div>
-                </div>
-                <span className="px-3 py-1 bg-white text-gray-600 rounded-lg text-xs font-bold shadow-sm">
-                  Goal: {item.target_quantity}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// --- PREMIUM UTILS ---
-
-function HeaderSection({ icon: Icon, title, subtitle, color }) {
-  return (
-    <div className="flex flex-col items-start gap-4 mb-8">
-      <div className={`p-4 rounded-2xl ${color} shadow-lg shadow-current/20`}>
-        <Icon className="h-8 w-8 text-white" />
+        <button
+          onClick={() => setActiveTab("organizer")}
+          className="w-full text-center text-slate-700 hover:text-slate-900 font-medium text-xs py-2 hover:bg-slate-50 rounded-lg transition-colors"
+        >
+          View Full Profile →
+        </button>
       </div>
-      <div>
-        <h2 className="text-4xl font-light text-gray-900 tracking-tight mb-2">
-          {title}
-        </h2>
-        <p className="text-xl text-gray-500 font-light">{subtitle}</p>
-      </div>
-    </div>
-  );
-}
-
-function SectionTitle({ children }) {
-  return (
-    <h3 className="text-xs font-bold bg-clip-text text-transparent bg-gradient-to-r from-gray-900 to-gray-500 uppercase tracking-[0.2em] mb-8">
-      {children}
-    </h3>
-  );
-}
-
-function ContextDescription({ activeModule, event }) {
-  if (!activeModule) return null;
-
-  const content = {
-    volunteer: {
-      title: "Impact Team",
-      text: "Be the hands and feet of our mission. Sign up for a shift.",
-    },
-    participant: {
-      title: "Join The Event",
-      text: "Secure your place and be part of the experience.",
-    },
-    donation: {
-      title: "Philanthropy",
-      text: "Your generosity fuels our logistics and outreach efforts.",
-    },
-  }[activeModule];
-
-  if (!content) return null;
-
-  return (
-    <div>
-      <p className="text-sm font-bold text-gray-900 mb-2">{content.title}</p>
-      <p className="text-xs text-gray-500 leading-relaxed font-medium">
-        {content.text}
-      </p>
-    </div>
-  );
-}
-
-function Badge({ icon: Icon, label, color }) {
-  const colors = {
-    blue: "bg-blue-50 text-blue-700",
-    orange: "bg-orange-50 text-orange-700",
-  };
-  return (
-    <span
-      className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider ${
-        colors[color] || "bg-gray-100 text-gray-700"
-      }`}
-    >
-      <Icon className="h-3 w-3" />
-      {label}
-    </span>
-  );
-}
-
-function EmptyState({ title, sub }) {
-  return (
-    <div className="flex flex-col items-center justify-center py-12 bg-gray-50 rounded-[2rem] border border-dashed border-gray-200">
-      <p className="text-lg font-medium text-gray-900 mb-1">{title}</p>
-      <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">
-        {sub}
-      </p>
     </div>
   );
 }

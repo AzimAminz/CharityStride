@@ -27,7 +27,7 @@ export function validateDateRange(startDate, endDate, language = "en") {
   if (start >= end) {
     return language === "ms"
       ? "Tarikh mula mesti sebelum tarikh tamat"
-      : "Start date must be before end date";
+      : "End date must be after start date";
   }
 
   return null;

@@ -13,7 +13,9 @@ class EventSection extends Model
         'event_id',
         'title',
         'content',
+        'category',
         'images',
+        'order',
     ];
 
     protected $casts = [

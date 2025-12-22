@@ -18,6 +18,8 @@ export function useEventForm(initialData = null) {
       description: "",
       start_date: "",
       end_date: "",
+      event_date: "",
+      has_event_date: false,
       thumbnail: null,
 
       // Module enablers

@@ -84,12 +84,23 @@ export default function CreateEventPage() {
     if (!formData.end_date) {
       errors.end_date =
         language === "ms" ? "Tarikh tamat diperlukan" : "End date is required";
+    } else if (formData.start_date && formData.end_date < formData.start_date) {
+      errors.end_date =
+        language === "ms"
+          ? "Tarikh tamat mesti selepas tarikh mula"
+          : "End date must be after start date";
     }
     if (!formData.thumbnail) {
       errors.thumbnail =
         language === "ms"
           ? "Gambar acara diperlukan"
           : "Event thumbnail is required";
+    }
+    if (formData.has_event_date && !formData.event_date) {
+      errors.event_date =
+        language === "ms"
+          ? "Tarikh event diperlukan"
+          : "Event date is required";
     }
 
     if (Object.keys(errors).length > 0) {
@@ -103,7 +114,7 @@ export default function CreateEventPage() {
       const result = await handleSubmit(false);
       if (result?.event?.id) {
         setCreatedEventId(result.event.id);
-        setActiveTab("modules");
+        setActiveTab("module_selection");
       }
     } catch (err) {
       // Error handled by hook
@@ -163,9 +174,27 @@ export default function CreateEventPage() {
   const tabs = [
     { id: "basic", label: "Basic Info", icon: FileText },
     {
-      id: "modules",
-      label: "Modules",
+      id: "module_selection",
+      label: "Module Selection",
       icon: Users,
+      disabled: !createdEventId,
+    },
+    formData.has_volunteer && {
+      id: "volunteer_config",
+      label: "Volunteer Config",
+      icon: Users,
+      disabled: !createdEventId,
+    },
+    formData.has_donation && {
+      id: "donation_config",
+      label: "Donation Config",
+      icon: DollarSign,
+      disabled: !createdEventId,
+    },
+    formData.has_participant && {
+      id: "participant_config",
+      label: "Participant Config",
+      icon: HandHeart,
       disabled: !createdEventId,
     },
     {
@@ -174,42 +203,10 @@ export default function CreateEventPage() {
       icon: FileText,
       disabled: !createdEventId,
     },
-  ];
+  ].filter(Boolean);
 
   return (
     <div className="min-h-screen bg-gray-50 py-8 px-4">
-      {/* Page Header with Instructions */}
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 mt-6">
-        <div className="bg-gradient-to-r from-emerald-50 to-blue-50 rounded-lg p-6 mb-6 border border-emerald-100">
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">
-            {language === "ms" ? "Cipta Event Anda" : "Create Your Event"}
-          </h2>
-          <p className="text-gray-700 mb-4">
-            {language === "ms"
-              ? "Ikuti 3 langkah mudah untuk mencipta event amal anda. Mulakan dengan maklumat asas, kemudian pilih modul yang diperlukan."
-              : "Follow 3 easy steps to create your charity event. Start with basic information, then choose the modules you need."}
-          </p>
-
-          {/* Progress Indicator */}
-          <ProgressIndicator
-            currentStep={
-              activeTab === "basic" ? 1 : activeTab === "modules" ? 2 : 3
-            }
-            language={language}
-          />
-
-          {/* Quick Tips */}
-          <div className="mt-4 pt-4 border-t border-emerald-200">
-            <p className="text-sm text-gray-600 flex items-start gap-2">
-              <span className="text-emerald-600 font-semibold">💡</span>
-              {language === "ms"
-                ? "Tip: Simpan sebagai draf dahulu, kemudian tambah butiran lanjut dalam tab Modul dan Kandungan."
-                : "Tip: Save as draft first, then add more details in the Modules and Content tabs."}
-            </p>
-          </div>
-        </div>
-      </div>
-
       <div className="max-w-6xl mx-auto">
         {/* Header */}
         <div className="mb-8">
@@ -361,7 +358,7 @@ export default function CreateEventPage() {
                       <div>
                         <div className="flex items-center gap-2 mb-1">
                           <label className="block text-sm font-medium text-gray-700">
-                            Start Date *
+                            Start Registration Date *
                           </label>
                           <HelpTooltip
                             content={
@@ -401,7 +398,7 @@ export default function CreateEventPage() {
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">
-                          End Date *
+                          End Registration Date *
                         </label>
                         <DateInput
                           value={formData.end_date}
@@ -418,6 +415,11 @@ export default function CreateEventPage() {
                           compareWith={formData.start_date}
                           compareType="after"
                           language={language}
+                          className={`${
+                            validationErrors.end_date
+                              ? "border-red-500"
+                              : "border-gray-300"
+                          }`}
                         />
                         {validationErrors.end_date && (
                           <p className="mt-1 text-sm text-red-600">
@@ -426,49 +428,70 @@ export default function CreateEventPage() {
                         )}
                       </div>
                     </div>
-                  </div>
-                </div>
 
-                {/* Module Selection */}
-                <div className="bg-white rounded-lg shadow-sm p-6">
-                  <h2 className="text-xl font-semibold text-gray-900 mb-4">
-                    Enable Modules
-                  </h2>
-                  <p className="text-sm text-gray-600 mb-4">
-                    Select which modules you want to enable for this event. You
-                    can configure them in detail after creating the event.
-                  </p>
+                    <div className="border border-gray-200 rounded-lg p-4 bg-gray-50">
+                      <label className="flex items-center gap-3 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={formData.has_event_date}
+                          onChange={(e) => {
+                            handleChange("has_event_date", e.target.checked);
+                            if (!e.target.checked) {
+                              handleChange("event_date", "");
+                              // Clear any event_date validation errors
+                              if (validationErrors.event_date) {
+                                setValidationErrors({
+                                  ...validationErrors,
+                                  event_date: null,
+                                });
+                              }
+                            }
+                          }}
+                          className="w-4 h-4 text-emerald-600 border-gray-300 rounded focus:ring-emerald-500"
+                        />
+                        <span className="text-sm font-medium text-gray-700">
+                          {language === "ms"
+                            ? "Tetapkan tarikh event"
+                            : "Set specific event date"}
+                        </span>
+                      </label>
 
-                  <div className="space-y-3">
-                    <ModuleToggle
-                      label="Volunteer Module"
-                      description="Allow people to register as volunteers for various roles and shifts"
-                      checked={formData.has_volunteer}
-                      onChange={(checked) =>
-                        handleChange("has_volunteer", checked)
-                      }
-                      icon={Users}
-                    />
-
-                    <ModuleToggle
-                      label="Donation Module"
-                      description="Accept money or item donations for your event"
-                      checked={formData.has_donation}
-                      onChange={(checked) =>
-                        handleChange("has_donation", checked)
-                      }
-                      icon={DollarSign}
-                    />
-
-                    <ModuleToggle
-                      label="Participant Module"
-                      description="Accept participant registrations with categories and pricing"
-                      checked={formData.has_participant}
-                      onChange={(checked) =>
-                        handleChange("has_participant", checked)
-                      }
-                      icon={HandHeart}
-                    />
+                      {formData.has_event_date && (
+                        <div className="mt-4 pl-7">
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Event Date *
+                          </label>
+                          <DateInput
+                            value={formData.event_date}
+                            onChange={(value) => {
+                              handleChange("event_date", value);
+                              if (validationErrors.event_date) {
+                                setValidationErrors({
+                                  ...validationErrors,
+                                  event_date: null,
+                                });
+                              }
+                            }}
+                            language={language}
+                            className={`${
+                              validationErrors.event_date
+                                ? "border-red-500"
+                                : "border-gray-300"
+                            }`}
+                          />
+                          {validationErrors.event_date && (
+                            <p className="mt-1 text-sm text-red-600">
+                              {validationErrors.event_date}
+                            </p>
+                          )}
+                          <p className="text-xs text-gray-500 mt-1">
+                            {language === "ms"
+                              ? "Tarikh sebenar ketika event berlangsung"
+                              : "Actual date when the event takes place"}
+                          </p>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -504,7 +527,7 @@ export default function CreateEventPage() {
                       ) : (
                         <>
                           <Save className="h-5 w-5" />
-                          Save & Continue
+                          Save & Continue to Modules
                         </>
                       )}
                     </button>
@@ -514,7 +537,7 @@ export default function CreateEventPage() {
                 {createdEventId && (
                   <div className="bg-green-50 border border-green-200 rounded-lg p-4">
                     <p className="text-sm text-green-800">
-                      ✓ Event saved! Click "Modules" tab to configure.
+                      ✓ Event saved! Click "Module Selection" tab to continue.
                     </p>
                   </div>
                 )}
@@ -523,103 +546,53 @@ export default function CreateEventPage() {
           </form>
         )}
 
-        {/* Modules Tab */}
-        {activeTab === "modules" && (
+        {/* Module Selection Tab */}
+        {activeTab === "module_selection" && (
           <div className="space-y-6">
-            {/* Modules Section Header */}
-            <div className="mb-6 pb-4 border-b border-gray-200">
-              <div className="flex items-center gap-2 mb-2">
-                <h3 className="text-lg font-semibold text-gray-900">
-                  {language === "ms"
-                    ? "Pilih Modul Event"
-                    : "Select Event Modules"}
-                </h3>
-                <HelpTooltip
-                  content={
-                    language === "ms"
-                      ? "Aktifkan modul yang diperlukan untuk event anda. Anda boleh menambah butiran lanjut selepas menyimpan draf."
-                      : "Enable the modules you need for your event. You can add more details after saving the draft."
-                  }
-                  language={language}
-                />
-              </div>
-              <p className="text-sm text-gray-600">
-                {language === "ms"
-                  ? "Modul membantu anda mengurus peserta, sukarelawan, dan derma dengan lebih teratur."
-                  : "Modules help you manage participants, volunteers, and donations more efficiently."}
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <p className="text-sm text-blue-800">
+                Select which modules you want to enable for this event. You can
+                configure them in detail in the next step.
               </p>
             </div>
 
-            {!createdEventId && (
-              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                <p className="text-sm text-yellow-800">
-                  Configure the modules you enabled. These settings determine
-                  how users can interact with your event.
-                </p>
-              </div>
-            )}
+            <div className="bg-white rounded-lg shadow-sm p-6">
+              <h2 className="text-xl font-semibold text-gray-900 mb-4">
+                Enable Modules
+              </h2>
+              <p className="text-sm text-gray-600 mb-4">
+                Choose the modules you need. Each module adds specific
+                functionality to your event.
+              </p>
 
-            {/* Volunteer Module */}
-            {formData.has_volunteer && (
-              <div className="bg-white rounded-lg shadow-sm p-6">
-                <VolunteerRoleManager
-                  roles={volunteerModule.roles}
-                  shifts={volunteerModule.shifts}
-                  onAddRole={volunteerModule.addRole}
-                  onUpdateRole={volunteerModule.updateRole}
-                  onRemoveRole={volunteerModule.removeRole}
-                  onAddShift={volunteerModule.addShift}
-                  onUpdateShift={volunteerModule.updateShift}
-                  onRemoveShift={volunteerModule.removeShift}
+              <div className="space-y-3">
+                <ModuleToggle
+                  label="Volunteer Module"
+                  description="Allow people to register as volunteers for various roles and shifts"
+                  checked={formData.has_volunteer}
+                  onChange={(checked) => handleChange("has_volunteer", checked)}
+                  icon={Users}
+                />
+
+                <ModuleToggle
+                  label="Donation Module"
+                  description="Accept money or item donations for your event"
+                  checked={formData.has_donation}
+                  onChange={(checked) => handleChange("has_donation", checked)}
+                  icon={DollarSign}
+                />
+
+                <ModuleToggle
+                  label="Participant Module"
+                  description="Accept participant registrations with categories and pricing"
+                  checked={formData.has_participant}
+                  onChange={(checked) =>
+                    handleChange("has_participant", checked)
+                  }
+                  icon={HandHeart}
                 />
               </div>
-            )}
-
-            {/* Donation Module */}
-            {formData.has_donation && (
-              <div className="bg-white rounded-lg shadow-sm p-6">
-                <DonationConfigManager
-                  config={donationModule.config}
-                  moneyOptions={donationModule.moneyOptions}
-                  itemOptions={donationModule.itemOptions}
-                  onUpdateConfig={donationModule.updateConfig}
-                  onAddMoneyOption={donationModule.addMoneyOption}
-                  onUpdateMoneyOption={donationModule.updateMoneyOpt}
-                  onRemoveMoneyOption={donationModule.removeMoneyOption}
-                  onAddItemOption={donationModule.addItemOption}
-                  onUpdateItemOption={donationModule.updateItemOpt}
-                  onRemoveItemOption={donationModule.removeItemOption}
-                />
-              </div>
-            )}
-
-            {/* Participant Module */}
-            {formData.has_participant && (
-              <div className="bg-white rounded-lg shadow-sm p-6">
-                <ParticipantCategoryManager
-                  config={participantModule.config}
-                  categories={participantModule.categories}
-                  feeTiers={participantModule.feeTiers}
-                  onUpdateConfig={participantModule.updateConfig}
-                  onAddCategory={participantModule.addCategory}
-                  onUpdateCategory={participantModule.updateCat}
-                  onRemoveCategory={participantModule.removeCategory}
-                  onAddTier={participantModule.addTier}
-                  onUpdateTier={participantModule.updateTier}
-                  onRemoveTier={participantModule.removeTier}
-                />
-              </div>
-            )}
-
-            {!formData.has_volunteer &&
-              !formData.has_donation &&
-              !formData.has_participant && (
-                <div className="bg-white rounded-lg shadow-sm p-12 text-center">
-                  <p className="text-gray-500">
-                    No modules enabled. Go back to Basic Info to enable modules.
-                  </p>
-                </div>
-              )}
+            </div>
 
             {/* Navigation */}
             <div className="flex justify-between">
@@ -629,6 +602,162 @@ export default function CreateEventPage() {
                 className="px-6 py-3 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg font-semibold transition-colors"
               >
                 ← Back to Basic Info
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  // Navigate to first enabled module config or content
+                  if (formData.has_volunteer) setActiveTab("volunteer_config");
+                  else if (formData.has_donation)
+                    setActiveTab("donation_config");
+                  else if (formData.has_participant)
+                    setActiveTab("participant_config");
+                  else setActiveTab("content");
+                }}
+                className="px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-semibold transition-colors"
+              >
+                Next: Configure Modules →
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Volunteer Config Tab */}
+        {activeTab === "volunteer_config" && formData.has_volunteer && (
+          <div className="space-y-6">
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <p className="text-sm text-blue-800">
+                Configure volunteer roles and shifts for your event.
+              </p>
+            </div>
+
+            <div className="bg-white rounded-lg shadow-sm p-6">
+              <VolunteerRoleManager
+                roles={volunteerModule.roles}
+                shifts={volunteerModule.shifts}
+                onAddRole={volunteerModule.addRole}
+                onUpdateRole={volunteerModule.updateRole}
+                onRemoveRole={volunteerModule.removeRole}
+                onAddShift={volunteerModule.addShift}
+                onUpdateShift={volunteerModule.updateShift}
+                onRemoveShift={volunteerModule.removeShift}
+              />
+            </div>
+
+            {/* Navigation */}
+            <div className="flex justify-between">
+              <button
+                type="button"
+                onClick={() => setActiveTab("module_selection")}
+                className="px-6 py-3 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg font-semibold transition-colors"
+              >
+                ← Back to Module Selection
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (formData.has_donation) setActiveTab("donation_config");
+                  else if (formData.has_participant)
+                    setActiveTab("participant_config");
+                  else setActiveTab("content");
+                }}
+                className="px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-semibold transition-colors"
+              >
+                Next →
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Donation Config Tab */}
+        {activeTab === "donation_config" && formData.has_donation && (
+          <div className="space-y-6">
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <p className="text-sm text-blue-800">
+                Configure donation options for your event (money and/or items).
+              </p>
+            </div>
+
+            <div className="bg-white rounded-lg shadow-sm p-6">
+              <DonationConfigManager
+                config={donationModule.config}
+                moneyOptions={donationModule.moneyOptions}
+                itemOptions={donationModule.itemOptions}
+                onUpdateConfig={donationModule.updateConfig}
+                onAddMoneyOption={donationModule.addMoneyOption}
+                onUpdateMoneyOption={donationModule.updateMoneyOpt}
+                onRemoveMoneyOption={donationModule.removeMoneyOption}
+                onAddItemOption={donationModule.addItemOption}
+                onUpdateItemOption={donationModule.updateItemOpt}
+                onRemoveItemOption={donationModule.removeItemOption}
+              />
+            </div>
+
+            {/* Navigation */}
+            <div className="flex justify-between">
+              <button
+                type="button"
+                onClick={() => {
+                  if (formData.has_volunteer) setActiveTab("volunteer_config");
+                  else setActiveTab("module_selection");
+                }}
+                className="px-6 py-3 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg font-semibold transition-colors"
+              >
+                ← Back
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (formData.has_participant)
+                    setActiveTab("participant_config");
+                  else setActiveTab("content");
+                }}
+                className="px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-semibold transition-colors"
+              >
+                Next →
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Participant Config Tab */}
+        {activeTab === "participant_config" && formData.has_participant && (
+          <div className="space-y-6">
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <p className="text-sm text-blue-800">
+                Configure participant categories, fees, and registration
+                options.
+              </p>
+            </div>
+
+            <div className="bg-white rounded-lg shadow-sm p-6">
+              <ParticipantCategoryManager
+                config={participantModule.config}
+                categories={participantModule.categories}
+                feeTiers={participantModule.feeTiers}
+                onUpdateConfig={participantModule.updateConfig}
+                onAddCategory={participantModule.addCategory}
+                onUpdateCategory={participantModule.updateCat}
+                onRemoveCategory={participantModule.removeCategory}
+                onAddTier={participantModule.addTier}
+                onUpdateTier={participantModule.updateTier}
+                onRemoveTier={participantModule.removeTier}
+              />
+            </div>
+
+            {/* Navigation */}
+            <div className="flex justify-between">
+              <button
+                type="button"
+                onClick={() => {
+                  if (formData.has_donation) setActiveTab("donation_config");
+                  else if (formData.has_volunteer)
+                    setActiveTab("volunteer_config");
+                  else setActiveTab("module_selection");
+                }}
+                className="px-6 py-3 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg font-semibold transition-colors"
+              >
+                ← Back
               </button>
               <button
                 type="button"
@@ -655,6 +784,7 @@ export default function CreateEventPage() {
               <EventSectionsManager
                 eventId={createdEventId}
                 sections={eventSections}
+                event={formData} // Pass formData to check enabled modules
                 onUpdate={async () => {
                   // Reload sections after add/update/delete
                   if (createdEventId) {
@@ -670,10 +800,19 @@ export default function CreateEventPage() {
             <div className="flex justify-between items-center bg-white rounded-lg shadow-sm p-6">
               <button
                 type="button"
-                onClick={() => setActiveTab("modules")}
+                onClick={() => {
+                  // Navigate to last enabled module config
+                  if (formData.has_participant)
+                    setActiveTab("participant_config");
+                  else if (formData.has_donation)
+                    setActiveTab("donation_config");
+                  else if (formData.has_volunteer)
+                    setActiveTab("volunteer_config");
+                  else setActiveTab("module_selection");
+                }}
                 className="px-6 py-3 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg font-semibold transition-colors"
               >
-                ← Back to Modules
+                ← Back
               </button>
 
               <div className="flex gap-3">

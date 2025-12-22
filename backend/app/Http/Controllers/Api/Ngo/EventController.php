@@ -62,6 +62,8 @@ class EventController extends Controller
             'has_participant' => 'boolean',
             'start_date' => 'required|date',
             'end_date' => 'required|date|after_or_equal:start_date',
+            'has_event_date' => 'boolean',
+            'event_date' => $request->has_event_date ? 'required|date' : 'nullable|date',
             'thumbnail' => 'nullable|string',
         ]);
 
@@ -82,6 +84,8 @@ class EventController extends Controller
             'has_participant' => $request->has_participant ?? false,
             'start_date' => $request->start_date,
             'end_date' => $request->end_date,
+            'has_event_date' => $request->has_event_date ?? false,
+            'event_date' => $request->has_event_date ? $request->event_date : null,
             'status' => 'open',
             'is_published' => false,
             'thumbnail' => $request->thumbnail,
@@ -108,7 +112,17 @@ class EventController extends Controller
 
         $event = Event::where('id', $id)
             ->where('ngo_id', $ngo->id)
-            ->with(['sections'])  // images is JSON field in sections, not a relationship
+            ->with([
+                'sections',
+                'ngo',
+                'participantCategories',
+                'volunteerRoles' => function($query) {
+                    $query->with(['shifts', 'roleType', 'requiredSkill']);
+                },
+                'donationConfig',
+                'moneyDonationOptions',
+                'itemDonationOptions'
+            ])
             ->first();
 
         if (!$event) {
@@ -117,7 +131,19 @@ class EventController extends Controller
             ], 404);
         }
 
-        return response()->json($event);
+        // Ensure volunteerRoles is always an array in JSON response
+        $eventArray = $event->toArray();
+        if (!isset($eventArray['volunteer_roles'])) {
+            $eventArray['volunteer_roles'] = [];
+        }
+        if (!isset($eventArray['money_donation_options'])) {
+            $eventArray['money_donation_options'] = [];
+        }
+        if (!isset($eventArray['item_donation_options'])) {
+            $eventArray['item_donation_options'] = [];
+        }
+
+        return response()->json($eventArray);
     }
 
     /**
@@ -151,6 +177,8 @@ class EventController extends Controller
             'has_participant' => 'boolean',
             'start_date' => 'date',
             'end_date' => 'date|after_or_equal:start_date',
+            'has_event_date' => 'boolean',
+            'event_date' => $request->has_event_date ? 'required|date' : 'nullable|date',
             'status' => 'in:open,closed,completed',
             'thumbnail' => 'nullable|string',
         ]);
@@ -162,7 +190,8 @@ class EventController extends Controller
             ], 422);
         }
 
-        $event->update($request->only([
+        // Clear event_date if has_event_date is false
+        $updateData = $request->only([
             'title',
             'description',
             'has_volunteer',
@@ -170,9 +199,20 @@ class EventController extends Controller
             'has_participant',
             'start_date',
             'end_date',
+            'has_event_date',
             'status',
             'thumbnail',
-        ]));
+        ]);
+        
+        if (isset($updateData['has_event_date'])) {
+            if ($updateData['has_event_date']) {
+                $updateData['event_date'] = $request->event_date;
+            } else {
+                $updateData['event_date'] = null;
+            }
+        }
+
+        $event->update($updateData);
 
         return response()->json([
             'message' => 'Event updated successfully',

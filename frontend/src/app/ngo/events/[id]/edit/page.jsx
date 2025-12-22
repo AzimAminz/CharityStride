@@ -25,6 +25,7 @@ import VolunteerRoleManager from "../../../../components/event-modules/Volunteer
 import DonationConfigManager from "../../../../components/event-modules/DonationConfigManager";
 import ParticipantCategoryManager from "../../../../components/event-modules/ParticipantCategoryManager";
 import EventSectionsManager from "../../../../components/EventSectionsManager";
+import { DateInput } from "../../../../components/inputs";
 
 export default function EditEventPage() {
   const router = useRouter();
@@ -38,6 +39,8 @@ export default function EditEventPage() {
     description: "",
     start_date: "",
     end_date: "",
+    event_date: "",
+    has_event_date: false,
     has_volunteer: false,
     has_donation: false,
     has_participant: false,
@@ -49,6 +52,7 @@ export default function EditEventPage() {
   const [publishing, setPublishing] = useState(false);
   const [activeTab, setActiveTab] = useState("basic");
   const [eventSections, setEventSections] = useState([]);
+  const [validationErrors, setValidationErrors] = useState({});
 
   // Module hooks (initialized with event ID)
   const volunteerModule = useVolunteerModule(id);
@@ -64,6 +68,8 @@ export default function EditEventPage() {
         // Extract date part only (YYYY-MM-DD) from datetime
         start_date: event.start_date ? event.start_date.split("T")[0] : "",
         end_date: event.end_date ? event.end_date.split("T")[0] : "",
+        event_date: event.event_date ? event.event_date.split("T")[0] : "",
+        has_event_date: event.has_event_date || false,
         has_volunteer: event.has_volunteer || false,
         has_donation: event.has_donation || false,
         has_participant: event.has_participant || false,
@@ -97,6 +103,36 @@ export default function EditEventPage() {
 
   const handleSave = async (e) => {
     e.preventDefault();
+
+    // Custom validation - synced with create page
+    const errors = {};
+    if (!formData.title?.trim()) {
+      errors.title = "Title is required";
+    }
+    if (!formData.description?.trim()) {
+      errors.description = "Description is required";
+    }
+    if (!formData.start_date) {
+      errors.start_date = "Start date is required";
+    }
+    if (!formData.end_date) {
+      errors.end_date = "End date is required";
+    } else if (formData.start_date && formData.end_date < formData.start_date) {
+      errors.end_date = "End date must be after start date";
+    }
+    if (!formData.thumbnail) {
+      errors.thumbnail = "Event thumbnail is required";
+    }
+    if (formData.has_event_date && !formData.event_date) {
+      errors.event_date = "Event date is required when enabled";
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setValidationErrors(errors);
+      return;
+    }
+
+    setValidationErrors({});
     setLoading(true);
     setError(null);
 
@@ -126,9 +162,24 @@ export default function EditEventPage() {
 
   const tabs = [
     { id: "basic", label: "Basic Info", icon: FileText },
-    { id: "modules", label: "Modules", icon: Users },
+    { id: "module_selection", label: "Module Selection", icon: Users },
+    formData.has_volunteer && {
+      id: "volunteer_config",
+      label: "Volunteer Config",
+      icon: Users,
+    },
+    formData.has_donation && {
+      id: "donation_config",
+      label: "Donation Config",
+      icon: DollarSign,
+    },
+    formData.has_participant && {
+      id: "participant_config",
+      label: "Participant Config",
+      icon: HandHeart,
+    },
     { id: "content", label: "Content", icon: FileText },
-  ];
+  ].filter(Boolean);
 
   if (loadingEvent) {
     return (
@@ -242,11 +293,28 @@ export default function EditEventPage() {
                       <input
                         type="text"
                         value={formData.title}
-                        onChange={(e) => handleChange("title", e.target.value)}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                        onChange={(e) => {
+                          handleChange("title", e.target.value);
+                          if (validationErrors.title) {
+                            setValidationErrors({
+                              ...validationErrors,
+                              title: null,
+                            });
+                          }
+                        }}
+                        className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent ${
+                          validationErrors.title
+                            ? "border-red-500"
+                            : "border-gray-300"
+                        }`}
                         placeholder="e.g., Community Cleanup Drive 2025"
                         required
                       />
+                      {validationErrors.title && (
+                        <p className="mt-1 text-sm text-red-600">
+                          {validationErrors.title}
+                        </p>
+                      )}
                     </div>
 
                     <div>
@@ -255,88 +323,154 @@ export default function EditEventPage() {
                       </label>
                       <textarea
                         value={formData.description}
-                        onChange={(e) =>
-                          handleChange("description", e.target.value)
-                        }
+                        onChange={(e) => {
+                          handleChange("description", e.target.value);
+                          if (validationErrors.description) {
+                            setValidationErrors({
+                              ...validationErrors,
+                              description: null,
+                            });
+                          }
+                        }}
                         rows={4}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                        className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent ${
+                          validationErrors.description
+                            ? "border-red-500"
+                            : "border-gray-300"
+                        }`}
                         placeholder="Describe your event..."
                         required
                       />
+                      {validationErrors.description && (
+                        <p className="mt-1 text-sm text-red-600">
+                          {validationErrors.description}
+                        </p>
+                      )}
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Start Date *
+                          Start Registration Date *
                         </label>
-                        <input
-                          type="date"
+                        <DateInput
                           value={formData.start_date}
-                          onChange={(e) =>
-                            handleChange("start_date", e.target.value)
-                          }
-                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-                          required
+                          onChange={(value) => {
+                            handleChange("start_date", value);
+                            if (validationErrors.start_date) {
+                              setValidationErrors({
+                                ...validationErrors,
+                                start_date: null,
+                              });
+                            }
+                          }}
+                          disablePast={true}
+                          compareWith={formData.end_date}
+                          compareType="before"
+                          className={`${
+                            validationErrors.start_date
+                              ? "border-red-500"
+                              : "border-gray-300"
+                          }`}
                         />
+                        {validationErrors.start_date && (
+                          <p className="mt-1 text-sm text-red-600">
+                            {validationErrors.start_date}
+                          </p>
+                        )}
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">
-                          End Date *
+                          End Registration Date *
                         </label>
-                        <input
-                          type="date"
+                        <DateInput
                           value={formData.end_date}
-                          onChange={(e) =>
-                            handleChange("end_date", e.target.value)
-                          }
-                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-                          required
+                          onChange={(value) => {
+                            handleChange("end_date", value);
+                            if (validationErrors.end_date) {
+                              setValidationErrors({
+                                ...validationErrors,
+                                end_date: null,
+                              });
+                            }
+                          }}
+                          min={formData.start_date}
+                          compareWith={formData.start_date}
+                          compareType="after"
+                          className={`${
+                            validationErrors.end_date
+                              ? "border-red-500"
+                              : "border-gray-300"
+                          }`}
                         />
+                        {validationErrors.end_date && (
+                          <p className="mt-1 text-sm text-red-600">
+                            {validationErrors.end_date}
+                          </p>
+                        )}
                       </div>
                     </div>
-                  </div>
-                </div>
 
-                {/* Module Selection */}
-                <div className="bg-white rounded-lg shadow-sm p-6">
-                  <h2 className="text-xl font-semibold text-gray-900 mb-4">
-                    Enable Modules
-                  </h2>
-                  <p className="text-sm text-gray-600 mb-4">
-                    Select which modules you want to enable for this event.
-                  </p>
+                    <div className="border border-gray-200 rounded-lg p-4 bg-gray-50">
+                      <label className="flex items-center gap-3 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={formData.has_event_date}
+                          onChange={(e) => {
+                            handleChange("has_event_date", e.target.checked);
+                            if (!e.target.checked) {
+                              handleChange("event_date", "");
+                              // Clear validation errors
+                              if (validationErrors.event_date) {
+                                setValidationErrors({
+                                  ...validationErrors,
+                                  event_date: null,
+                                });
+                              }
+                            }
+                          }}
+                          className="w-4 h-4 text-emerald-600 border-gray-300 rounded focus:ring-emerald-500"
+                        />
+                        <span className="text-sm font-medium text-gray-700">
+                          Set specific event date
+                        </span>
+                      </label>
 
-                  <div className="space-y-3">
-                    <ModuleToggle
-                      label="Volunteer Module"
-                      description="Allow people to register as volunteers for various roles and shifts"
-                      checked={formData.has_volunteer}
-                      onChange={(checked) =>
-                        handleModuleToggle("has_volunteer", checked)
-                      }
-                      icon={Users}
-                    />
-
-                    <ModuleToggle
-                      label="Donation Module"
-                      description="Accept money or item donations for your event"
-                      checked={formData.has_donation}
-                      onChange={(checked) =>
-                        handleModuleToggle("has_donation", checked)
-                      }
-                      icon={DollarSign}
-                    />
-
-                    <ModuleToggle
-                      label="Participant Module"
-                      description="Accept participant registrations with categories and pricing"
-                      checked={formData.has_participant}
-                      onChange={(checked) =>
-                        handleModuleToggle("has_participant", checked)
-                      }
-                      icon={HandHeart}
-                    />
+                      {formData.has_event_date && (
+                        <div className="mt-4 pl-7">
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Event Date *
+                          </label>
+                          <input
+                            type="date"
+                            value={formData.event_date}
+                            onChange={(e) => {
+                              handleChange("event_date", e.target.value);
+                              // Clear validation error when user types
+                              if (validationErrors.event_date) {
+                                setValidationErrors({
+                                  ...validationErrors,
+                                  event_date: null,
+                                });
+                              }
+                            }}
+                            className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent ${
+                              validationErrors.event_date
+                                ? "border-red-500"
+                                : "border-gray-300"
+                            }`}
+                          />
+                          {validationErrors.event_date && (
+                            <p className="mt-1 text-sm text-red-600">
+                              {validationErrors.event_date}
+                            </p>
+                          )}
+                          <p className="text-xs text-gray-500 mt-1">
+                            Actual date when the event takes place
+                          </p>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -404,77 +538,57 @@ export default function EditEventPage() {
           </form>
         )}
 
-        {/* Modules Tab */}
-        {activeTab === "modules" && (
+        {/* Module Selection Tab */}
+        {activeTab === "module_selection" && (
           <div className="space-y-6">
-            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-              <p className="text-sm text-yellow-800">
-                Configure the modules you enabled. These settings determine how
-                users can interact with your event.
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <p className="text-sm text-blue-800">
+                Select which modules you want to enable for this event. Changes
+                are saved automatically.
               </p>
             </div>
 
-            {/* Volunteer Module */}
-            {formData.has_volunteer && (
-              <div className="bg-white rounded-lg shadow-sm p-6">
-                <VolunteerRoleManager
-                  roles={volunteerModule.roles}
-                  shifts={volunteerModule.shifts}
-                  onAddRole={volunteerModule.addRole}
-                  onUpdateRole={volunteerModule.updateRole}
-                  onRemoveRole={volunteerModule.removeRole}
-                  onAddShift={volunteerModule.addShift}
-                  onUpdateShift={volunteerModule.updateShift}
-                  onRemoveShift={volunteerModule.removeShift}
+            <div className="bg-white rounded-lg shadow-sm p-6">
+              <h2 className="text-xl font-semibold text-gray-900 mb-4">
+                Enable Modules
+              </h2>
+              <p className="text-sm text-gray-600 mb-4">
+                Choose the modules you need. Each module adds specific
+                functionality to your event.
+              </p>
+
+              <div className="space-y-3">
+                <ModuleToggle
+                  label="Volunteer Module"
+                  description="Allow people to register as volunteers for various roles and shifts"
+                  checked={formData.has_volunteer}
+                  onChange={(checked) =>
+                    handleModuleToggle("has_volunteer", checked)
+                  }
+                  icon={Users}
+                />
+
+                <ModuleToggle
+                  label="Donation Module"
+                  description="Accept money or item donations for your event"
+                  checked={formData.has_donation}
+                  onChange={(checked) =>
+                    handleModuleToggle("has_donation", checked)
+                  }
+                  icon={DollarSign}
+                />
+
+                <ModuleToggle
+                  label="Participant Module"
+                  description="Accept participant registrations with categories and pricing"
+                  checked={formData.has_participant}
+                  onChange={(checked) =>
+                    handleModuleToggle("has_participant", checked)
+                  }
+                  icon={HandHeart}
                 />
               </div>
-            )}
-
-            {/* Donation Module */}
-            {formData.has_donation && (
-              <div className="bg-white rounded-lg shadow-sm p-6">
-                <DonationConfigManager
-                  config={donationModule.config}
-                  moneyOptions={donationModule.moneyOptions}
-                  itemOptions={donationModule.itemOptions}
-                  onUpdateConfig={donationModule.updateConfig}
-                  onAddMoneyOption={donationModule.addMoneyOption}
-                  onUpdateMoneyOption={donationModule.updateMoneyOpt}
-                  onRemoveMoneyOption={donationModule.removeMoneyOption}
-                  onAddItemOption={donationModule.addItemOption}
-                  onUpdateItemOption={donationModule.updateItemOpt}
-                  onRemoveItemOption={donationModule.removeItemOption}
-                />
-              </div>
-            )}
-
-            {/* Participant Module */}
-            {formData.has_participant && (
-              <div className="bg-white rounded-lg shadow-sm p-6">
-                <ParticipantCategoryManager
-                  config={participantModule.config}
-                  categories={participantModule.categories}
-                  feeTiers={participantModule.feeTiers}
-                  onUpdateConfig={participantModule.updateConfig}
-                  onAddCategory={participantModule.addCategory}
-                  onUpdateCategory={participantModule.updateCat}
-                  onRemoveCategory={participantModule.removeCategory}
-                  onAddTier={participantModule.addTier}
-                  onUpdateTier={participantModule.updateTier}
-                  onRemoveTier={participantModule.removeTier}
-                />
-              </div>
-            )}
-
-            {!formData.has_volunteer &&
-              !formData.has_donation &&
-              !formData.has_participant && (
-                <div className="bg-white rounded-lg shadow-sm p-12 text-center">
-                  <p className="text-gray-500">
-                    No modules enabled. Go back to Basic Info to enable modules.
-                  </p>
-                </div>
-              )}
+            </div>
 
             {/* Navigation */}
             <div className="flex justify-between">
@@ -484,6 +598,161 @@ export default function EditEventPage() {
                 className="px-6 py-3 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg font-semibold transition-colors"
               >
                 ← Back to Basic Info
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (formData.has_volunteer) setActiveTab("volunteer_config");
+                  else if (formData.has_donation)
+                    setActiveTab("donation_config");
+                  else if (formData.has_participant)
+                    setActiveTab("participant_config");
+                  else setActiveTab("content");
+                }}
+                className="px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-semibold transition-colors"
+              >
+                Next: Configure Modules →
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Volunteer Config Tab */}
+        {activeTab === "volunteer_config" && formData.has_volunteer && (
+          <div className="space-y-6">
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <p className="text-sm text-blue-800">
+                Configure volunteer roles and shifts for your event.
+              </p>
+            </div>
+
+            <div className="bg-white rounded-lg shadow-sm p-6">
+              <VolunteerRoleManager
+                roles={volunteerModule.roles}
+                shifts={volunteerModule.shifts}
+                onAddRole={volunteerModule.addRole}
+                onUpdateRole={volunteerModule.updateRole}
+                onRemoveRole={volunteerModule.removeRole}
+                onAddShift={volunteerModule.addShift}
+                onUpdateShift={volunteerModule.updateShift}
+                onRemoveShift={volunteerModule.removeShift}
+              />
+            </div>
+
+            {/* Navigation */}
+            <div className="flex justify-between">
+              <button
+                type="button"
+                onClick={() => setActiveTab("module_selection")}
+                className="px-6 py-3 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg font-semibold transition-colors"
+              >
+                ← Back to Module Selection
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (formData.has_donation) setActiveTab("donation_config");
+                  else if (formData.has_participant)
+                    setActiveTab("participant_config");
+                  else setActiveTab("content");
+                }}
+                className="px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-semibold transition-colors"
+              >
+                Next →
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Donation Config Tab */}
+        {activeTab === "donation_config" && formData.has_donation && (
+          <div className="space-y-6">
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <p className="text-sm text-blue-800">
+                Configure donation options for your event (money and/or items).
+              </p>
+            </div>
+
+            <div className="bg-white rounded-lg shadow-sm p-6">
+              <DonationConfigManager
+                config={donationModule.config}
+                moneyOptions={donationModule.moneyOptions}
+                itemOptions={donationModule.itemOptions}
+                onUpdateConfig={donationModule.updateConfig}
+                onAddMoneyOption={donationModule.addMoneyOption}
+                onUpdateMoneyOption={donationModule.updateMoneyOpt}
+                onRemoveMoneyOption={donationModule.removeMoneyOption}
+                onAddItemOption={donationModule.addItemOption}
+                onUpdateItemOption={donationModule.updateItemOpt}
+                onRemoveItemOption={donationModule.removeItemOption}
+              />
+            </div>
+
+            {/* Navigation */}
+            <div className="flex justify-between">
+              <button
+                type="button"
+                onClick={() => {
+                  if (formData.has_volunteer) setActiveTab("volunteer_config");
+                  else setActiveTab("module_selection");
+                }}
+                className="px-6 py-3 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg font-semibold transition-colors"
+              >
+                ← Back
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (formData.has_participant)
+                    setActiveTab("participant_config");
+                  else setActiveTab("content");
+                }}
+                className="px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-semibold transition-colors"
+              >
+                Next →
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Participant Config Tab */}
+        {activeTab === "participant_config" && formData.has_participant && (
+          <div className="space-y-6">
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <p className="text-sm text-blue-800">
+                Configure participant categories, fees, and registration
+                options.
+              </p>
+            </div>
+
+            <div className="bg-white rounded-lg shadow-sm p-6">
+              <ParticipantCategoryManager
+                config={participantModule.config}
+                categories={participantModule.categories}
+                feeTiers={participantModule.feeTiers}
+                onUpdateConfig={participantModule.updateConfig}
+                onAddCategory={participantModule.addCategory}
+                onUpdateCategory={participantModule.updateCat}
+                onRemoveCategory={participantModule.removeCategory}
+                onAddTier={participantModule.addTier}
+                onUpdateTier={participantModule.updateTier}
+                onRemoveTier={participantModule.removeTier}
+              />
+            </div>
+
+            {/* Navigation */}
+            <div className="flex justify-between">
+              <button
+                type="button"
+                onClick={() => {
+                  if (formData.has_donation) setActiveTab("donation_config");
+                  else if (formData.has_volunteer)
+                    setActiveTab("volunteer_config");
+                  else setActiveTab("module_selection");
+                }}
+                className="px-6 py-3 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg font-semibold transition-colors"
+              >
+                ← Back
               </button>
               <button
                 type="button"
@@ -510,6 +779,7 @@ export default function EditEventPage() {
               <EventSectionsManager
                 eventId={id}
                 sections={eventSections}
+                event={formData} // Pass formData to check enabled modules
                 onUpdate={async () => {
                   // Reload event to get updated sections
                   if (id) {
@@ -525,10 +795,18 @@ export default function EditEventPage() {
             <div className="flex justify-between items-center bg-white rounded-lg shadow-sm p-6">
               <button
                 type="button"
-                onClick={() => setActiveTab("modules")}
+                onClick={() => {
+                  if (formData.has_participant)
+                    setActiveTab("participant_config");
+                  else if (formData.has_donation)
+                    setActiveTab("donation_config");
+                  else if (formData.has_volunteer)
+                    setActiveTab("volunteer_config");
+                  else setActiveTab("module_selection");
+                }}
                 className="px-6 py-3 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg font-semibold transition-colors"
               >
-                ← Back to Modules
+                ← Back
               </button>
 
               <div className="flex gap-3">
