@@ -64,6 +64,9 @@ class EventController extends Controller
             'end_date' => 'required|date|after_or_equal:start_date',
             'has_event_date' => 'boolean',
             'event_date' => $request->has_event_date ? 'required|date' : 'nullable|date',
+            'longitude' => 'nullable|numeric|between:-180,180',
+            'latitude' => 'nullable|numeric|between:-90,90',
+            'address' => 'nullable|string',
             'thumbnail' => 'nullable|string',
         ]);
 
@@ -86,6 +89,9 @@ class EventController extends Controller
             'end_date' => $request->end_date,
             'has_event_date' => $request->has_event_date ?? false,
             'event_date' => $request->has_event_date ? $request->event_date : null,
+            'longitude' => $request->longitude,
+            'latitude' => $request->latitude,
+            'address' => $request->address,
             'status' => 'open',
             'is_published' => false,
             'thumbnail' => $request->thumbnail,
@@ -179,6 +185,9 @@ class EventController extends Controller
             'end_date' => 'date|after_or_equal:start_date',
             'has_event_date' => 'boolean',
             'event_date' => $request->has_event_date ? 'required|date' : 'nullable|date',
+            'longitude' => 'nullable|numeric|between:-180,180',
+            'latitude' => 'nullable|numeric|between:-90,90',
+            'address' => 'nullable|string',
             'status' => 'in:open,closed,completed',
             'thumbnail' => 'nullable|string',
         ]);
@@ -200,6 +209,9 @@ class EventController extends Controller
             'start_date',
             'end_date',
             'has_event_date',
+            'longitude',
+            'latitude',
+            'address',
             'status',
             'thumbnail',
         ]);

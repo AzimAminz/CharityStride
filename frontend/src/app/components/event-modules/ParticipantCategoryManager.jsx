@@ -11,6 +11,7 @@ import {
   Save,
   X,
   MapPin,
+  Check,
 } from "lucide-react";
 import SavedLocationPicker from "../SavedLocationPicker";
 import { FEE_TYPES, TIER_TYPES } from "../../lib/api/participant";
@@ -62,6 +63,7 @@ export default function ParticipantCategoryManager({
     event_time: "",
     capacity_type: "unlimited", // Radio: unlimited or limited
     capacity: "", // Only required if capacity_type === "limited"
+    has_category_location: false, // Checkbox to enable category-specific location
     location_type: "event_location",
     location_name: "",
     latitude: null,
@@ -92,6 +94,7 @@ export default function ParticipantCategoryManager({
       event_time: "",
       capacity_type: "unlimited",
       capacity: "",
+      has_category_location: false,
       location_type: "event_location",
       location_name: "",
       latitude: null,
@@ -488,52 +491,105 @@ export default function ParticipantCategoryManager({
               </div>
             )}
 
-            {/* Location Picker */}
+            {/* Category Location Checkbox */}
             <div className="col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Category Location
-              </label>
-              <SavedLocationPicker
-                value={{
-                  address: categoryForm.location_name || "",
-                  latitude: categoryForm.latitude,
-                  longitude: categoryForm.longitude,
-                }}
-                onChange={(location) => {
-                  setCategoryForm({
-                    ...categoryForm,
-                    location_type: location.address
-                      ? "custom"
-                      : "event_location",
-                    location_name: location.address,
-                    latitude: location.latitude,
-                    longitude: location.longitude,
-                  });
-                }}
-                placeholder="Use event location or select custom location..."
-              />
-            </div>
-
-            {/* Location Details */}
-            {categoryForm.location_name && (
-              <div className="col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Location Details (Optional)
+              <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-xl p-4">
+                <label className="flex items-start gap-3 cursor-pointer group">
+                  <div className="relative flex items-center">
+                    <input
+                      type="checkbox"
+                      checked={categoryForm.has_category_location}
+                      onChange={(e) => {
+                        const isChecked = e.target.checked;
+                        setCategoryForm({
+                          ...categoryForm,
+                          has_category_location: isChecked,
+                          // Clear location fields when unchecking
+                          location_type: isChecked
+                            ? categoryForm.location_type
+                            : "event_location",
+                          location_name: isChecked
+                            ? categoryForm.location_name
+                            : "",
+                          latitude: isChecked ? categoryForm.latitude : null,
+                          longitude: isChecked ? categoryForm.longitude : null,
+                          location_details: isChecked
+                            ? categoryForm.location_details
+                            : "",
+                        });
+                      }}
+                      className="peer sr-only"
+                    />
+                    <div className="w-6 h-6 rounded-lg border-2 border-blue-300 peer-checked:bg-blue-600 peer-checked:border-blue-600 transition-all duration-200 flex items-center justify-center group-hover:border-blue-400">
+                      {categoryForm.has_category_location && (
+                        <Check className="h-4 w-4 text-white" />
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <MapPin className="h-5 w-5 text-blue-600" />
+                      <span className="font-semibold text-gray-900">
+                        {language === "ms"
+                          ? "Lokasi Kategori Berbeza"
+                          : "Different Category Location"}
+                      </span>
+                    </div>
+                    <p className="text-sm text-gray-600 mt-1 leading-relaxed">
+                      {language === "ms"
+                        ? "Tetapkan lokasi khusus untuk kategori ini jika berbeza dari lokasi acara utama (cth: garisan permulaan yang berlainan)"
+                        : "Set a specific location for this category if different from the main event location (e.g., different starting line)"}
+                    </p>
+                  </div>
                 </label>
-                <textarea
-                  value={categoryForm.location_details}
-                  onChange={(e) =>
-                    setCategoryForm({
-                      ...categoryForm,
-                      location_details: e.target.value,
-                    })
-                  }
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                  rows={2}
-                  placeholder="Specific instructions (e.g., 'Meet at the main entrance')"
-                />
+
+                {/* Location Picker - Inside gradient box when checked */}
+                {categoryForm.has_category_location && (
+                  <div className="mt-4 pt-4 border-t border-blue-200 space-y-3">
+                    <SavedLocationPicker
+                      value={{
+                        address: categoryForm.location_name || "",
+                        latitude: categoryForm.latitude,
+                        longitude: categoryForm.longitude,
+                      }}
+                      onChange={(location) => {
+                        setCategoryForm({
+                          ...categoryForm,
+                          location_type: location.address
+                            ? "custom"
+                            : "event_location",
+                          location_name: location.address,
+                          latitude: location.latitude,
+                          longitude: location.longitude,
+                        });
+                      }}
+                      placeholder="Select category location..."
+                    />
+
+                    {/* Location Details */}
+                    {categoryForm.location_name && (
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Location Details (Optional)
+                        </label>
+                        <textarea
+                          value={categoryForm.location_details}
+                          onChange={(e) =>
+                            setCategoryForm({
+                              ...categoryForm,
+                              location_details: e.target.value,
+                            })
+                          }
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                          rows={2}
+                          placeholder="Specific instructions (e.g., 'Meet at the main entrance')"
+                        />
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
-            )}
+            </div>
 
             {/* Description */}
             <div className="col-span-2">
@@ -816,6 +872,7 @@ export default function ParticipantCategoryManager({
                     event_time: category.event_time || "",
                     capacity_type: category.capacity_type,
                     capacity: category.capacity || "",
+                    has_category_location: !!category.location_name, // Auto-check if has location
                     location_type: category.location_type || "event_location",
                     location_name: category.location_name || "",
                     latitude: category.latitude,

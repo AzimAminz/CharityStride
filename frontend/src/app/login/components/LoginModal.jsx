@@ -6,7 +6,7 @@ import Link from "next/link";
 import useLogin from "../hooks/useLogin";
 import { PasswordField } from "../../components/PasswordField";
 import { InputField } from "../../components/InputField";
-import GoogleField from "../../components/GoogleField.";
+import GoogleField from "../../components/GoogleField";
 
 export default function LoginModal({ isOpen, onClose }) {
   const {
@@ -111,12 +111,12 @@ export default function LoginModal({ isOpen, onClose }) {
                 className={`
                  w-full py-2.5 rounded-xl font-medium shadow-md transition-all
                 ${
-               loading
-                ? "bg-gray-400 cursor-wait text-gray-100"
-               : "bg-emerald-500 hover:bg-emerald-600 text-white cursor-pointer"
-               }
+                  loading
+                    ? "bg-gray-400 cursor-wait text-gray-100"
+                    : "bg-emerald-500 hover:bg-emerald-600 text-white cursor-pointer"
+                }
                `}
-                >
+              >
                 {loading ? "Sign In..." : "Sign In"}
               </motion.button>
             </form>

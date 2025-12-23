@@ -89,7 +89,7 @@ export default function LocationPickerModal({
             <button
               onClick={handleGetCurrentLocation}
               disabled={isGettingLocation}
-              className="text-sm text-emerald-600 hover:text-emerald-700 font-medium"
+              className="text-sm text-emerald-600 hover:text-emerald-700 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-medium"
             >
               {isGettingLocation
                 ? "Getting location..."
@@ -106,19 +106,8 @@ export default function LocationPickerModal({
             className="w-full h-[400px] rounded-lg border-2 border-gray-300"
           />
 
-          {/* Coordinates Display */}
-          {coordinates.latitude && coordinates.longitude && (
-            <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4 space-y-2">
-              <h4 className="font-semibold text-emerald-900">
-                Selected Location:
-              </h4>
-              {coordinates.location && (
-                <p className="text-sm text-emerald-800">
-                  {coordinates.location}
-                </p>
-              )}
-            </div>
-          )}
+     
+          
         </div>
 
         {/* Footer */}

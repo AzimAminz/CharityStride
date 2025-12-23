@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   Plus,
   Trash2,
@@ -11,6 +11,7 @@ import {
   Edit2,
   Save,
   X,
+  Check,
 } from "lucide-react";
 import SavedLocationPicker from "../SavedLocationPicker";
 import {
@@ -21,6 +22,30 @@ import {
 import { NumericInput, DateInput } from "../inputs";
 import { useLanguage } from "../../contexts/LanguageContext";
 import ConfirmModal from "../ConfirmModal";
+import FormModal from "../FormModal";
+
+/**
+ * Format date from YYYY-MM-DD or ISO datetime to DD/MM/YYYY
+ */
+const formatDate = (dateString) => {
+  if (!dateString) return "";
+  // Extract date portion if it's a datetime string (e.g., "2025-12-18T00:00:00.000000Z")
+  const datePart = dateString.split("T")[0];
+  const [year, month, day] = datePart.split("-");
+  return `${day}/${month}/${year}`;
+};
+
+/**
+ * Format time from 24-hour (HH:mm) to 12-hour format (h:mm AM/PM)
+ */
+const formatTime = (timeString) => {
+  if (!timeString) return "";
+  const [hours, minutes] = timeString.split(":");
+  const hour = parseInt(hours, 10);
+  const ampm = hour >= 12 ? "PM" : "AM";
+  const hour12 = hour % 12 || 12;
+  return `${hour12}:${minutes} ${ampm}`;
+};
 
 /**
  * Component for managing volunteer roles and shifts
@@ -49,6 +74,7 @@ export default function VolunteerRoleManager({
     custom_role_name: "",
     required_skill_id: "",
     role_description: "",
+    has_role_location: false,
     location: "",
     latitude: null,
     longitude: null,
@@ -80,6 +106,29 @@ export default function VolunteerRoleManager({
     capacity: "",
   });
 
+  // Refs for scrolling
+  const roleFormRef = useRef(null);
+  const shiftFormRef = useRef(null);
+
+  // Auto-scroll to form when editing
+  useEffect(() => {
+    if (showRoleForm && editingRole && roleFormRef.current) {
+      roleFormRef.current.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+      });
+    }
+  }, [showRoleForm, editingRole]);
+
+  useEffect(() => {
+    if (editingShift && shiftFormRef.current) {
+      shiftFormRef.current.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+      });
+    }
+  }, [editingShift]);
+
   // Load lookup data on mount
   useEffect(() => {
     async function loadLookups() {
@@ -107,6 +156,7 @@ export default function VolunteerRoleManager({
       custom_role_name: "",
       required_skill_id: "",
       role_description: "",
+      has_role_location: false,
       location: "",
       latitude: null,
       longitude: null,
@@ -361,7 +411,10 @@ export default function VolunteerRoleManager({
 
       {/* Role Form */}
       {showRoleForm && (
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+        <div
+          ref={roleFormRef}
+          className="bg-blue-50 border border-blue-200 rounded-lg p-4"
+        >
           <h4 className="font-semibold text-blue-900 mb-4">
             {editingRole ? "Edit Role" : "New Volunteer Role"}
           </h4>
@@ -507,43 +560,89 @@ export default function VolunteerRoleManager({
               />
             </div>
 
-            {/* Location Picker with Saved Locations */}
+            {/* Optional Role Location */}
             <div className="col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Volunteer Location
-              </label>
-              <SavedLocationPicker
-                value={{
-                  address: roleForm.location || "",
-                  latitude: roleForm.latitude,
-                  longitude: roleForm.longitude,
-                }}
-                onChange={(location) => {
-                  setRoleForm({
-                    ...roleForm,
-                    location: location.address,
-                    latitude: location.latitude,
-                    longitude: location.longitude,
-                  });
-                }}
-                placeholder="Select volunteer location..."
-              />
-            </div>
+              <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-xl p-4">
+                <label className="flex items-start gap-3 cursor-pointer group">
+                  <div className="relative flex items-center">
+                    <input
+                      type="checkbox"
+                      checked={roleForm.has_role_location}
+                      onChange={(e) => {
+                        const isChecked = e.target.checked;
+                        setRoleForm({
+                          ...roleForm,
+                          has_role_location: isChecked,
+                          // Clear location fields when unchecking
+                          location: isChecked ? roleForm.location : "",
+                          latitude: isChecked ? roleForm.latitude : null,
+                          longitude: isChecked ? roleForm.longitude : null,
+                          location_details: isChecked
+                            ? roleForm.location_details
+                            : "",
+                        });
+                      }}
+                      className="peer sr-only"
+                    />
+                    <div className="w-6 h-6 rounded-lg border-2 border-blue-300 peer-checked:bg-blue-600 peer-checked:border-blue-600 transition-all duration-200 flex items-center justify-center group-hover:border-blue-400">
+                      {roleForm.has_role_location && (
+                        <Check className="h-4 w-4 text-white" />
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <MapPin className="h-5 w-5 text-blue-600" />
+                      <span className="font-semibold text-gray-900">
+                        Set Role-Specific Location
+                      </span>
+                    </div>
+                    <p className="text-sm text-gray-600 mt-1">
+                      Enable to specify where this role's activities take place
+                    </p>
+                  </div>
+                </label>
 
-            {/* Location Details */}
-            <div className="col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Location Details (Optional)
-              </label>
-              <textarea
-                value={roleForm.location_details}
-                onChange={(e) =>
-                  setRoleForm({ ...roleForm, location_details: e.target.value })
-                }
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500"
-                rows={2}
-                placeholder="Specific instructions or details about the location (e.g., 'Meet at the registration booth')"
-              />
+                {roleForm.has_role_location && (
+                  <div className="mt-4 pt-4 border-t border-blue-200 space-y-3">
+                    <SavedLocationPicker
+                      value={{
+                        address: roleForm.location || "",
+                        latitude: roleForm.latitude,
+                        longitude: roleForm.longitude,
+                      }}
+                      onChange={(location) => {
+                        setRoleForm({
+                          ...roleForm,
+                          location: location.address,
+                          latitude: location.latitude,
+                          longitude: location.longitude,
+                        });
+                      }}
+                      placeholder="Select role location..."
+                    />
+
+                    {/* Location Details */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Location Details (Optional)
+                      </label>
+                      <textarea
+                        value={roleForm.location_details}
+                        onChange={(e) =>
+                          setRoleForm({
+                            ...roleForm,
+                            location_details: e.target.value,
+                          })
+                        }
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500"
+                        rows={2}
+                        placeholder="e.g., 'Meet at registration booth'"
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* T-Shirt Option */}
@@ -681,6 +780,7 @@ export default function VolunteerRoleManager({
                     custom_role_name: role.custom_role_name || "",
                     required_skill_id: role.required_skill_id,
                     role_description: role.role_description || "",
+                    has_role_location: !!role.location,
                     location: role.location || "",
                     latitude: role.latitude || null,
                     longitude: role.longitude || null,
@@ -926,7 +1026,10 @@ export default function VolunteerRoleManager({
               <div key={shift.id}>
                 {editingShift?.id === shift.id ? (
                   /* Inline Edit Form */
-                  <div className="bg-blue-50 border border-blue-200 rounded p-3">
+                  <div
+                    ref={shiftFormRef}
+                    className="bg-blue-50 border border-blue-200 rounded p-3"
+                  >
                     <h6 className="text-xs font-semibold text-blue-900 mb-2">
                       {language === "ms" ? "Edit Shift" : "Edit Shift"}
                     </h6>
@@ -1101,19 +1204,24 @@ export default function VolunteerRoleManager({
                   </div>
                 ) : (
                   /* Display Mode */
-                  <div className="bg-gray-50 rounded p-2 text-sm flex items-start justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3 text-gray-900">
-                        <span className="flex items-center gap-1">
-                          <Calendar className="h-3 w-3" />
-                          {shift.shift_date}
+                  <div className="bg-gray-50 rounded p-2 text-sm flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex flex-wrap items-center gap-2 md:gap-3 text-gray-900 text-xs md:text-sm">
+                        <span className="flex items-center gap-1 whitespace-nowrap">
+                          <Calendar className="h-3 w-3 flex-shrink-0" />
+                          <span className="truncate">
+                            {formatDate(shift.shift_date)}
+                          </span>
                         </span>
-                        <span className="flex items-center gap-1">
-                          <Clock className="h-3 w-3" />
-                          {shift.start_time} - {shift.end_time}
+                        <span className="flex items-center gap-1 whitespace-nowrap">
+                          <Clock className="h-3 w-3 flex-shrink-0" />
+                          <span className="truncate">
+                            {formatTime(shift.start_time)} -{" "}
+                            {formatTime(shift.end_time)}
+                          </span>
                         </span>
-                        <span className="flex items-center gap-1">
-                          <Users className="h-3 w-3" />
+                        <span className="flex items-center gap-1 whitespace-nowrap">
+                          <Users className="h-3 w-3 flex-shrink-0" />
                           {shift.capacity}
                         </span>
                       </div>

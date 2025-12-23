@@ -20,6 +20,9 @@ export function useEventForm(initialData = null) {
       end_date: "",
       event_date: "",
       has_event_date: false,
+      longitude: null,
+      latitude: null,
+      address: "",
       thumbnail: null,
 
       // Module enablers

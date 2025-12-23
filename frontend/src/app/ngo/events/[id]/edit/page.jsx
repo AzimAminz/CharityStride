@@ -13,6 +13,7 @@ import {
   HandHeart,
   DollarSign,
   Eye,
+  MapPin,
 } from "lucide-react";
 import { useEventDetail } from "../../../../hooks/useEventDetail";
 import { useVolunteerModule } from "../../../../hooks/useVolunteerModule";
@@ -26,6 +27,7 @@ import DonationConfigManager from "../../../../components/event-modules/Donation
 import ParticipantCategoryManager from "../../../../components/event-modules/ParticipantCategoryManager";
 import EventSectionsManager from "../../../../components/EventSectionsManager";
 import { DateInput } from "../../../../components/inputs";
+import SavedLocationPicker from "../../../../components/SavedLocationPicker";
 
 export default function EditEventPage() {
   const router = useRouter();
@@ -41,6 +43,9 @@ export default function EditEventPage() {
     end_date: "",
     event_date: "",
     has_event_date: false,
+    longitude: null,
+    latitude: null,
+    address: "",
     has_volunteer: false,
     has_donation: false,
     has_participant: false,
@@ -70,6 +75,9 @@ export default function EditEventPage() {
         end_date: event.end_date ? event.end_date.split("T")[0] : "",
         event_date: event.event_date ? event.event_date.split("T")[0] : "",
         has_event_date: event.has_event_date || false,
+        longitude: event.longitude || null,
+        latitude: event.latitude || null,
+        address: event.address || "",
         has_volunteer: event.has_volunteer || false,
         has_donation: event.has_donation || false,
         has_participant: event.has_participant || false,
@@ -125,6 +133,13 @@ export default function EditEventPage() {
     }
     if (formData.has_event_date && !formData.event_date) {
       errors.event_date = "Event date is required when enabled";
+    }
+    // Location validation when volunteer or participant is enabled
+    if (
+      (formData.has_volunteer || formData.has_participant) &&
+      !formData.address
+    ) {
+      errors.address = "Event location is required";
     }
 
     if (Object.keys(errors).length > 0) {
@@ -220,16 +235,18 @@ export default function EditEventPage() {
             <ArrowLeft className="h-4 w-4" />
             Back to Events
           </Link>
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">Edit Event</h1>
-              <p className="text-gray-600 mt-1">
+              <h1 className="text-2xl md:text-3xl font-bold text-gray-900">
+                Edit Event
+              </h1>
+              <p className="text-sm md:text-base text-gray-600 mt-1">
                 Update your event details and manage modules
               </p>
             </div>
             <Link
               href={`/ngo/events/${id}/preview`}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold transition-colors"
+              className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold transition-colors text-sm md:text-base"
             >
               <Eye className="h-4 w-4" />
               Preview
@@ -244,30 +261,33 @@ export default function EditEventPage() {
         )}
 
         {/* Tabs */}
-        <div className="flex gap-2 mb-6 border-b">
-          {tabs.map((tab) => {
-            const Icon = tab.icon;
-            return (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-2 px-6 py-3 font-medium transition-colors border-b-2 ${
-                  activeTab === tab.id
-                    ? "text-emerald-600 border-emerald-600"
-                    : "text-gray-600 border-transparent hover:text-gray-900"
-                }`}
-              >
-                <Icon className="h-4 w-4" />
-                {tab.label}
-              </button>
-            );
-          })}
+        <div className="-mx-4 px-4 mb-6 overflow-x-auto">
+          <div className="flex gap-1 md:gap-2 border-b min-w-max">
+            {tabs.map((tab) => {
+              const Icon = tab.icon;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`flex items-center gap-1.5 md:gap-2 px-3 md:px-6 py-2.5 md:py-3 text-sm md:text-base font-medium transition-colors border-b-2 whitespace-nowrap ${
+                    activeTab === tab.id
+                      ? "text-emerald-600 border-emerald-600"
+                      : "text-gray-600 border-transparent hover:text-gray-900"
+                  }`}
+                >
+                  <Icon className="h-4 w-4" />
+                  <span className="hidden sm:inline">{tab.label}</span>
+                  <span className="sm:hidden">{tab.label.split(" ")[0]}</span>
+                </button>
+              );
+            })}
+          </div>
         </div>
 
         {/* Basic Info Tab */}
         {activeTab === "basic" && (
           <form onSubmit={handleSave} className="space-y-6">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
               {/* Main Form */}
               <div className="lg:col-span-2 space-y-6">
                 {/* Thumbnail */}
@@ -590,14 +610,41 @@ export default function EditEventPage() {
               </div>
             </div>
 
+            {/* Map Location - Show when volunteer or participant is enabled */}
+            {(formData.has_volunteer || formData.has_participant) && (
+              <div className="bg-white rounded-lg shadow-sm p-6">
+                <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                  <MapPin className="h-5 w-5" />
+                  Event Location
+                </h2>
+                <p className="text-sm text-gray-600 mb-4">
+                  Set the location where volunteer activities or participant
+                  activities will take place.
+                </p>
+                <SavedLocationPicker
+                  value={{
+                    address: formData.address || "",
+                    latitude: formData.latitude,
+                    longitude: formData.longitude,
+                  }}
+                  onChange={(location) => {
+                    handleChange("longitude", location.longitude);
+                    handleChange("latitude", location.latitude);
+                    handleChange("address", location.address);
+                  }}
+                  placeholder="Search for event location..."
+                />
+              </div>
+            )}
+
             {/* Navigation */}
             <div className="flex justify-between">
               <button
                 type="button"
                 onClick={() => setActiveTab("basic")}
-                className="px-6 py-3 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg font-semibold transition-colors"
+                className="px-6 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
               >
-                ← Back to Basic Info
+                ← Back
               </button>
               <button
                 type="button"

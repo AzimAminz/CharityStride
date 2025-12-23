@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import {
   Plus,
   Trash2,
@@ -72,6 +72,29 @@ export default function DonationConfigManager({
     unit: "",
   });
 
+  // Refs for scrolling
+  const moneyFormRef = useRef(null);
+  const itemFormRef = useRef(null);
+
+  // Auto-scroll to forms when editing
+  useEffect(() => {
+    if (showMoneyForm && editingMoneyId && moneyFormRef.current) {
+      moneyFormRef.current.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+      });
+    }
+  }, [showMoneyForm, editingMoneyId]);
+
+  useEffect(() => {
+    if (showItemForm && editingItemId && itemFormRef.current) {
+      itemFormRef.current.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+      });
+    }
+  }, [showItemForm, editingItemId]);
+
   const resetMoneyForm = () => {
     setMoneyForm({
       is_free_amount: false,
@@ -104,7 +127,7 @@ export default function DonationConfigManager({
         : "",
       description: option.description || "",
     });
-    setShowMoneyForm(true); // Show inline form for editing
+    // Don't show top form - inline editing only
   };
 
   const handleEditItemOption = (option) => {
@@ -372,9 +395,12 @@ export default function DonationConfigManager({
             </button>
           </div>
 
-          {/* Inline Money Form */}
-          {showMoneyForm && (
-            <div className="bg-white border border-emerald-300 rounded-lg p-4 mb-4">
+          {/* Top Form - Only for Adding New */}
+          {showMoneyForm && !editingMoneyId && (
+            <div
+              ref={moneyFormRef}
+              className="bg-white border border-emerald-300 rounded-lg p-4 mb-4"
+            >
               <div className="space-y-4">
                 {/* Free Amount Checkbox */}
                 <div className="flex items-center gap-2">
@@ -507,72 +533,197 @@ export default function DonationConfigManager({
           <div className="space-y-2">
             {moneyOptions.map((option) => (
               <div key={option.id} className="bg-white rounded p-3">
-                {/* Display mode */}
-                <div className="flex items-start justify-between">
-                  <div>
-                    {option.suggested_amount ? (
-                      <div className="text-emerald-600 font-semibold">
-                        RM {(option.suggested_amount / 100).toFixed(2)}
+                {editingMoneyId === option.id ? (
+                  // Inline Edit Form
+                  <div className="bg-emerald-50 border border-emerald-200 rounded p-3">
+                    <h6 className="text-sm font-semibold text-emerald-900 mb-3">
+                      {language === "ms"
+                        ? "Edit Pilihan Derma"
+                        : "Edit Donation Option"}
+                    </h6>
+                    <div className="space-y-3">
+                      {/* Free Amount Checkbox */}
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          id={`edit_free_amount_${option.id}`}
+                          checked={moneyForm.is_free_amount}
+                          onChange={(e) =>
+                            setMoneyForm({
+                              ...moneyForm,
+                              is_free_amount: e.target.checked,
+                            })
+                          }
+                          className="h-4 w-4 text-emerald-600 focus:ring-emerald-500 border-gray-300 rounded"
+                        />
+                        <label
+                          htmlFor={`edit_free_amount_${option.id}`}
+                          className="text-sm font-medium text-gray-700"
+                        >
+                          {language === "ms"
+                            ? "Benarkan jumlah bebas"
+                            : "Allow free amount"}
+                        </label>
                       </div>
-                    ) : (
-                      <div className="text-emerald-600 font-semibold">
-                        Free Amount (Any amount)
-                      </div>
-                    )}
-                    {option.description && (
-                      <div className="text-sm text-gray-600">
-                        {option.description}
-                      </div>
-                    )}
-                  </div>
-                  <div className="flex gap-1">
-                    <button
-                      type="button"
-                      onClick={() => handleEditMoneyOption(option)}
-                      className="p-1 text-blue-600 hover:bg-blue-50 rounded"
-                      title="Edit this option"
-                    >
-                      <Edit2 className="h-4 w-4" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={async () => {
-                        setConfirmModal({
-                          isOpen: true,
-                          title:
-                            language === "ms"
-                              ? "Padam Pilihan?"
-                              : "Delete Option?",
-                          message:
-                            language === "ms"
-                              ? "Adakah anda pasti mahu memadam pilihan derma wang ini?"
-                              : "Are you sure you want to delete this money donation option?",
-                          onConfirm: async () => {
-                            try {
-                              await onRemoveMoneyOption(option.id);
-                            } catch (err) {
-                              setAlertModal({
-                                isOpen: true,
-                                title: language === "ms" ? "Ralat" : "Error",
-                                message:
-                                  err.response?.data?.message ||
-                                  err.message ||
-                                  (language === "ms"
-                                    ? "Gagal memadam pilihan"
-                                    : "Failed to delete option"),
-                                type: "error",
+
+                      {/* Suggested Amount */}
+                      {!moneyForm.is_free_amount && (
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            {language === "ms" ? "Jumlah *" : "Amount *"}
+                          </label>
+                          <FeeInput
+                            value={moneyForm.suggested_amount}
+                            onChange={(value) => {
+                              setMoneyForm({
+                                ...moneyForm,
+                                suggested_amount: value,
+                              });
+                              if (moneyValidationErrors.suggested_amount) {
+                                setMoneyValidationErrors({
+                                  ...moneyValidationErrors,
+                                  suggested_amount: null,
+                                });
+                              }
+                            }}
+                            placeholder="0.00"
+                            language={language}
+                            error={moneyValidationErrors.suggested_amount}
+                            showHelper={false}
+                          />
+                        </div>
+                      )}
+
+                      {/* Description */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          {language === "ms" ? "Keterangan" : "Description"}
+                        </label>
+                        <input
+                          type="text"
+                          value={moneyForm.description}
+                          onChange={(e) => {
+                            setMoneyForm({
+                              ...moneyForm,
+                              description: e.target.value,
+                            });
+                            if (moneyValidationErrors.description) {
+                              setMoneyValidationErrors({
+                                ...moneyValidationErrors,
+                                description: null,
                               });
                             }
-                          },
-                        });
-                      }}
-                      className="p-1 text-red-600 hover:bg-red-50 rounded"
-                      title={language === "ms" ? "Padam" : "Delete"}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
+                          }}
+                          className={`w-full px-3 py-2 text-sm border rounded-lg focus:ring-2 ${
+                            moneyValidationErrors.description
+                              ? "border-red-500 focus:ring-red-500"
+                              : "border-gray-300 focus:ring-emerald-500"
+                          }`}
+                          placeholder={
+                            language === "ms"
+                              ? "cth: Penaja Gangsa"
+                              : "e.g., Bronze Sponsor"
+                          }
+                        />
+                        {moneyValidationErrors.description && (
+                          <p className="mt-1 text-xs text-red-600">
+                            {moneyValidationErrors.description}
+                          </p>
+                        )}
+                      </div>
+
+                      {/* Actions */}
+                      <div className="flex gap-2 mt-3">
+                        <button
+                          type="button"
+                          onClick={handleSaveMoneyOption}
+                          className="flex items-center gap-1 px-3 py-1.5 text-sm bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg"
+                        >
+                          <Save className="h-3 w-3" />
+                          {language === "ms" ? "Simpan" : "Save"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            resetMoneyForm();
+                            setMoneyValidationErrors({});
+                          }}
+                          className="flex items-center gap-1 px-3 py-1.5 text-sm bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg"
+                        >
+                          <X className="h-3 w-3" />
+                          {language === "ms" ? "Batal" : "Cancel"}
+                        </button>
+                      </div>
+                    </div>
                   </div>
-                </div>
+                ) : (
+                  // Display mode
+                  <div className="flex items-start justify-between">
+                    <div>
+                      {option.suggested_amount ? (
+                        <div className="text-emerald-600 font-semibold">
+                          RM {(option.suggested_amount / 100).toFixed(2)}
+                        </div>
+                      ) : (
+                        <div className="text-emerald-600 font-semibold">
+                          Free Amount (Any amount)
+                        </div>
+                      )}
+                      {option.description && (
+                        <div className="text-sm text-gray-600">
+                          {option.description}
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex gap-1">
+                      <button
+                        type="button"
+                        onClick={() => handleEditMoneyOption(option)}
+                        className="p-1 text-blue-600 hover:bg-blue-50 rounded"
+                        title="Edit this option"
+                      >
+                        <Edit2 className="h-4 w-4" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          setConfirmModal({
+                            isOpen: true,
+                            title:
+                              language === "ms"
+                                ? "Padam Pilihan?"
+                                : "Delete Option?",
+                            message:
+                              language === "ms"
+                                ? "Adakah anda pasti mahu memadam pilihan derma wang ini?"
+                                : "Are you sure you want to delete this money donation option?",
+                            onConfirm: async () => {
+                              try {
+                                await onRemoveMoneyOption(option.id);
+                              } catch (err) {
+                                setAlertModal({
+                                  isOpen: true,
+                                  title: language === "ms" ? "Ralat" : "Error",
+                                  message:
+                                    err.response?.data?.message ||
+                                    err.message ||
+                                    (language === "ms"
+                                      ? "Gagal memadam pilihan"
+                                      : "Failed to delete option"),
+                                  type: "error",
+                                });
+                              }
+                            },
+                          });
+                        }}
+                        className="p-1 text-red-600 hover:bg-red-50 rounded"
+                        title={language === "ms" ? "Padam" : "Delete"}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -852,7 +1003,7 @@ export default function DonationConfigManager({
               <div key={option.id} className="bg-white rounded p-3">
                 {editingItemId === option.id ? (
                   // Edit Form - shown inline when editing
-                  <div className="grid grid-cols-2 gap-3">
+                  <div ref={itemFormRef} className="grid grid-cols-2 gap-3">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
                         Category *

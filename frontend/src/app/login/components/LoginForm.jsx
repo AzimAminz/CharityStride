@@ -3,7 +3,7 @@
 import { motion } from "framer-motion";
 import { Heart, ArrowLeft } from "lucide-react";
 import useLogin from "../hooks/useLogin";
-import GoogleField from "../../components/GoogleField.";
+import GoogleField from "../../components/GoogleField";
 import { PasswordField } from "@/app/components/PasswordField";
 import { InputField } from "@/app/components/InputField";
 
@@ -120,12 +120,12 @@ export default function LoginPage() {
               error={passwordError}
             />
 
-<motion.button
-                whileHover={!loading ? { scale: 1.05 } : {}}
-                whileTap={!loading ? { scale: 0.97 } : {}}
-                type="submit"
-                disabled={loading}
-                className={`
+            <motion.button
+              whileHover={!loading ? { scale: 1.05 } : {}}
+              whileTap={!loading ? { scale: 0.97 } : {}}
+              type="submit"
+              disabled={loading}
+              className={`
     w-full py-2.5 rounded-xl font-medium shadow-md transition-all
     ${
       loading
@@ -133,9 +133,9 @@ export default function LoginPage() {
         : "bg-emerald-500 hover:bg-emerald-600 text-white cursor-pointer"
     }
   `}
-              >
-                {loading ? "Sign In..." : "Sign In"}
-              </motion.button>
+            >
+              {loading ? "Sign In..." : "Sign In"}
+            </motion.button>
           </form>
 
           {/* Divider */}

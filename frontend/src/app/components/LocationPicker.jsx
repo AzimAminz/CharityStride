@@ -219,20 +219,7 @@ export default function LocationPicker({
         </div>
       </div>
 
-      {/* Selected Coordinates Display */}
-      {markerPosition && (
-        <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-3 text-sm">
-          <p className="font-medium text-emerald-900 mb-1">
-            Selected Location:
-          </p>
-          <p className="text-emerald-700">
-            <span className="font-mono">
-              Lat: {markerPosition.lat.toFixed(6)}, Lng:{" "}
-              {markerPosition.lng.toFixed(6)}
-            </span>
-          </p>
-        </div>
-      )}
+      
     </div>
   );
 }

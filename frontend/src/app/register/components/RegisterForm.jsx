@@ -9,7 +9,7 @@ import { useRegister } from "../../hooks/useRegister";
 import { GoogleOAuthProvider } from "@react-oauth/google";
 import { PasswordField } from "../../components/PasswordField";
 import { InputField } from "../../components/InputField";
-import GoogleField from "@/app/components/GoogleField.";
+import GoogleField from "@/app/components/GoogleField";
 
 export default function RegisterPage() {
   const { form, setForm, errors, alert, loading, handleSubmit, back } =

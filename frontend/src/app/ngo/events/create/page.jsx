@@ -12,6 +12,7 @@ import {
   Users,
   HandHeart,
   DollarSign,
+  MapPin,
 } from "lucide-react";
 import { useEventForm } from "../../../hooks/useEventForm";
 import { useVolunteerModule } from "../../../hooks/useVolunteerModule";
@@ -31,6 +32,7 @@ import { HelpTooltip, ProgressIndicator } from "../../../components/help";
 import { translations } from "../../../lib/translations";
 import AlertModal from "../../../components/AlertModal";
 import ConfirmModal from "../../../components/ConfirmModal";
+import SavedLocationPicker from "../../../components/SavedLocationPicker";
 
 export default function CreateEventPage() {
   const router = useRouter();
@@ -58,6 +60,8 @@ export default function CreateEventPage() {
     message: "",
     onConfirm: () => {},
   });
+
+  const [showLocationForm, setShowLocationForm] = useState(false);
 
   // Volunteer Module hooks (only initialized after event created)
   const volunteerModule = useVolunteerModule(createdEventId);
@@ -101,6 +105,16 @@ export default function CreateEventPage() {
         language === "ms"
           ? "Tarikh event diperlukan"
           : "Event date is required";
+    }
+    // Location validation when volunteer or participant is enabled
+    if (
+      (formData.has_volunteer || formData.has_participant) &&
+      !formData.address
+    ) {
+      errors.address =
+        language === "ms"
+          ? "Lokasi event diperlukan"
+          : "Event location is required";
     }
 
     if (Object.keys(errors).length > 0) {
@@ -217,8 +231,10 @@ export default function CreateEventPage() {
             <ArrowLeft className="h-4 w-4" />
             Back to Events
           </Link>
-          <h1 className="text-3xl font-bold text-gray-900">Create New Event</h1>
-          <p className="text-gray-600 mt-1">
+          <h1 className="text-2xl md:text-3xl font-bold text-gray-900">
+            Create New Event
+          </h1>
+          <p className="text-sm md:text-base text-gray-600 mt-1">
             Create your event and enable modules as needed
           </p>
         </div>
@@ -230,33 +246,36 @@ export default function CreateEventPage() {
         )}
 
         {/* Tabs */}
-        <div className="flex gap-2 mb-6 border-b">
-          {tabs.map((tab) => {
-            const Icon = tab.icon;
-            return (
-              <button
-                key={tab.id}
-                onClick={() => !tab.disabled && setActiveTab(tab.id)}
-                disabled={tab.disabled}
-                className={`flex items-center gap-2 px-6 py-3 font-medium transition-colors border-b-2 ${
-                  activeTab === tab.id
-                    ? "text-emerald-600 border-emerald-600"
-                    : tab.disabled
-                    ? "text-gray-400 border-transparent cursor-not-allowed"
-                    : "text-gray-600 border-transparent hover:text-gray-900"
-                }`}
-              >
-                <Icon className="h-4 w-4" />
-                {tab.label}
-              </button>
-            );
-          })}
+        <div className="-mx-4 px-4 mb-6 overflow-x-auto">
+          <div className="flex gap-1 md:gap-2 border-b min-w-max">
+            {tabs.map((tab) => {
+              const Icon = tab.icon;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => !tab.disabled && setActiveTab(tab.id)}
+                  disabled={tab.disabled}
+                  className={`flex items-center gap-1.5 md:gap-2 px-3 md:px-6 py-2.5 md:py-3 text-sm md:text-base font-medium transition-colors border-b-2 whitespace-nowrap ${
+                    activeTab === tab.id
+                      ? "text-emerald-600 border-emerald-600"
+                      : tab.disabled
+                      ? "text-gray-400 border-transparent cursor-not-allowed"
+                      : "text-gray-600 border-transparent hover:text-gray-900"
+                  }`}
+                >
+                  <Icon className="h-4 w-4" />
+                  <span className="hidden sm:inline">{tab.label}</span>
+                  <span className="sm:hidden">{tab.label.split(" ")[0]}</span>
+                </button>
+              );
+            })}
+          </div>
         </div>
 
         {/* Basic Info Tab */}
         {activeTab === "basic" && (
           <form onSubmit={handleSaveDraft} noValidate className="space-y-6">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
               {/* Main Form */}
               <div className="lg:col-span-2 space-y-6">
                 {/* Thumbnail */}
@@ -497,7 +516,7 @@ export default function CreateEventPage() {
               </div>
 
               {/* Sidebar */}
-              <div className="space-y-6">
+              <div className="space-y-4 md:space-y-6">
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                   <h3 className="font-semibold text-blue-900 mb-2">
                     Quick Guide
@@ -593,6 +612,49 @@ export default function CreateEventPage() {
                 />
               </div>
             </div>
+
+            {/* Map Location - Show when volunteer or participant is enabled */}
+            {(formData.has_volunteer || formData.has_participant) && (
+              <div className="bg-white rounded-lg shadow-sm p-6">
+                <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                  <MapPin className="h-5 w-5" />
+                  Event Location
+                </h2>
+                <p className="text-sm text-gray-600 mb-4">
+                  Set the location where volunteer activities or participant
+                  activities will take place.
+                </p>
+
+                {validationErrors.address && (
+                  <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+                    <p className="text-sm text-red-600 font-medium">
+                      {validationErrors.address}
+                    </p>
+                  </div>
+                )}
+
+                <SavedLocationPicker
+                  value={{
+                    address: formData.address || "",
+                    latitude: formData.latitude,
+                    longitude: formData.longitude,
+                  }}
+                  onChange={(location) => {
+                    handleChange("longitude", location.longitude);
+                    handleChange("latitude", location.latitude);
+                    handleChange("address", location.address);
+                    // Clear error when location is set
+                    if (validationErrors.address && location.address) {
+                      setValidationErrors({
+                        ...validationErrors,
+                        address: null,
+                      });
+                    }
+                  }}
+                  placeholder="Search for event location..."
+                />
+              </div>
+            )}
 
             {/* Navigation */}
             <div className="flex justify-between">
