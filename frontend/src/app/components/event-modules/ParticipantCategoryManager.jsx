@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   Plus,
   Trash2,
@@ -56,6 +57,9 @@ export default function ParticipantCategoryManager({
     onConfirm: () => {},
   });
 
+  // Refs for auto-scroll
+  const categoryFormRef = useRef(null);
+
   const [categoryForm, setCategoryForm] = useState({
     category_name: "",
     has_custom_datetime: false, // Checkbox to enable custom date/time
@@ -87,6 +91,9 @@ export default function ParticipantCategoryManager({
   });
 
   const resetCategoryForm = () => {
+    // Store current editing category ID before clearing
+    const categoryIdToScrollTo = editingCategory?.id;
+
     setCategoryForm({
       category_name: "",
       has_custom_datetime: false,
@@ -109,6 +116,21 @@ export default function ParticipantCategoryManager({
     });
     setEditingCategory(null);
     setShowCategoryForm(false);
+
+    // Scroll to the category container after closing edit
+    if (categoryIdToScrollTo) {
+      setTimeout(() => {
+        const categoryElement = document.querySelector(
+          `[data-category-id="${categoryIdToScrollTo}"]`
+        );
+        if (categoryElement) {
+          categoryElement.scrollIntoView({
+            behavior: "smooth",
+            block: "center",
+          });
+        }
+      }, 250); // Wait for animation to complete
+    }
   };
 
   const resetTierForm = () => {
@@ -280,12 +302,10 @@ export default function ParticipantCategoryManager({
         </button>
       </div>
 
-      {/* Category Form */}
-      {showCategoryForm && (
+      {/* Category Form - Top (Add New Only) */}
+      {showCategoryForm && !editingCategory && (
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-          <h5 className="font-semibold text-blue-900 mb-3">
-            {editingCategory ? "Edit Category" : "New Category"}
-          </h5>
+          <h5 className="font-semibold text-blue-900 mb-3">New Category</h5>
           <div className="grid grid-cols-2 gap-4">
             {/* Category Name - Text Input */}
             <div className="col-span-2">
@@ -749,6 +769,7 @@ export default function ParticipantCategoryManager({
       {categories.map((category) => (
         <div
           key={category.id}
+          data-category-id={category.id}
           className="border border-gray-200 rounded-lg p-4"
         >
           <div className="flex items-start justify-between mb-3">
@@ -885,7 +906,7 @@ export default function ParticipantCategoryManager({
                     has_event_tshirt: category.has_event_tshirt || false,
                     has_finisher_tshirt: category.has_finisher_tshirt || false,
                   });
-                  setShowCategoryForm(true);
+                  // Inline edit form will show below
                 }}
                 className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg"
               >
@@ -921,6 +942,479 @@ export default function ParticipantCategoryManager({
               </button>
             </div>
           </div>
+
+          {/* Inline Category Edit Form */}
+          <AnimatePresence>
+            {editingCategory?.id === category.id && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                exit={{ opacity: 0, height: 0 }}
+                transition={{ duration: 0.2 }}
+                ref={categoryFormRef}
+                className="mt-4 bg-blue-50 border border-blue-200 rounded-lg p-4 overflow-hidden"
+              >
+                <h5 className="font-semibold text-blue-900 mb-3">
+                  Edit Category
+                </h5>
+
+                <div className="grid grid-cols-2 gap-4">
+                  {/* Category Name */}
+                  <div className="col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      {language === "ms"
+                        ? "Nama Kategori *"
+                        : "Category Name *"}
+                    </label>
+                    <input
+                      type="text"
+                      value={categoryForm.category_name}
+                      onChange={(e) => {
+                        setCategoryForm({
+                          ...categoryForm,
+                          category_name: e.target.value,
+                        });
+                        if (categoryErrors.category_name) {
+                          setCategoryErrors((prev) => ({
+                            ...prev,
+                            category_name: undefined,
+                          }));
+                        }
+                      }}
+                      className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 ${
+                        categoryErrors.category_name
+                          ? "border-red-500"
+                          : "border-gray-300"
+                      }`}
+                      placeholder="e.g., 10km Fun Run, 21km Marathon"
+                    />
+                    {categoryErrors.category_name && (
+                      <p className="text-red-600 text-sm mt-1">
+                        {categoryErrors.category_name}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Custom Event Date/Time Checkbox */}
+                  <div className="col-span-2">
+                    <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                      <input
+                        type="checkbox"
+                        id="inline_has_custom_datetime"
+                        checked={categoryForm.has_custom_datetime}
+                        onChange={(e) => {
+                          setCategoryForm({
+                            ...categoryForm,
+                            has_custom_datetime: e.target.checked,
+                            event_date: e.target.checked
+                              ? categoryForm.event_date
+                              : "",
+                            event_time: e.target.checked
+                              ? categoryForm.event_time
+                              : "",
+                          });
+                          if (!e.target.checked) {
+                            setCategoryErrors((prev) => ({
+                              ...prev,
+                              event_date: undefined,
+                              event_time: undefined,
+                            }));
+                          }
+                        }}
+                        className="w-4 h-4 text-emerald-600 focus:ring-emerald-500 rounded"
+                      />
+                      <label
+                        htmlFor="inline_has_custom_datetime"
+                        className="text-sm font-medium text-gray-700 cursor-pointer"
+                      >
+                        {language === "ms"
+                          ? "Tetapkan tarikh dan masa acara khusus"
+                          : "Set custom event date and time"}
+                      </label>
+                    </div>
+                  </div>
+
+                  {/* Event Date & Time */}
+                  {categoryForm.has_custom_datetime && (
+                    <>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          {language === "ms"
+                            ? "Tarikh Acara *"
+                            : "Event Date *"}
+                        </label>
+                        <DateInput
+                          value={categoryForm.event_date}
+                          onChange={(value) => {
+                            setCategoryForm({
+                              ...categoryForm,
+                              event_date: value,
+                            });
+                            if (categoryErrors.event_date) {
+                              setCategoryErrors((prev) => ({
+                                ...prev,
+                                event_date: undefined,
+                              }));
+                            }
+                          }}
+                          disablePast={true}
+                          language={language}
+                          error={categoryErrors.event_date}
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          {language === "ms" ? "Masa Acara *" : "Event Time *"}
+                        </label>
+                        <input
+                          type="time"
+                          value={categoryForm.event_time}
+                          onChange={(e) => {
+                            setCategoryForm({
+                              ...categoryForm,
+                              event_time: e.target.value,
+                            });
+                            if (categoryErrors.event_time) {
+                              setCategoryErrors((prev) => ({
+                                ...prev,
+                                event_time: undefined,
+                              }));
+                            }
+                          }}
+                          className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 ${
+                            categoryErrors.event_time
+                              ? "border-red-500"
+                              : "border-gray-300"
+                          }`}
+                        />
+                        {categoryErrors.event_time && (
+                          <p className="text-red-600 text-sm mt-1">
+                            {categoryErrors.event_time}
+                          </p>
+                        )}
+                      </div>
+                    </>
+                  )}
+
+                  {/* Capacity Type */}
+                  <div className="col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      {language === "ms"
+                        ? "Jenis Kapasiti *"
+                        : "Capacity Type *"}
+                    </label>
+                    <div className="flex gap-4">
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="radio"
+                          name="inline_capacity_type"
+                          value="unlimited"
+                          checked={categoryForm.capacity_type === "unlimited"}
+                          onChange={(e) =>
+                            setCategoryForm({
+                              ...categoryForm,
+                              capacity_type: e.target.value,
+                              capacity: "",
+                            })
+                          }
+                          className="w-4 h-4 text-emerald-600 focus:ring-emerald-500"
+                        />
+                        <span className="text-sm text-gray-700">
+                          {language === "ms" ? "Tanpa Had" : "Unlimited Slots"}
+                        </span>
+                      </label>
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="radio"
+                          name="inline_capacity_type"
+                          value="limited"
+                          checked={categoryForm.capacity_type === "limited"}
+                          onChange={(e) =>
+                            setCategoryForm({
+                              ...categoryForm,
+                              capacity_type: e.target.value,
+                            })
+                          }
+                          className="w-4 h-4 text-emerald-600 focus:ring-emerald-500"
+                        />
+                        <span className="text-sm text-gray-700">
+                          {language === "ms" ? "Terhad" : "Limited Slots"}
+                        </span>
+                      </label>
+                    </div>
+                  </div>
+
+                  {/* Capacity Number */}
+                  {categoryForm.capacity_type === "limited" && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        {language === "ms"
+                          ? "Kapasiti Maksimum *"
+                          : "Maximum Capacity *"}
+                      </label>
+                      <NumericInput
+                        value={categoryForm.capacity}
+                        onChange={(value) => {
+                          setCategoryForm({ ...categoryForm, capacity: value });
+                          if (categoryErrors.capacity) {
+                            setCategoryErrors((prev) => ({
+                              ...prev,
+                              capacity: undefined,
+                            }));
+                          }
+                        }}
+                        placeholder="100"
+                        language={language}
+                        error={categoryErrors.capacity}
+                      />
+                    </div>
+                  )}
+
+                  {/* Category Location Checkbox */}
+                  <div className="col-span-2">
+                    <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-xl p-4">
+                      <label className="flex items-start gap-3 cursor-pointer group">
+                        <div className="relative flex items-center">
+                          <input
+                            type="checkbox"
+                            checked={categoryForm.has_category_location}
+                            onChange={(e) => {
+                              const isChecked = e.target.checked;
+                              setCategoryForm({
+                                ...categoryForm,
+                                has_category_location: isChecked,
+                                location_type: isChecked
+                                  ? categoryForm.location_type
+                                  : "event_location",
+                                location_name: isChecked
+                                  ? categoryForm.location_name
+                                  : "",
+                                latitude: isChecked
+                                  ? categoryForm.latitude
+                                  : null,
+                                longitude: isChecked
+                                  ? categoryForm.longitude
+                                  : null,
+                                location_details: isChecked
+                                  ? categoryForm.location_details
+                                  : "",
+                              });
+                            }}
+                            className="peer sr-only"
+                          />
+                          <div className="w-6 h-6 rounded-lg border-2 border-blue-300 peer-checked:bg-blue-600 peer-checked:border-blue-600 transition-all duration-200 flex items-center justify-center group-hover:border-blue-400">
+                            {categoryForm.has_category_location && (
+                              <Check className="h-4 w-4 text-white" />
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2">
+                            <MapPin className="h-5 w-5 text-blue-600" />
+                            <span className="font-semibold text-gray-900">
+                              {language === "ms"
+                                ? "Lokasi Kategori Berbeza"
+                                : "Different Category Location"}
+                            </span>
+                          </div>
+                          <p className="text-sm text-gray-600 mt-1 leading-relaxed">
+                            {language === "ms"
+                              ? "Tetapkan lokasi khusus untuk kategori ini"
+                              : "Set a specific location for this category"}
+                          </p>
+                        </div>
+                      </label>
+
+                      {categoryForm.has_category_location && (
+                        <div className="mt-4 pt-4 border-t border-blue-200 space-y-3">
+                          <SavedLocationPicker
+                            value={{
+                              address: categoryForm.location_name || "",
+                              latitude: categoryForm.latitude,
+                              longitude: categoryForm.longitude,
+                            }}
+                            onChange={(location) => {
+                              setCategoryForm({
+                                ...categoryForm,
+                                location_type: location.address
+                                  ? "custom"
+                                  : "event_location",
+                                location_name: location.address,
+                                latitude: location.latitude,
+                                longitude: location.longitude,
+                              });
+                            }}
+                            placeholder="Select category location..."
+                          />
+
+                          {categoryForm.location_name && (
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">
+                                Location Details (Optional)
+                              </label>
+                              <textarea
+                                value={categoryForm.location_details}
+                                onChange={(e) =>
+                                  setCategoryForm({
+                                    ...categoryForm,
+                                    location_details: e.target.value,
+                                  })
+                                }
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                rows={2}
+                                placeholder="Specific instructions"
+                              />
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Description */}
+                  <div className="col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Description
+                    </label>
+                    <textarea
+                      value={categoryForm.description}
+                      onChange={(e) =>
+                        setCategoryForm({
+                          ...categoryForm,
+                          description: e.target.value,
+                        })
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                      rows={2}
+                      placeholder="Additional information..."
+                    />
+                  </div>
+
+                  {/* Has Fee Checkbox */}
+                  <div className="col-span-2">
+                    <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                      <input
+                        type="checkbox"
+                        id="inline_has_fee"
+                        checked={categoryForm.has_fee}
+                        onChange={(e) =>
+                          setCategoryForm({
+                            ...categoryForm,
+                            has_fee: e.target.checked,
+                            base_fee: e.target.checked
+                              ? categoryForm.base_fee
+                              : "",
+                          })
+                        }
+                        className="w-4 h-4 text-emerald-600 focus:ring-emerald-500 rounded"
+                      />
+                      <label
+                        htmlFor="inline_has_fee"
+                        className="text-sm font-medium text-gray-700 cursor-pointer"
+                      >
+                        {language === "ms"
+                          ? "Kenakan yuran pendaftaran"
+                          : "Charge registration fee"}
+                      </label>
+                    </div>
+                  </div>
+
+                  {/* Registration Fee */}
+                  {categoryForm.has_fee && (
+                    <div className="col-span-2">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        {language === "ms"
+                          ? "Yuran Pendaftaran (RM) *"
+                          : "Registration Fee (RM) *"}
+                      </label>
+                      <FeeInput
+                        value={categoryForm.base_fee}
+                        onChange={(value) => {
+                          setCategoryForm({ ...categoryForm, base_fee: value });
+                          if (categoryErrors.base_fee) {
+                            setCategoryErrors((prev) => ({
+                              ...prev,
+                              base_fee: undefined,
+                            }));
+                          }
+                        }}
+                        language={language}
+                        error={categoryErrors.base_fee}
+                        placeholder={
+                          language === "ms"
+                            ? "cth: 3000 (RM 30.00)"
+                            : "e.g., 3000 (RM 30.00)"
+                        }
+                      />
+                    </div>
+                  )}
+
+                  {/* T-shirt Options */}
+                  <div className="col-span-2 pt-3 border-t">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      T-shirt Options
+                    </label>
+                    <div className="space-y-2">
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={categoryForm.has_event_tshirt}
+                          onChange={(e) =>
+                            setCategoryForm({
+                              ...categoryForm,
+                              has_event_tshirt: e.target.checked,
+                            })
+                          }
+                          className="w-4 h-4 text-emerald-600 border-gray-300 rounded focus:ring-emerald-500"
+                        />
+                        <span className="text-sm text-gray-700">
+                          Provide Event T-shirt
+                        </span>
+                      </label>
+
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={categoryForm.has_finisher_tshirt}
+                          onChange={(e) =>
+                            setCategoryForm({
+                              ...categoryForm,
+                              has_finisher_tshirt: e.target.checked,
+                            })
+                          }
+                          className="w-4 h-4 text-emerald-600 border-gray-300 rounded focus:ring-emerald-500"
+                        />
+                        <span className="text-sm text-gray-700">
+                          Provide Finisher T-shirt
+                        </span>
+                      </label>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Form Actions */}
+                <div className="flex gap-2 mt-4">
+                  <button
+                    type="button"
+                    onClick={handleSaveCategory}
+                    className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg"
+                  >
+                    <Save className="h-4 w-4" />
+                    Save Category
+                  </button>
+                  <button
+                    type="button"
+                    onClick={resetCategoryForm}
+                    className="flex items-center gap-2 px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg"
+                  >
+                    <X className="h-4 w-4" />
+                    Cancel
+                  </button>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           {/* Fee Tiers Section (keeping existing tier logic) */}
           {category.has_fee && category.fee_type === "tiered" && (

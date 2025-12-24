@@ -152,6 +152,9 @@ export default function VolunteerRoleManager({
   }, []);
 
   const resetRoleForm = () => {
+    // Store current editing role ID before clearing
+    const roleIdToScrollTo = editingRole?.id;
+
     setRoleForm({
       role_type_id: "",
       custom_role_name: "",
@@ -167,6 +170,18 @@ export default function VolunteerRoleManager({
     });
     setEditingRole(null);
     setShowRoleForm(false);
+
+    // Scroll to the role container after closing edit
+    if (roleIdToScrollTo) {
+      setTimeout(() => {
+        const roleElement = document.querySelector(
+          `[data-role-id="${roleIdToScrollTo}"]`
+        );
+        if (roleElement) {
+          roleElement.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+      }, 250); // Wait for animation to complete
+    }
   };
 
   const resetShiftForm = () => {
@@ -714,7 +729,11 @@ export default function VolunteerRoleManager({
       )}
 
       {roles.map((role) => (
-        <div key={role.id} className="border border-gray-200 rounded-lg p-4">
+        <div
+          key={role.id}
+          data-role-id={role.id}
+          className="border border-gray-200 rounded-lg p-4"
+        >
           <div className="flex items-start justify-between mb-3">
             <div>
               <h4 className="font-semibold text-gray-900">

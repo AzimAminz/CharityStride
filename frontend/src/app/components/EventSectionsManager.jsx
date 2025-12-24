@@ -219,10 +219,28 @@ export default function EventSectionsManager({
   };
 
   const cancelEdit = () => {
+    // Store current editing section ID before clearing
+    const sectionIdToScrollTo = editing;
+
     setEditing(null);
     setAdding(false);
     setFormData({ title: "", content: "", category: "overview", images: [] });
     setFieldErrors({});
+
+    // Scroll to the section container after closing edit
+    if (sectionIdToScrollTo) {
+      setTimeout(() => {
+        const sectionElement = document.querySelector(
+          `[data-section-id="${sectionIdToScrollTo}"]`
+        );
+        if (sectionElement) {
+          sectionElement.scrollIntoView({
+            behavior: "smooth",
+            block: "center",
+          });
+        }
+      }, 250); // Wait for animation to complete
+    }
   };
 
   // Group sections by category
@@ -501,6 +519,7 @@ export default function EventSectionsManager({
                   {categorySections.map((section, index) => (
                     <motion.div
                       key={section.id}
+                      data-section-id={section.id}
                       layout
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
