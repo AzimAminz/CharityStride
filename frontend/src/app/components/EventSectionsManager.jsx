@@ -328,12 +328,10 @@ export default function EventSectionsManager({
         )}
       </div>
 
-      {/* Add/Edit Form */}
-      {(adding || editing) && (
+      {/* Add/Edit Form - Top (Add New Only) */}
+      {adding && !editing && (
         <div className="bg-gray-50 rounded-lg p-4 border-2 border-emerald-300">
-          <h4 className="font-medium text-gray-900 mb-3">
-            {editing ? "Edit Section" : "New Section"}
-          </h4>
+          <h4 className="font-medium text-gray-900 mb-3">New Section</h4>
           <div className="space-y-3">
             {/* Title Field */}
             <div>
@@ -587,6 +585,173 @@ export default function EventSectionsManager({
                           </button>
                         </div>
                       </div>
+
+                      {/* Inline Edit Form */}
+                      <AnimatePresence>
+                        {editing === section.id && (
+                          <motion.div
+                            initial={{ opacity: 0, height: 0 }}
+                            animate={{ opacity: 1, height: "auto" }}
+                            exit={{ opacity: 0, height: 0 }}
+                            transition={{ duration: 0.2 }}
+                            className="mt-4 pt-4 border-t-2 border-gray-200 bg-gray-50 rounded-b-lg p-4 overflow-hidden"
+                          >
+                            <h4 className="font-medium text-gray-900 mb-3">
+                              Edit Section
+                            </h4>
+                            <div className="space-y-3">
+                              {/* Title Field */}
+                              <div>
+                                <input
+                                  type="text"
+                                  value={formData.title}
+                                  onChange={(e) => {
+                                    setFormData({
+                                      ...formData,
+                                      title: e.target.value,
+                                    });
+                                    if (fieldErrors.title) {
+                                      setFieldErrors((prev) => ({
+                                        ...prev,
+                                        title: undefined,
+                                      }));
+                                    }
+                                  }}
+                                  placeholder={
+                                    language === "ms"
+                                      ? "Tajuk Bahagian"
+                                      : "Section Title"
+                                  }
+                                  className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent ${
+                                    fieldErrors.title
+                                      ? "border-red-500"
+                                      : "border-gray-300"
+                                  }`}
+                                />
+                                {fieldErrors.title && (
+                                  <p className="text-red-600 text-sm mt-1">
+                                    {fieldErrors.title}
+                                  </p>
+                                )}
+                              </div>
+
+                              {/* Category Selector */}
+                              <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                  {language === "ms"
+                                    ? "Paparkan Dalam"
+                                    : "Display In"}
+                                </label>
+                                <select
+                                  value={formData.category}
+                                  onChange={(e) =>
+                                    setFormData({
+                                      ...formData,
+                                      category: e.target.value,
+                                    })
+                                  }
+                                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                                >
+                                  <option value="overview">
+                                    {language === "ms"
+                                      ? "Tab Overview"
+                                      : "Overview Tab"}
+                                  </option>
+                                  {event?.has_participant && (
+                                    <option value="participant_details">
+                                      {language === "ms"
+                                        ? "Modul Peserta"
+                                        : "Participant Module"}
+                                    </option>
+                                  )}
+                                  {event?.has_volunteer && (
+                                    <option value="volunteer_details">
+                                      {language === "ms"
+                                        ? "Modul Sukarelawan"
+                                        : "Volunteer Module"}
+                                    </option>
+                                  )}
+                                  {event?.has_donation && (
+                                    <option value="donation_details">
+                                      {language === "ms"
+                                        ? "Modul Derma"
+                                        : "Donation Module"}
+                                    </option>
+                                  )}
+                                </select>
+                              </div>
+
+                              {/* Multi-Image Upload */}
+                              <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                  Section Images (Optional)
+                                </label>
+                                <MultiImageUpload
+                                  images={formData.images}
+                                  onChange={(newImages) =>
+                                    setFormData({
+                                      ...formData,
+                                      images: newImages,
+                                    })
+                                  }
+                                  maxImages={5}
+                                />
+                              </div>
+
+                              {/* Content Field */}
+                              <div>
+                                <textarea
+                                  value={formData.content}
+                                  onChange={(e) => {
+                                    setFormData({
+                                      ...formData,
+                                      content: e.target.value,
+                                    });
+                                    if (fieldErrors.content) {
+                                      setFieldErrors((prev) => ({
+                                        ...prev,
+                                        content: undefined,
+                                      }));
+                                    }
+                                  }}
+                                  placeholder={
+                                    language === "ms"
+                                      ? "Kandungan Bahagian"
+                                      : "Section Content"
+                                  }
+                                  rows={4}
+                                  className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent ${
+                                    fieldErrors.content
+                                      ? "border-red-500"
+                                      : "border-gray-300"
+                                  }`}
+                                />
+                                {fieldErrors.content && (
+                                  <p className="text-red-600 text-sm mt-1">
+                                    {fieldErrors.content}
+                                  </p>
+                                )}
+                              </div>
+
+                              <div className="flex gap-2">
+                                <button
+                                  onClick={cancelEdit}
+                                  className="flex-1 px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg font-medium transition-colors"
+                                >
+                                  Cancel
+                                </button>
+                                <button
+                                  onClick={() => handleUpdate(editing)}
+                                  disabled={loading}
+                                  className="flex-1 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-medium transition-colors disabled:opacity-50"
+                                >
+                                  {loading ? "Saving..." : "Update"}
+                                </button>
+                              </div>
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
                     </motion.div>
                   ))}
                 </div>

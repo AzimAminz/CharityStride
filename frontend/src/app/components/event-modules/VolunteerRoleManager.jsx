@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   Plus,
   Trash2,
@@ -824,277 +825,285 @@ export default function VolunteerRoleManager({
           </div>
 
           {/* Inline Role Edit Form */}
-          {editingRole?.id === role.id && (
-            <div
-              ref={roleFormRef}
-              className="mt-4 bg-blue-50 border border-blue-200 rounded-lg p-4"
-            >
-              <h4 className="font-semibold text-blue-900 mb-4">Edit Role</h4>
+          <AnimatePresence>
+            {editingRole?.id === role.id && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                exit={{ opacity: 0, height: 0 }}
+                transition={{ duration: 0.2 }}
+                ref={roleFormRef}
+                className="mt-4 bg-blue-50 border border-blue-200 rounded-lg p-4 overflow-hidden"
+              >
+                <h4 className="font-semibold text-blue-900 mb-4">Edit Role</h4>
 
-              <div className="grid grid-cols-2 gap-4">
-                {/* Role Type */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    {language === "ms" ? "Jenis Peranan *" : "Role Type *"}
-                  </label>
-                  <select
-                    value={roleForm.role_type_id}
-                    onChange={(e) => {
-                      setRoleForm({
-                        ...roleForm,
-                        role_type_id: e.target.value,
-                      });
-                      if (roleErrors.role_type_id) {
-                        setRoleErrors((prev) => ({
-                          ...prev,
-                          role_type_id: undefined,
-                        }));
-                      }
-                    }}
-                    className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-emerald-500 ${
-                      roleErrors.role_type_id
-                        ? "border-red-500"
-                        : "border-gray-300"
-                    }`}
-                  >
-                    <option value="">Select...</option>
-                    {roleTypes.map((type) => (
-                      <option key={type.id} value={type.id}>
-                        {type.name_en} / {type.name_ms}
-                      </option>
-                    ))}
-                  </select>
-                  {roleErrors.role_type_id && (
-                    <p className="text-red-600 text-sm mt-1">
-                      {roleErrors.role_type_id}
-                    </p>
-                  )}
-                </div>
-
-                {/* Custom Name */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Custom Role Name
-                  </label>
-                  <input
-                    type="text"
-                    value={roleForm.custom_role_name}
-                    onChange={(e) =>
-                      setRoleForm({
-                        ...roleForm,
-                        custom_role_name: e.target.value,
-                      })
-                    }
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500"
-                    placeholder="Optional custom name"
-                  />
-                </div>
-
-                {/* Required Skill */}
-                <div className="col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    {language === "ms"
-                      ? "Kemahiran Diperlukan *"
-                      : "Required Skill *"}
-                  </label>
-                  <select
-                    value={roleForm.required_skill_id}
-                    onChange={(e) => {
-                      setRoleForm({
-                        ...roleForm,
-                        required_skill_id: e.target.value,
-                      });
-                      if (roleErrors.required_skill_id) {
-                        setRoleErrors((prev) => ({
-                          ...prev,
-                          required_skill_id: undefined,
-                        }));
-                      }
-                    }}
-                    className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-emerald-500 ${
-                      roleErrors.required_skill_id
-                        ? "border-red-500"
-                        : "border-gray-300"
-                    }`}
-                  >
-                    <option value="">Select...</option>
-                    {requiredSkills.map((skill) => (
-                      <option key={skill.id} value={skill.id}>
-                        {skill.name_en} / {skill.name_ms}
-                      </option>
-                    ))}
-                  </select>
-                  {roleErrors.required_skill_id && (
-                    <p className="text-red-600 text-sm mt-1">
-                      {roleErrors.required_skill_id}
-                    </p>
-                  )}
-                </div>
-
-                {/* Description */}
-                <div className="col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Role Description
-                  </label>
-                  <textarea
-                    value={roleForm.role_description}
-                    onChange={(e) =>
-                      setRoleForm({
-                        ...roleForm,
-                        role_description: e.target.value,
-                      })
-                    }
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500"
-                    rows={2}
-                    placeholder="Describe role responsibilities..."
-                  />
-                </div>
-
-                {/* Location Checkbox */}
-                <div className="col-span-2">
-                  <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-xl p-4">
-                    <label className="flex items-start gap-3 cursor-pointer group">
-                      <div className="relative flex items-center">
-                        <input
-                          type="checkbox"
-                          checked={roleForm.has_role_location}
-                          onChange={(e) => {
-                            const isChecked = e.target.checked;
-                            setRoleForm({
-                              ...roleForm,
-                              has_role_location: isChecked,
-                              location: isChecked ? roleForm.location : "",
-                              latitude: isChecked ? roleForm.latitude : null,
-                              longitude: isChecked ? roleForm.longitude : null,
-                              location_details: isChecked
-                                ? roleForm.location_details
-                                : "",
-                            });
-                          }}
-                          className="peer sr-only"
-                        />
-                        <div className="w-6 h-6 rounded-lg border-2 border-blue-300 peer-checked:bg-blue-600 peer-checked:border-blue-600 transition-all duration-200 flex items-center justify-center group-hover:border-blue-400">
-                          {roleForm.has_role_location && (
-                            <Check className="h-4 w-4 text-white" />
-                          )}
-                        </div>
-                      </div>
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2">
-                          <MapPin className="h-5 w-5 text-blue-600" />
-                          <span className="font-semibold text-gray-900">
-                            Set Role-Specific Location
-                          </span>
-                        </div>
-                        <p className="text-sm text-gray-600 mt-1">
-                          Enable to specify where this role's activities take
-                          place
-                        </p>
-                      </div>
+                <div className="grid grid-cols-2 gap-4">
+                  {/* Role Type */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      {language === "ms" ? "Jenis Peranan *" : "Role Type *"}
                     </label>
-
-                    {roleForm.has_role_location && (
-                      <div className="mt-4 pt-4 border-t border-blue-200 space-y-3">
-                        <SavedLocationPicker
-                          value={{
-                            address: roleForm.location || "",
-                            latitude: roleForm.latitude,
-                            longitude: roleForm.longitude,
-                          }}
-                          onChange={(location) => {
-                            setRoleForm({
-                              ...roleForm,
-                              location: location.address,
-                              latitude: location.latitude,
-                              longitude: location.longitude,
-                            });
-                          }}
-                          placeholder="Select role location..."
-                        />
-
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Location Details (Optional)
-                          </label>
-                          <textarea
-                            value={roleForm.location_details}
-                            onChange={(e) =>
-                              setRoleForm({
-                                ...roleForm,
-                                location_details: e.target.value,
-                              })
-                            }
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500"
-                            rows={2}
-                            placeholder="e.g., 'Meet at registration booth'"
-                          />
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* T-Shirt */}
-                <div className="col-span-2">
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={roleForm.has_tshirt}
-                      onChange={(e) =>
+                    <select
+                      value={roleForm.role_type_id}
+                      onChange={(e) => {
                         setRoleForm({
                           ...roleForm,
-                          has_tshirt: e.target.checked,
-                        })
-                      }
-                      className="w-4 h-4 text-emerald-600 border-gray-300 rounded focus:ring-emerald-500"
-                    />
-                    <span className="text-sm font-medium text-gray-700">
-                      Provide T-Shirt for this role
-                    </span>
-                  </label>
-                </div>
+                          role_type_id: e.target.value,
+                        });
+                        if (roleErrors.role_type_id) {
+                          setRoleErrors((prev) => ({
+                            ...prev,
+                            role_type_id: undefined,
+                          }));
+                        }
+                      }}
+                      className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-emerald-500 ${
+                        roleErrors.role_type_id
+                          ? "border-red-500"
+                          : "border-gray-300"
+                      }`}
+                    >
+                      <option value="">Select...</option>
+                      {roleTypes.map((type) => (
+                        <option key={type.id} value={type.id}>
+                          {type.name_en} / {type.name_ms}
+                        </option>
+                      ))}
+                    </select>
+                    {roleErrors.role_type_id && (
+                      <p className="text-red-600 text-sm mt-1">
+                        {roleErrors.role_type_id}
+                      </p>
+                    )}
+                  </div>
 
-                {roleForm.has_tshirt && (
-                  <div className="col-span-2">
+                  {/* Custom Name */}
+                  <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      T-Shirt Description
+                      Custom Role Name
                     </label>
                     <input
                       type="text"
-                      value={roleForm.tshirt_description}
+                      value={roleForm.custom_role_name}
                       onChange={(e) =>
                         setRoleForm({
                           ...roleForm,
-                          tshirt_description: e.target.value,
+                          custom_role_name: e.target.value,
                         })
                       }
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500"
-                      placeholder="e.g., 'Blue polo with logo'"
+                      placeholder="Optional custom name"
                     />
                   </div>
-                )}
-              </div>
 
-              <div className="flex gap-2 mt-4">
-                <button
-                  type="button"
-                  onClick={handleSaveRole}
-                  className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg"
-                >
-                  <Save className="h-4 w-4" />
-                  Save Role
-                </button>
-                <button
-                  type="button"
-                  onClick={resetRoleForm}
-                  className="flex items-center gap-2 px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg"
-                >
-                  <X className="h-4 w-4" />
-                  Cancel
-                </button>
-              </div>
-            </div>
-          )}
+                  {/* Required Skill */}
+                  <div className="col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      {language === "ms"
+                        ? "Kemahiran Diperlukan *"
+                        : "Required Skill *"}
+                    </label>
+                    <select
+                      value={roleForm.required_skill_id}
+                      onChange={(e) => {
+                        setRoleForm({
+                          ...roleForm,
+                          required_skill_id: e.target.value,
+                        });
+                        if (roleErrors.required_skill_id) {
+                          setRoleErrors((prev) => ({
+                            ...prev,
+                            required_skill_id: undefined,
+                          }));
+                        }
+                      }}
+                      className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-emerald-500 ${
+                        roleErrors.required_skill_id
+                          ? "border-red-500"
+                          : "border-gray-300"
+                      }`}
+                    >
+                      <option value="">Select...</option>
+                      {requiredSkills.map((skill) => (
+                        <option key={skill.id} value={skill.id}>
+                          {skill.name_en} / {skill.name_ms}
+                        </option>
+                      ))}
+                    </select>
+                    {roleErrors.required_skill_id && (
+                      <p className="text-red-600 text-sm mt-1">
+                        {roleErrors.required_skill_id}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Description */}
+                  <div className="col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Role Description
+                    </label>
+                    <textarea
+                      value={roleForm.role_description}
+                      onChange={(e) =>
+                        setRoleForm({
+                          ...roleForm,
+                          role_description: e.target.value,
+                        })
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500"
+                      rows={2}
+                      placeholder="Describe role responsibilities..."
+                    />
+                  </div>
+
+                  {/* Location Checkbox */}
+                  <div className="col-span-2">
+                    <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-xl p-4">
+                      <label className="flex items-start gap-3 cursor-pointer group">
+                        <div className="relative flex items-center">
+                          <input
+                            type="checkbox"
+                            checked={roleForm.has_role_location}
+                            onChange={(e) => {
+                              const isChecked = e.target.checked;
+                              setRoleForm({
+                                ...roleForm,
+                                has_role_location: isChecked,
+                                location: isChecked ? roleForm.location : "",
+                                latitude: isChecked ? roleForm.latitude : null,
+                                longitude: isChecked
+                                  ? roleForm.longitude
+                                  : null,
+                                location_details: isChecked
+                                  ? roleForm.location_details
+                                  : "",
+                              });
+                            }}
+                            className="peer sr-only"
+                          />
+                          <div className="w-6 h-6 rounded-lg border-2 border-blue-300 peer-checked:bg-blue-600 peer-checked:border-blue-600 transition-all duration-200 flex items-center justify-center group-hover:border-blue-400">
+                            {roleForm.has_role_location && (
+                              <Check className="h-4 w-4 text-white" />
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2">
+                            <MapPin className="h-5 w-5 text-blue-600" />
+                            <span className="font-semibold text-gray-900">
+                              Set Role-Specific Location
+                            </span>
+                          </div>
+                          <p className="text-sm text-gray-600 mt-1">
+                            Enable to specify where this role's activities take
+                            place
+                          </p>
+                        </div>
+                      </label>
+
+                      {roleForm.has_role_location && (
+                        <div className="mt-4 pt-4 border-t border-blue-200 space-y-3">
+                          <SavedLocationPicker
+                            value={{
+                              address: roleForm.location || "",
+                              latitude: roleForm.latitude,
+                              longitude: roleForm.longitude,
+                            }}
+                            onChange={(location) => {
+                              setRoleForm({
+                                ...roleForm,
+                                location: location.address,
+                                latitude: location.latitude,
+                                longitude: location.longitude,
+                              });
+                            }}
+                            placeholder="Select role location..."
+                          />
+
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              Location Details (Optional)
+                            </label>
+                            <textarea
+                              value={roleForm.location_details}
+                              onChange={(e) =>
+                                setRoleForm({
+                                  ...roleForm,
+                                  location_details: e.target.value,
+                                })
+                              }
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500"
+                              rows={2}
+                              placeholder="e.g., 'Meet at registration booth'"
+                            />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* T-Shirt */}
+                  <div className="col-span-2">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={roleForm.has_tshirt}
+                        onChange={(e) =>
+                          setRoleForm({
+                            ...roleForm,
+                            has_tshirt: e.target.checked,
+                          })
+                        }
+                        className="w-4 h-4 text-emerald-600 border-gray-300 rounded focus:ring-emerald-500"
+                      />
+                      <span className="text-sm font-medium text-gray-700">
+                        Provide T-Shirt for this role
+                      </span>
+                    </label>
+                  </div>
+
+                  {roleForm.has_tshirt && (
+                    <div className="col-span-2">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        T-Shirt Description
+                      </label>
+                      <input
+                        type="text"
+                        value={roleForm.tshirt_description}
+                        onChange={(e) =>
+                          setRoleForm({
+                            ...roleForm,
+                            tshirt_description: e.target.value,
+                          })
+                        }
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500"
+                        placeholder="e.g., 'Blue polo with logo'"
+                      />
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex gap-2 mt-4">
+                  <button
+                    type="button"
+                    onClick={handleSaveRole}
+                    className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg"
+                  >
+                    <Save className="h-4 w-4" />
+                    Save Role
+                  </button>
+                  <button
+                    type="button"
+                    onClick={resetRoleForm}
+                    className="flex items-center gap-2 px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg"
+                  >
+                    <X className="h-4 w-4" />
+                    Cancel
+                  </button>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           {/* Shifts for this role */}
           <div className="ml-4 space-y-2">
