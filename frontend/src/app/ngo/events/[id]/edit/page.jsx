@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
 import {
@@ -15,6 +15,7 @@ import {
   Eye,
   MapPin,
 } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import { useEventDetail } from "../../../../hooks/useEventDetail";
 import { useVolunteerModule } from "../../../../hooks/useVolunteerModule";
 import { useDonationModule } from "../../../../hooks/useDonationModule";
@@ -28,6 +29,7 @@ import ParticipantCategoryManager from "../../../../components/event-modules/Par
 import EventSectionsManager from "../../../../components/EventSectionsManager";
 import { DateInput } from "../../../../components/inputs";
 import SavedLocationPicker from "../../../../components/SavedLocationPicker";
+import AlertModal from "../../../../components/AlertModal";
 
 export default function EditEventPage() {
   const router = useRouter();
@@ -56,8 +58,16 @@ export default function EditEventPage() {
   const [error, setError] = useState(null);
   const [publishing, setPublishing] = useState(false);
   const [activeTab, setActiveTab] = useState("basic");
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const dropdownRef = useRef(null);
   const [eventSections, setEventSections] = useState([]);
   const [validationErrors, setValidationErrors] = useState({});
+  const [alertModal, setAlertModal] = useState({
+    isOpen: false,
+    title: "",
+    message: "",
+    type: "info",
+  });
 
   // Module hooks (initialized with event ID)
   const volunteerModule = useVolunteerModule(id);
@@ -86,6 +96,95 @@ export default function EditEventPage() {
       setEventSections(event.sections || []);
     }
   }, [event]);
+
+  // Click outside to close dropdown
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setDropdownOpen(false);
+      }
+    };
+
+    if (dropdownOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [dropdownOpen]);
+
+  // Helper function to validate and navigate
+  const handleTabNavigation = (tabId) => {
+    // List of config tabs that require validation
+    const configTabs = [
+      "volunteer_config",
+      "donation_config",
+      "participant_config",
+      "content",
+    ];
+
+    // Validate basic info when leaving basic tab to ANY other tab
+    if (activeTab === "basic" && tabId !== "basic") {
+      const errors = [];
+      if (!formData.title?.trim()) errors.push("Event title");
+      if (!formData.description?.trim()) errors.push("Event description");
+      if (!formData.start_date) errors.push("Start date");
+      if (!formData.end_date) errors.push("End date");
+
+      // Location only required if going to CONFIG tabs AND (volunteer or participant enabled)
+      if (configTabs.includes(tabId)) {
+        const needsLocation =
+          formData.has_volunteer || formData.has_participant;
+        if (needsLocation) {
+          if (!formData.address) errors.push("Event location (address)");
+          if (!formData.latitude || !formData.longitude)
+            errors.push("Map location (click on map to set)");
+        }
+      }
+
+      if (errors.length > 0) {
+        setAlertModal({
+          isOpen: true,
+          title: "Please Complete Basic Information",
+          message:
+            "The following fields are required:\n\n" +
+            errors.map((e) => `• ${e}`).join("\n"),
+          type: "error",
+          onClose: () => setAlertModal((prev) => ({ ...prev, isOpen: false })),
+        });
+        setDropdownOpen(false);
+        return false;
+      }
+    }
+
+    // Validate location when leaving module_selection to config tabs
+    // Only if volunteer or participant modules are enabled
+    if (activeTab === "module_selection" && configTabs.includes(tabId)) {
+      const needsLocation = formData.has_volunteer || formData.has_participant;
+
+      if (
+        needsLocation &&
+        (!formData.address || !formData.latitude || !formData.longitude)
+      ) {
+        setAlertModal({
+          isOpen: true,
+          title: "Location Required",
+          message:
+            "Event location with map coordinates is required for volunteer and participant modules. Please add it in the Basic Information tab.",
+          type: "error",
+          onClose: () => setAlertModal((prev) => ({ ...prev, isOpen: false })),
+        });
+        setDropdownOpen(false);
+        setActiveTab("basic");
+        return false;
+      }
+    }
+
+    setActiveTab(tabId);
+    setDropdownOpen(false);
+    return true;
+  };
 
   const handleChange = (field, value) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -260,27 +359,123 @@ export default function EditEventPage() {
           </div>
         )}
 
-        {/* Tabs */}
-        <div className="-mx-4 px-4 mb-6 overflow-x-auto">
-          <div className="flex gap-1 md:gap-2 border-b min-w-max">
-            {tabs.map((tab) => {
-              const Icon = tab.icon;
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`flex items-center gap-1.5 md:gap-2 px-3 md:px-6 py-2.5 md:py-3 text-sm md:text-base font-medium transition-colors border-b-2 whitespace-nowrap ${
-                    activeTab === tab.id
-                      ? "text-emerald-600 border-emerald-600"
-                      : "text-gray-600 border-transparent hover:text-gray-900"
+        {/* Tab Navigation */}
+        <div className="mb-6">
+          {/* Custom Dropdown/Breadcrumb for Mobile/Tablet */}
+          <div className="xl:hidden">
+            {/* Custom Dropdown Button */}
+            <div className="relative" ref={dropdownRef}>
+              {/* Trigger Button */}
+              <button
+                type="button"
+                onClick={() => setDropdownOpen(!dropdownOpen)}
+                className="w-full bg-gradient-to-r from-emerald-50 to-blue-50 border-2 border-emerald-200 rounded-xl pl-14 pr-12 py-3.5 text-sm font-medium text-gray-900 cursor-pointer transition-all duration-200 hover:border-emerald-300 focus:outline-none focus:ring-4 focus:ring-emerald-100 focus:border-emerald-400 shadow-sm hover:shadow-md text-left"
+              >
+                {tabs.find((t) => t.id === activeTab)?.label}
+              </button>
+
+              {/* Icon Badge - Left */}
+              <div className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none">
+                <div className="w-8 h-8 bg-gradient-to-br from-emerald-500 to-blue-500 rounded-lg flex items-center justify-center shadow-md">
+                  {(() => {
+                    const CurrentIcon = tabs.find(
+                      (t) => t.id === activeTab
+                    )?.icon;
+                    return CurrentIcon ? (
+                      <CurrentIcon className="h-4 w-4 text-white" />
+                    ) : null;
+                  })()}
+                </div>
+              </div>
+
+              {/* Chevron - Right */}
+              <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none">
+                <svg
+                  className={`w-5 h-5 text-emerald-600 transition-transform duration-200 ${
+                    dropdownOpen ? "rotate-180" : ""
                   }`}
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
                 >
-                  <Icon className="h-4 w-4" />
-                  <span className="hidden sm:inline">{tab.label}</span>
-                  <span className="sm:hidden">{tab.label.split(" ")[0]}</span>
-                </button>
-              );
-            })}
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M19 9l-7 7-7-7"
+                  />
+                </svg>
+              </div>
+
+              {/* Dropdown Menu */}
+              <AnimatePresence>
+                {dropdownOpen && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    transition={{ duration: 0.2 }}
+                    className="absolute z-50 w-full mt-2 bg-white border-2 border-emerald-200 rounded-xl shadow-lg overflow-hidden"
+                  >
+                    {tabs.map((tab) => {
+                      const Icon = tab.icon;
+                      return (
+                        <button
+                          key={tab.id}
+                          type="button"
+                          onClick={() => handleTabNavigation(tab.id)}
+                          className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-medium transition-colors ${
+                            activeTab === tab.id
+                              ? "bg-emerald-50 text-emerald-700"
+                              : "text-gray-700 hover:bg-gray-50"
+                          }`}
+                        >
+                          <div
+                            className={`w-8 h-8 rounded-lg flex items-center justify-center ${
+                              activeTab === tab.id
+                                ? "bg-gradient-to-br from-emerald-500 to-blue-500"
+                                : "bg-gray-100"
+                            }`}
+                          >
+                            <Icon
+                              className={`h-4 w-4 ${
+                                activeTab === tab.id
+                                  ? "text-white"
+                                  : "text-gray-600"
+                              }`}
+                            />
+                          </div>
+                          <span>{tab.label}</span>
+                        </button>
+                      );
+                    })}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          </div>
+
+          {/* Horizontal Tabs for Desktop */}
+          <div className="hidden xl:block -mx-4 px-4 overflow-x-auto">
+            <div className="flex gap-2 border-b">
+              {tabs.map((tab) => {
+                const Icon = tab.icon;
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => handleTabNavigation(tab.id)}
+                    className={`flex items-center gap-2 px-6 py-3 text-base font-medium transition-colors border-b-2 whitespace-nowrap ${
+                      activeTab === tab.id
+                        ? "text-emerald-600 border-emerald-600"
+                        : "text-gray-600 border-transparent hover:text-gray-900"
+                    }`}
+                  >
+                    <Icon className="h-4 w-4" />
+                    <span>{tab.label}</span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
         </div>
 
@@ -649,12 +844,15 @@ export default function EditEventPage() {
               <button
                 type="button"
                 onClick={() => {
-                  if (formData.has_volunteer) setActiveTab("volunteer_config");
-                  else if (formData.has_donation)
-                    setActiveTab("donation_config");
+                  // Determine next tab based on enabled modules
+                  let nextTab = "content";
+                  if (formData.has_volunteer) nextTab = "volunteer_config";
+                  else if (formData.has_donation) nextTab = "donation_config";
                   else if (formData.has_participant)
-                    setActiveTab("participant_config");
-                  else setActiveTab("content");
+                    nextTab = "participant_config";
+
+                  // Use validation helper
+                  handleTabNavigation(nextTab);
                 }}
                 className="px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-semibold transition-colors"
               >
@@ -888,6 +1086,15 @@ export default function EditEventPage() {
           </div>
         )}
       </div>
+
+      {/* Alert Modal */}
+      <AlertModal
+        isOpen={alertModal.isOpen}
+        title={alertModal.title}
+        message={alertModal.message}
+        type={alertModal.type}
+        onClose={alertModal.onClose}
+      />
     </div>
   );
 }

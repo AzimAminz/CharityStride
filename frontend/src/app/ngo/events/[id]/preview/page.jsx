@@ -44,6 +44,14 @@ export default function EventPreviewPage() {
   // Set initial module when event loads
   useEffect(() => {
     if (event && !selectedModule) {
+      console.log("Module check:", {
+        has_participant: event.has_participant,
+        has_volunteer: event.has_volunteer,
+        has_donation: event.has_donation,
+        shouldShowDonation:
+          !event.has_participant && !event.has_volunteer && event.has_donation,
+      });
+
       const initialModule = event.has_participant
         ? "participant"
         : event.has_volunteer
@@ -61,9 +69,7 @@ export default function EventPreviewPage() {
   };
 
   const handleRegister = (moduleType = "participant") => {
-    alert(
-      `PREVIEW MODE: This would redirect to ${moduleType} registration.\n\nIn actual public page, users will be redirected to registration flow.`
-    );
+    router.push(`/ngo/events/${id}/preview/register/${moduleType}`);
   };
 
   const handleLike = () => {
@@ -234,6 +240,25 @@ export default function EventPreviewPage() {
                       ⏰ Closing Soon
                     </span>
                   )}
+
+                  {/* Module Badges */}
+                  {event.has_participant && (
+                    <span className="px-3 py-1 rounded-md bg-blue-100 text-blue-700 border border-blue-200 text-xs font-semibold">
+                      👥 Participant
+                    </span>
+                  )}
+
+                  {event.has_volunteer && (
+                    <span className="px-3 py-1 rounded-md bg-purple-100 text-purple-700 border border-purple-200 text-xs font-semibold">
+                      ❤️ Volunteer
+                    </span>
+                  )}
+
+                  {event.has_donation && (
+                    <span className="px-3 py-1 rounded-md bg-amber-100 text-amber-700 border border-amber-200 text-xs font-semibold">
+                      💰 Donation
+                    </span>
+                  )}
                 </div>
 
                 {/* Title */}
@@ -265,37 +290,47 @@ export default function EventPreviewPage() {
                 </div>
 
                 {/* Quick Info Grid */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+                <div className="grid grid-cols-2 gap-4 mb-8">
+                  {/* Event Date - if available */}
+                  {event.event_date && (
+                    <InfoCard
+                      icon={<Calendar className="h-5 w-5" />}
+                      label="Event Date"
+                      value={format(parseISO(event.event_date), "dd MMM yyyy")}
+                    />
+                  )}
+
+                  {/* Address - if available */}
+                  {event.address && (
+                    <InfoCard
+                      icon={<MapPin className="h-5 w-5" />}
+                      label="Address"
+                      value={event.address}
+                    />
+                  )}
+
+                  {/* Start Date - label changes based on selected module */}
                   <InfoCard
                     icon={<Calendar className="h-5 w-5" />}
-                    label="Date"
+                    label={
+                      selectedModule === "donation"
+                        ? "Donation Start Date"
+                        : "Registration Start"
+                    }
                     value={format(
                       parseISO(event.start_date || new Date().toISOString()),
                       "dd MMM yyyy"
                     )}
                   />
-                  {event.location && (
-                    <InfoCard
-                      icon={<MapPin className="h-5 w-5" />}
-                      label="Location"
-                      value={event.location}
-                    />
-                  )}
-                  {event.participant_categories?.length > 0 && (
-                    <InfoCard
-                      icon={<Users className="h-5 w-5" />}
-                      label="Capacity"
-                      value={
-                        event.participant_categories.reduce(
-                          (sum, cat) => sum + (cat.capacity || 0),
-                          0
-                        ) || "TBD"
-                      }
-                    />
-                  )}
+
+                  {/* End Date - label changes based on selected module */}
                   <InfoCard
                     icon={<Clock className="h-5 w-5" />}
-                    label="Ends"
+                    label={
+                      selectedModule === "donation"
+                        ? "Donation End Date"
+                        : "Registration End"
+                    }
                     value={format(
                       parseISO(event.end_date || new Date().toISOString()),
                       "dd MMM yyyy"
@@ -391,37 +426,6 @@ export default function EventPreviewPage() {
                       </button>
                     )}
                   </div>
-
-                  {/* Quick Stats */}
-                  <div className="border-t pt-4">
-                    <div className="grid grid-cols-3 gap-4 text-center">
-                      <StatCard
-                        value={
-                          event.participant_categories?.reduce(
-                            (sum, cat) =>
-                              sum + (cat.current_registrations || 0),
-                            0
-                          ) || 0
-                        }
-                        label="Participants"
-                      />
-                      <StatCard
-                        value={((event.total_donations || 0) / 100).toFixed(0)}
-                        label="Donations"
-                        prefix="RM"
-                      />
-                      <StatCard
-                        value={
-                          event.volunteer_roles?.reduce((sum, role) => {
-                            const filled = role.current_volunteers || 0;
-                            const total = role.total_capacity || 0;
-                            return sum + Math.max(0, total - filled);
-                          }, 0) || 0
-                        }
-                        label="Volunteers Needed"
-                      />
-                    </div>
-                  </div>
                 </div>
               </div>
             </div>
@@ -490,7 +494,7 @@ function InfoCard({ icon, label, value }) {
         <p className="text-xs text-gray-500 mb-1 font-medium uppercase tracking-wide">
           {label}
         </p>
-        <p className="text-sm font-bold text-gray-900 line-clamp-1">{value}</p>
+        <p className="text-sm font-bold text-gray-900">{value}</p>
       </div>
     </div>
   );
@@ -745,6 +749,48 @@ function OverviewTab({ event }) {
           )}
         </section>
       ))}
+
+      {/* Event Location Map - Display at bottom if coordinates exist */}
+      {event.latitude && event.longitude && (
+        <section>
+          <h3 className="text-2xl px-4 font-semibold text-gray-900 mb-4">
+            Event Location
+          </h3>
+          <div className="px-4">
+            <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+              <div className="w-full h-[400px] relative">
+                <iframe
+                  src={`https://www.google.com/maps?q=${event.latitude},${event.longitude}&output=embed&z=15`}
+                  width="100%"
+                  height="100%"
+                  style={{ border: 0 }}
+                  allowFullScreen
+                  loading="lazy"
+                  referrerPolicy="no-referrer-when-downgrade"
+                  className="w-full h-full"
+                />
+              </div>
+
+              {/* Address Details */}
+              {event.address && (
+                <div className="p-6 border-t border-gray-200">
+                  <div className="flex items-start gap-3">
+                    <MapPin className="h-5 w-5 text-teal-600 mt-0.5 flex-shrink-0" />
+                    <div className="flex-1">
+                      <p className="font-semibold text-gray-900 mb-2">
+                        Address
+                      </p>
+                      <p className="text-gray-700 text-sm leading-relaxed">
+                        {event.address}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </section>
+      )}
     </motion.div>
   );
 }
