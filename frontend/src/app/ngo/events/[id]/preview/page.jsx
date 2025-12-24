@@ -40,6 +40,37 @@ export default function EventPreviewPage() {
   const [isLiked, setIsLiked] = useState(false);
   const [isBookmarked, setIsBookmarked] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
+  const [timeRemaining, setTimeRemaining] = useState(null);
+
+  // Countdown timer for registration deadline
+  useEffect(() => {
+    if (!event?.end_date) return;
+
+    const calculateTimeRemaining = () => {
+      const now = new Date();
+      const endDate = new Date(event.end_date);
+      const diff = endDate - now;
+
+      if (diff <= 0) {
+        setTimeRemaining({ expired: true });
+        return;
+      }
+
+      const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+      const hours = Math.floor(
+        (diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)
+      );
+      const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+      const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+
+      setTimeRemaining({ days, hours, minutes, seconds, expired: false });
+    };
+
+    calculateTimeRemaining();
+    const interval = setInterval(calculateTimeRemaining, 1000);
+
+    return () => clearInterval(interval);
+  }, [event?.end_date]);
 
   // Set initial module when event loads
   useEffect(() => {
@@ -266,6 +297,76 @@ export default function EventPreviewPage() {
                   {event.title}
                 </h1>
 
+                {/* Registration Countdown */}
+                {timeRemaining && (
+                  <div className="mb-6">
+                    {timeRemaining.expired ? (
+                      <div className="inline-flex items-center gap-2 px-5 py-3 bg-gradient-to-r from-red-100 to-red-50 border-2 border-red-300 rounded-xl shadow-sm">
+                        <Clock className="h-5 w-5 text-red-600" />
+                        <span className="text-base font-bold text-red-700">
+                          Registration Closed
+                        </span>
+                      </div>
+                    ) : (
+                      <div className="relative bg-gradient-to-br from-emerald-100 via-teal-100 to-cyan-100 border-2 border-emerald-400 rounded-2xl p-3 sm:p-5 shadow-xl">
+                        {/* Decorative corner accent */}
+                        <div className="absolute top-0 right-0 w-20 h-20 bg-gradient-to-br from-emerald-300/40 to-transparent rounded-bl-full" />
+
+                        <div className="relative">
+                          <div className="flex items-center gap-2 mb-3 sm:mb-4">
+                            <div className="p-2 bg-gradient-to-br from-emerald-600 to-teal-600 rounded-lg shadow-lg">
+                              <Clock className="h-5 w-5 text-white" />
+                            </div>
+                            <div>
+                              <span className="text-sm font-bold text-emerald-900 block">
+                                Registration Closes In
+                              </span>
+                              <span className="text-xs text-emerald-700">
+                                Don't miss out!
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-4 gap-2 sm:gap-3">
+                            <div className="bg-gradient-to-br from-white via-emerald-50 to-teal-50 rounded-lg sm:rounded-xl p-2 sm:p-4 text-center border-2 border-emerald-400 shadow-lg hover:shadow-2xl transition-all duration-300 hover:-translate-y-1 hover:border-emerald-500">
+                              <div className="text-xl sm:text-3xl font-black bg-gradient-to-br from-emerald-700 via-emerald-600 to-teal-600 bg-clip-text text-transparent animate-pulse">
+                                {timeRemaining.days}
+                              </div>
+                              <div className="text-[10px] sm:text-xs font-semibold text-gray-600 mt-1 sm:mt-2 uppercase tracking-wider">
+                                Days
+                              </div>
+                            </div>
+                            <div className="bg-gradient-to-br from-white via-emerald-50 to-teal-50 rounded-lg sm:rounded-xl p-2 sm:p-4 text-center border-2 border-emerald-400 shadow-lg hover:shadow-2xl transition-all duration-300 hover:-translate-y-1 hover:border-emerald-500">
+                              <div className="text-xl sm:text-3xl font-black bg-gradient-to-br from-emerald-700 via-emerald-600 to-teal-600 bg-clip-text text-transparent">
+                                {String(timeRemaining.hours).padStart(2, "0")}
+                              </div>
+                              <div className="text-[10px] sm:text-xs font-semibold text-gray-600 mt-1 sm:mt-2 uppercase tracking-wider">
+                                Hours
+                              </div>
+                            </div>
+                            <div className="bg-gradient-to-br from-white via-emerald-50 to-teal-50 rounded-lg sm:rounded-xl p-2 sm:p-4 text-center border-2 border-emerald-400 shadow-lg hover:shadow-2xl transition-all duration-300 hover:-translate-y-1 hover:border-emerald-500">
+                              <div className="text-xl sm:text-3xl font-black bg-gradient-to-br from-emerald-700 via-emerald-600 to-teal-600 bg-clip-text text-transparent">
+                                {String(timeRemaining.minutes).padStart(2, "0")}
+                              </div>
+                              <div className="text-[10px] sm:text-xs font-semibold text-gray-600 mt-1 sm:mt-2 uppercase tracking-wider">
+                                Minutes
+                              </div>
+                            </div>
+                            <div className="bg-gradient-to-br from-white via-emerald-50 to-teal-50 rounded-lg sm:rounded-xl p-2 sm:p-4 text-center border-2 border-emerald-400 shadow-lg hover:shadow-2xl transition-all duration-300 hover:-translate-y-1 hover:border-emerald-500">
+                              <div className="text-xl sm:text-3xl font-black bg-gradient-to-br from-emerald-700 via-emerald-600 to-teal-600 bg-clip-text text-transparent">
+                                {String(timeRemaining.seconds).padStart(2, "0")}
+                              </div>
+                              <div className="text-[10px] sm:text-xs font-semibold text-gray-600 mt-1 sm:mt-2 uppercase tracking-wider">
+                                Seconds
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 {/* Organizer */}
                 <div className="flex items-center gap-3 mb-6">
                   <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-emerald-100 bg-emerald-50 flex items-center justify-center">
@@ -306,22 +407,9 @@ export default function EventPreviewPage() {
                       icon={<MapPin className="h-5 w-5" />}
                       label="Address"
                       value={event.address}
+                      iconColor="blue"
                     />
                   )}
-
-                  {/* Start Date - label changes based on selected module */}
-                  <InfoCard
-                    icon={<Calendar className="h-5 w-5" />}
-                    label={
-                      selectedModule === "donation"
-                        ? "Donation Start Date"
-                        : "Registration Start"
-                    }
-                    value={format(
-                      parseISO(event.start_date || new Date().toISOString()),
-                      "dd MMM yyyy"
-                    )}
-                  />
 
                   {/* End Date - label changes based on selected module */}
                   <InfoCard
@@ -335,6 +423,7 @@ export default function EventPreviewPage() {
                       parseISO(event.end_date || new Date().toISOString()),
                       "dd MMM yyyy"
                     )}
+                    iconColor="orange"
                   />
                 </div>
 
@@ -361,35 +450,35 @@ export default function EventPreviewPage() {
 
               {/* Right: Action Card */}
               <div className="lg:w-96">
-                <div className="bg-gradient-to-br from-white via-teal-50/30 to-emerald-50/30 rounded-xl border border-teal-200/50 p-6 shadow-md hover:shadow-lg transition-shadow">
-                  <h3 className="text-xl font-bold text-gray-900 mb-4">
+                <div className="bg-white rounded-2xl border-2 border-emerald-200 p-6 shadow-xl sticky top-24">
+                  <h3 className="text-2xl font-black text-gray-900 mb-5">
                     Join This Event
                   </h3>
 
                   {/* Registration Status */}
                   {registrationStatus ? (
-                    <div className="mb-5 p-4 bg-white rounded-lg border border-emerald-500/20">
+                    <div className="mb-5 p-4 bg-emerald-50 rounded-xl border-2 border-emerald-500">
                       <div className="flex items-center gap-3">
-                        <CheckCircle className="h-6 w-6 text-emerald-500" />
+                        <CheckCircle className="h-6 w-6 text-emerald-600" />
                         <div>
-                          <p className="font-semibold text-gray-800">
+                          <p className="font-bold text-gray-900">
                             Already Registered
                           </p>
-                          <p className="text-sm text-gray-600">
+                          <p className="text-sm text-emerald-700">
                             Registration Confirmed
                           </p>
                         </div>
                       </div>
                     </div>
                   ) : (
-                    <div className="mb-5 p-3.5 bg-amber-50/50 rounded-lg border border-amber-200/60">
-                      <div className="flex items-center gap-2.5">
+                    <div className="mb-5 p-4 bg-amber-50 rounded-xl border-2 border-amber-300">
+                      <div className="flex items-center gap-3">
                         <Info className="h-5 w-5 text-amber-600 flex-shrink-0" />
                         <div>
-                          <p className="text-sm font-semibold text-gray-900">
+                          <p className="text-sm font-bold text-gray-900">
                             Not Registered Yet
                           </p>
-                          <p className="text-xs text-gray-600">
+                          <p className="text-xs text-gray-700">
                             Choose how you want to participate below
                           </p>
                         </div>
@@ -405,7 +494,7 @@ export default function EventPreviewPage() {
                   />
 
                   {/* Action Buttons */}
-                  <div className="space-y-2 mb-5">
+                  <div className="space-y-3 mb-6">
                     {(event.has_participant || event.has_volunteer) &&
                       selectedModule !== "donation" && (
                         <button
@@ -425,6 +514,17 @@ export default function EventPreviewPage() {
                         Donate Now
                       </button>
                     )}
+                  </div>
+
+                  {/* Share Section */}
+                  <div className="pt-5 mt-5 border-t-2 border-gray-100">
+                    <button
+                      onClick={handleShare}
+                      className="w-full px-4 py-3 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-900 font-semibold transition-all flex items-center justify-center gap-2"
+                    >
+                      <Share2 className="h-4 w-4" />
+                      Share Event
+                    </button>
                   </div>
                 </div>
               </div>
@@ -484,17 +584,19 @@ export default function EventPreviewPage() {
 }
 
 // Helper Components
-function InfoCard({ icon, label, value }) {
+function InfoCard({ icon, label, value, iconColor = "teal" }) {
   return (
-    <div className="group flex items-start gap-2.5 p-3.5 bg-gradient-to-br from-white to-teal-50/20 rounded-lg border border-teal-100/40 hover:border-teal-200 hover:shadow-sm transition-all">
-      <div className="text-teal-600 mt-0.5 group-hover:scale-110 transition-transform">
-        {icon}
+    <div className="group flex items-start gap-3 p-4 bg-white rounded-xl shadow-sm hover:shadow-md transition-all">
+      <div
+        className={`p-3 bg-${iconColor}-100 rounded-xl group-hover:scale-105 transition-transform`}
+      >
+        <div className={`text-${iconColor}-600`}>{icon}</div>
       </div>
-      <div className="min-w-0">
-        <p className="text-xs text-gray-500 mb-1 font-medium uppercase tracking-wide">
+      <div className="flex-1 min-w-0">
+        <p className="text-xs text-gray-500 mb-1.5 font-semibold uppercase tracking-wider">
           {label}
         </p>
-        <p className="text-sm font-bold text-gray-900">{value}</p>
+        <p className="text-base font-bold text-gray-900">{value}</p>
       </div>
     </div>
   );

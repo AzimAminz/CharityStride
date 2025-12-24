@@ -3,7 +3,7 @@
 import { useParams, useRouter } from "next/navigation";
 import { useState } from "react";
 import { useEventDetail } from "../../../../../../hooks/useEventDetail";
-import { ArrowLeft, DollarSign, Package } from "lucide-react";
+import { ArrowLeft, DollarSign, Package, X } from "lucide-react";
 
 export default function NGODonationPreviewPage() {
   const router = useRouter();
@@ -13,6 +13,7 @@ export default function NGODonationPreviewPage() {
   const { event, loading, error } = useEventDetail(id);
 
   const [donationType, setDonationType] = useState("money");
+  const [showCustomInput, setShowCustomInput] = useState(false); // For 'Others' button
   const [formData, setFormData] = useState({
     money_amount: "",
     item_donation_option_id: "",
@@ -34,13 +35,85 @@ export default function NGODonationPreviewPage() {
     );
   }
 
-  const moneyOptions = event.donation_config?.money_donation_options || [];
-  const itemOptions = event.donation_config?.item_donation_options || [];
+  const moneyOptions = event.money_donation_options || [];
+  const itemOptions = event.item_donation_options || [];
+
+  // Separate fixed amounts from free amount
+  const fixedAmounts = moneyOptions.filter(
+    (opt) => opt.suggested_amount !== null
+  );
+  const hasFreeAmount = moneyOptions.some(
+    (opt) => opt.suggested_amount === null
+  );
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
+
+  const handleClearForm = () => {
+    setFormData({
+      money_amount: "",
+      item_donation_option_id: "",
+    });
+    setShowCustomInput(false);
+  };
+
+  // Demonstrate payload preparation (for NGO preview understanding)
+  const getDemonstrationPayload = () => {
+    let payload = {
+      event_id: parseInt(id),
+      donation_type: donationType,
+    };
+
+    if (donationType === "money" && formData.money_amount) {
+      const selectedOption = moneyOptions.find(
+        (opt) => opt.suggested_amount.toString() === formData.money_amount
+      );
+      if (selectedOption) {
+        payload.amount_paid = selectedOption.suggested_amount; // Already in cents
+        payload.item_name = null;
+        payload.quantity = null;
+      }
+    } else if (donationType === "item" && formData.item_donation_option_id) {
+      const selectedOption = itemOptions.find(
+        (opt) => opt.id.toString() === formData.item_donation_option_id
+      );
+      if (selectedOption) {
+        payload.amount_paid = null;
+        payload.item_name = selectedOption.item_name;
+        payload.quantity = 1; // Default for preview
+      }
+    }
+
+    return payload;
+  };
+
+  // Log payload when selection changes (for NGO to see structure)
+  const handleSelectionChange = (e) => {
+    handleInputChange(e);
+    setTimeout(() => {
+      const payload = getDemonstrationPayload();
+      if (payload.amount_paid || payload.item_name) {
+        console.log("Preview - Donation payload structure:", payload);
+      }
+    }, 100);
+  };
+
+  // Debug: Check donation config data
+  console.log("=== NGO PREVIEW DONATION CONFIG DEBUG ===");
+  console.log("Event:", event.title);
+  console.log("Has donation_config?", !!event.donation_config);
+  console.log("donation_config:", event.donation_config);
+  console.log(
+    "donation_config KEYS:",
+    event.donation_config ? Object.keys(event.donation_config) : "N/A"
+  );
+  console.log("Money options count:", moneyOptions.length);
+  console.log("Money options:", moneyOptions);
+  console.log("Item options count:", itemOptions.length);
+  console.log("Item options:", itemOptions);
+  console.log("=========================================");
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-amber-50/30">
@@ -74,7 +147,13 @@ export default function NGODonationPreviewPage() {
         {/* Donation Type Tabs */}
         <div className="flex gap-2 mb-8">
           <button
-            onClick={() => setDonationType("money")}
+            onClick={() => {
+              setDonationType("money");
+              setFormData((prev) => ({
+                ...prev,
+                item_donation_option_id: "",
+              }));
+            }}
             className={`flex-1 px-6 py-3 rounded-lg font-bold transition-all flex items-center justify-center gap-2 ${
               donationType === "money"
                 ? "bg-amber-600 text-white shadow-md"
@@ -85,7 +164,14 @@ export default function NGODonationPreviewPage() {
             Money Donation
           </button>
           <button
-            onClick={() => setDonationType("item")}
+            onClick={() => {
+              setDonationType("item");
+              setFormData((prev) => ({
+                ...prev,
+                money_amount: "",
+              }));
+              setShowCustomInput(false);
+            }}
             className={`flex-1 px-6 py-3 rounded-lg font-bold transition-all flex items-center justify-center gap-2 ${
               donationType === "item"
                 ? "bg-amber-600 text-white shadow-md"
@@ -97,36 +183,67 @@ export default function NGODonationPreviewPage() {
           </button>
         </div>
 
+        {/* Clear Button */}
+        {(formData.money_amount || formData.item_donation_option_id) && (
+          <div className="flex justify-end mb-4">
+            <button
+              type="button"
+              onClick={handleClearForm}
+              className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-red-600 bg-red-50 hover:bg-red-100 rounded-lg border border-red-200 hover:border-red-300 transition-all"
+            >
+              <X className="h-4 w-4" />
+              Clear Selection
+            </button>
+          </div>
+        )}
+
         {/* Form Preview */}
         <div className="space-y-8">
           {/* Money Donation */}
           {donationType === "money" && (
             <>
-              {moneyOptions.length > 0 && (
+              {fixedAmounts.length > 0 && (
                 <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
                   <h2 className="text-xl font-bold text-gray-900 mb-4">
                     Select Amount
                   </h2>
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                    {moneyOptions.map((option) => (
+                    {fixedAmounts.map((option) => (
                       <button
                         key={option.id}
                         type="button"
-                        onClick={() =>
+                        onClick={() => {
+                          setShowCustomInput(false); // Hide custom input when fixed amount selected
                           setFormData((prev) => ({
                             ...prev,
-                            money_amount: option.suggested_amount.toString(),
-                          }))
-                        }
+                            money_amount: option.suggested_amount?.toString(),
+                          }));
+                          // Log payload demonstration
+                          setTimeout(() => {
+                            console.log(
+                              "Preview - Donation payload structure:",
+                              {
+                                event_id: parseInt(id),
+                                donation_type: "money",
+                                amount_paid: option.suggested_amount,
+                                item_name: null,
+                                quantity: null,
+                              }
+                            );
+                          }, 100);
+                        }}
                         className={`p-4 rounded-lg border-2 transition-all ${
                           formData.money_amount ===
-                          option.suggested_amount.toString()
+                          option.suggested_amount?.toString()
                             ? "border-amber-500 bg-amber-50"
                             : "border-gray-200 hover:border-gray-300"
                         }`}
                       >
                         <div className="text-2xl font-bold text-amber-600 mb-1">
-                          RM {(option.suggested_amount / 100).toFixed(2)}
+                          RM{" "}
+                          {option.suggested_amount
+                            ? (option.suggested_amount / 100).toFixed(2)
+                            : "0.00"}
                         </div>
                         {option.description && (
                           <div className="text-xs text-gray-600">
@@ -135,26 +252,54 @@ export default function NGODonationPreviewPage() {
                         )}
                       </button>
                     ))}
+
+                    {/* Others button for free amount */}
+                    {hasFreeAmount && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowCustomInput(true);
+                          setFormData((prev) => ({
+                            ...prev,
+                            money_amount: "",
+                          }));
+                        }}
+                        className={`p-4 rounded-lg border-2 transition-all ${
+                          showCustomInput
+                            ? "border-amber-500 bg-amber-50"
+                            : "border-gray-200 hover:border-gray-300"
+                        }`}
+                      >
+                        <div className="text-2xl font-bold text-amber-600 mb-1">
+                          Others
+                        </div>
+                        <div className="text-xs text-gray-600">
+                          Enter custom amount
+                        </div>
+                      </button>
+                    )}
                   </div>
                 </div>
               )}
 
-              <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
-                <h2 className="text-xl font-bold text-gray-900 mb-4">
-                  Or Enter Custom Amount
-                </h2>
-                <div className="relative">
-                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 font-semibold">
-                    RM
-                  </span>
-                  <input
-                    type="number"
-                    disabled
-                    className="w-full pl-14 pr-4 py-3 rounded-lg border-2 border-gray-300 bg-gray-50 text-lg font-semibold"
-                    placeholder="0.00"
-                  />
+              {showCustomInput && (
+                <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
+                  <h2 className="text-xl font-bold text-gray-900 mb-4">
+                    Enter Custom Amount
+                  </h2>
+                  <div className="relative">
+                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 font-semibold">
+                      RM
+                    </span>
+                    <input
+                      type="number"
+                      disabled
+                      className="w-full pl-14 pr-4 py-3 rounded-lg border-2 border-gray-300 bg-gray-50 text-lg font-semibold"
+                      placeholder="0.00"
+                    />
+                  </div>
                 </div>
-              </div>
+              )}
             </>
           )}
 
@@ -187,7 +332,7 @@ export default function NGODonationPreviewPage() {
                             formData.item_donation_option_id ===
                             option.id.toString()
                           }
-                          onChange={handleInputChange}
+                          onChange={handleSelectionChange}
                           className="mt-1"
                         />
                         <div className="flex-1">

@@ -142,12 +142,6 @@ class EventController extends Controller
         if (!isset($eventArray['volunteer_roles'])) {
             $eventArray['volunteer_roles'] = [];
         }
-        if (!isset($eventArray['money_donation_options'])) {
-            $eventArray['money_donation_options'] = [];
-        }
-        if (!isset($eventArray['item_donation_options'])) {
-            $eventArray['item_donation_options'] = [];
-        }
 
         return response()->json($eventArray);
     }

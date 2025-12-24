@@ -9,6 +9,7 @@ import {
   Package,
   AlertCircle,
   CheckCircle,
+  X,
 } from "lucide-react";
 
 export default function DonationRegistrationPage() {
@@ -19,6 +20,7 @@ export default function DonationRegistrationPage() {
   const { event, loading, error } = useEventDetail(id);
 
   const [donationType, setDonationType] = useState("money"); // 'money' or 'item'
+  const [showCustomInput, setShowCustomInput] = useState(false); // For 'Others' button
   const [formData, setFormData] = useState({
     // Money donation
     money_amount: "",
@@ -69,8 +71,25 @@ export default function DonationRegistrationPage() {
     );
   }
 
-  const moneyOptions = event.donation_config?.money_donation_options || [];
-  const itemOptions = event.donation_config?.item_donation_options || [];
+  const moneyOptions = event.money_donation_options || [];
+  const itemOptions = event.item_donation_options || [];
+
+  // Separate fixed amounts from free amount
+  const fixedAmounts = moneyOptions.filter(
+    (opt) => opt.suggested_amount !== null
+  );
+  const hasFreeAmount = moneyOptions.some(
+    (opt) => opt.suggested_amount === null
+  );
+
+  // Debug: Check donation options data
+  console.log("=== DONATION OPTIONS DEBUG ===");
+  console.log("Event:", event.title);
+  console.log("Money options count:", moneyOptions.length);
+  console.log("Fixed amounts:", fixedAmounts);
+  console.log("Has free amount option:", hasFreeAmount);
+  console.log("Item options count:", itemOptions.length);
+  console.log("==============================");
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -78,6 +97,17 @@ export default function DonationRegistrationPage() {
     if (errors[name]) {
       setErrors((prev) => ({ ...prev, [name]: "" }));
     }
+  };
+
+  const handleClearForm = () => {
+    setFormData({
+      money_amount: "",
+      custom_amount: "",
+      item_donation_option_id: "",
+      quantity: "1",
+    });
+    setShowCustomInput(false);
+    setErrors({});
   };
 
   const validateForm = () => {
@@ -111,12 +141,48 @@ export default function DonationRegistrationPage() {
     }
 
     setSubmitting(true);
-    console.log("Donation data:", { donationType, ...formData });
+
+    // Prepare payload according to donation_registrations table structure
+    let payload = {
+      event_id: parseInt(id),
+      donation_type: donationType,
+    };
+
+    if (donationType === "money") {
+      // Convert to cents for amount_paid
+      let amountInCents;
+
+      if (formData.money_amount) {
+        // Using suggested amount (already in cents)
+        const selectedOption = moneyOptions.find(
+          (opt) => opt.suggested_amount.toString() === formData.money_amount
+        );
+        amountInCents = selectedOption.suggested_amount;
+      } else {
+        // Custom amount - convert RM to cents
+        amountInCents = Math.round(parseFloat(formData.custom_amount) * 100);
+      }
+
+      payload.amount_paid = amountInCents;
+      payload.item_name = null;
+      payload.quantity = null;
+    } else {
+      // Item donation - extract item_name from selected option
+      const selectedOption = itemOptions.find(
+        (opt) => opt.id.toString() === formData.item_donation_option_id
+      );
+
+      payload.amount_paid = null;
+      payload.item_name = selectedOption.item_name;
+      payload.quantity = parseInt(formData.quantity);
+    }
+
+    console.log("Donation payload:", payload);
 
     setTimeout(() => {
       setSubmitting(false);
       alert("Donation submitted! (Preview mode)");
-      router.push(`/ngo/events/${id}/preview`);
+      router.push(`/events/${id}`);
     }, 1500);
   };
 
@@ -148,7 +214,16 @@ export default function DonationRegistrationPage() {
         {/* Donation Type Tabs */}
         <div className="flex gap-2 mb-8">
           <button
-            onClick={() => setDonationType("money")}
+            onClick={() => {
+              setDonationType("money");
+              // Clear item donation data when switching to money
+              setFormData((prev) => ({
+                ...prev,
+                item_donation_option_id: "",
+                quantity: "1",
+              }));
+              setErrors({});
+            }}
             className={`flex-1 px-6 py-3 rounded-lg font-bold transition-all flex items-center justify-center gap-2 ${
               donationType === "money"
                 ? "bg-amber-600 text-white shadow-md"
@@ -159,7 +234,17 @@ export default function DonationRegistrationPage() {
             Money Donation
           </button>
           <button
-            onClick={() => setDonationType("item")}
+            onClick={() => {
+              setDonationType("item");
+              // Clear money donation data when switching to item
+              setFormData((prev) => ({
+                ...prev,
+                money_amount: "",
+                custom_amount: "",
+              }));
+              setShowCustomInput(false);
+              setErrors({});
+            }}
             className={`flex-1 px-6 py-3 rounded-lg font-bold transition-all flex items-center justify-center gap-2 ${
               donationType === "item"
                 ? "bg-amber-600 text-white shadow-md"
@@ -171,27 +256,44 @@ export default function DonationRegistrationPage() {
           </button>
         </div>
 
+        {/* Clear Button */}
+        {(formData.money_amount ||
+          formData.custom_amount ||
+          formData.item_donation_option_id) && (
+          <div className="flex justify-end mb-4">
+            <button
+              type="button"
+              onClick={handleClearForm}
+              className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-red-600 bg-red-50 hover:bg-red-100 rounded-lg border border-red-200 hover:border-red-300 transition-all"
+            >
+              <X className="h-4 w-4" />
+              Clear Selection
+            </button>
+          </div>
+        )}
+
         {/* Donation Form */}
         <form onSubmit={handleSubmit} className="space-y-8">
           {/* Money Donation */}
           {donationType === "money" && (
             <>
-              {/* Suggested Amounts */}
-              {moneyOptions.length > 0 && (
+              {/* Fixed Amount Options */}
+              {fixedAmounts.length > 0 && (
                 <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
                   <h2 className="text-xl font-bold text-gray-900 mb-4">
                     Select Amount
                   </h2>
 
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-4">
-                    {moneyOptions.map((option) => (
+                    {fixedAmounts.map((option) => (
                       <button
                         key={option.id}
                         type="button"
                         onClick={() => {
+                          setShowCustomInput(false); // Hide custom input when fixed amount selected
                           setFormData((prev) => ({
                             ...prev,
-                            money_amount: option.suggested_amount.toString(),
+                            money_amount: option.suggested_amount?.toString(),
                             custom_amount: "",
                           }));
                           setErrors((prev) => ({
@@ -202,13 +304,16 @@ export default function DonationRegistrationPage() {
                         }}
                         className={`p-4 rounded-lg border-2 transition-all ${
                           formData.money_amount ===
-                          option.suggested_amount.toString()
+                          option.suggested_amount?.toString()
                             ? "border-amber-500 bg-amber-50"
                             : "border-gray-200 hover:border-gray-300"
                         }`}
                       >
                         <div className="text-2xl font-bold text-amber-600 mb-1">
-                          RM {(option.suggested_amount / 100).toFixed(2)}
+                          RM{" "}
+                          {option.suggested_amount
+                            ? (option.suggested_amount / 100).toFixed(2)
+                            : "0.00"}
                         </div>
                         {option.description && (
                           <div className="text-xs text-gray-600">
@@ -217,6 +322,32 @@ export default function DonationRegistrationPage() {
                         )}
                       </button>
                     ))}
+
+                    {/* Others button for free amount */}
+                    {hasFreeAmount && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowCustomInput(true);
+                          setFormData((prev) => ({
+                            ...prev,
+                            money_amount: "",
+                          }));
+                        }}
+                        className={`p-4 rounded-lg border-2 transition-all ${
+                          showCustomInput
+                            ? "border-amber-500 bg-amber-50"
+                            : "border-gray-200 hover:border-gray-300"
+                        }`}
+                      >
+                        <div className="text-2xl font-bold text-amber-600 mb-1">
+                          Others
+                        </div>
+                        <div className="text-xs text-gray-600">
+                          Enter custom amount
+                        </div>
+                      </button>
+                    )}
                   </div>
 
                   {errors.money_amount && (
@@ -228,42 +359,44 @@ export default function DonationRegistrationPage() {
                 </div>
               )}
 
-              {/* Custom Amount */}
-              <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
-                <h2 className="text-xl font-bold text-gray-900 mb-4">
-                  Or Enter Custom Amount
-                </h2>
+              {/* Custom Amount Input - Shows when 'Others' button is clicked */}
+              {showCustomInput && (
+                <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
+                  <h2 className="text-xl font-bold text-gray-900 mb-4">
+                    Enter Custom Amount
+                  </h2>
 
-                <div className="relative">
-                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 font-semibold">
-                    RM
-                  </span>
-                  <input
-                    type="number"
-                    name="custom_amount"
-                    value={formData.custom_amount}
-                    onChange={(e) => {
-                      handleInputChange(e);
-                      setFormData((prev) => ({ ...prev, money_amount: "" }));
-                    }}
-                    step="0.01"
-                    min="0"
-                    className={`w-full pl-14 pr-4 py-3 rounded-lg border-2 text-lg font-semibold ${
-                      errors.custom_amount
-                        ? "border-red-300 focus:border-red-500 focus:ring-red-200"
-                        : "border-gray-300 focus:border-amber-500 focus:ring-amber-200"
-                    } focus:ring-2 focus:outline-none transition-colors`}
-                    placeholder="0.00"
-                  />
+                  <div className="relative">
+                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 font-semibold">
+                      RM
+                    </span>
+                    <input
+                      type="number"
+                      name="custom_amount"
+                      value={formData.custom_amount}
+                      onChange={(e) => {
+                        handleInputChange(e);
+                        setFormData((prev) => ({ ...prev, money_amount: "" }));
+                      }}
+                      step="0.01"
+                      min="0"
+                      className={`w-full pl-14 pr-4 py-3 rounded-lg border-2 text-lg font-semibold ${
+                        errors.custom_amount
+                          ? "border-red-300 focus:border-red-500 focus:ring-red-200"
+                          : "border-gray-300 focus:border-amber-500 focus:ring-amber-200"
+                      } focus:ring-2 focus:outline-none transition-colors`}
+                      placeholder="0.00"
+                    />
+                  </div>
+
+                  {errors.custom_amount && (
+                    <p className="mt-2 text-sm text-red-600 flex items-center gap-1">
+                      <AlertCircle className="h-4 w-4" />
+                      {errors.custom_amount}
+                    </p>
+                  )}
                 </div>
-
-                {errors.custom_amount && (
-                  <p className="mt-2 text-sm text-red-600 flex items-center gap-1">
-                    <AlertCircle className="h-4 w-4" />
-                    {errors.custom_amount}
-                  </p>
-                )}
-              </div>
+              )}
             </>
           )}
 
