@@ -9,6 +9,7 @@ import {
   AlertCircle,
   CheckCircle,
   Clock,
+  ChevronDown,
 } from "lucide-react";
 
 export default function VolunteerRegistrationPage() {
@@ -27,6 +28,7 @@ export default function VolunteerRegistrationPage() {
   });
 
   const [selectedDate, setSelectedDate] = useState(""); // For date filter dropdown
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [errors, setErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
 
@@ -241,27 +243,99 @@ export default function VolunteerRegistrationPage() {
                   Select Shift
                 </h2>
 
-                {/* Date Filter Dropdown */}
+                {/* Custom Date Filter Dropdown */}
                 {sortedDates.length > 1 && (
-                  <select
-                    value={selectedDate}
-                    onChange={(e) => setSelectedDate(e.target.value)}
-                    className="px-4 py-2 rounded-lg border-2 border-gray-300 focus:border-purple-500 focus:ring-2 focus:ring-purple-200 focus:outline-none text-sm font-medium"
-                  >
-                    <option value="">All Dates ({sortedDates.length})</option>
-                    {sortedDates.map((date) => (
-                      <option key={date} value={date}>
-                        {date !== "No Date"
-                          ? new Date(date).toLocaleDateString("en-MY", {
-                              month: "short",
-                              day: "numeric",
-                              year: "numeric",
-                            })
-                          : "Date Not Set"}{" "}
-                        ({shiftsByDate[date].length})
-                      </option>
-                    ))}
-                  </select>
+                  <div className="relative">
+                    <button
+                      type="button"
+                      onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                      className="px-4 py-2 rounded-lg border-2 border-gray-300 hover:border-purple-500 focus:border-purple-500 focus:ring-2 focus:ring-purple-200 focus:outline-none text-sm font-medium bg-white transition-all flex items-center gap-2 min-w-[200px] justify-between"
+                    >
+                      <span>
+                        {selectedDate ? (
+                          <>
+                            {new Date(selectedDate).toLocaleDateString(
+                              "en-MY",
+                              {
+                                month: "short",
+                                day: "numeric",
+                                year: "numeric",
+                              }
+                            )}{" "}
+                            ({shiftsByDate[selectedDate].length})
+                          </>
+                        ) : (
+                          `All Dates (${sortedDates.length})`
+                        )}
+                      </span>
+                      <ChevronDown
+                        className={`h-4 w-4 transition-transform ${
+                          isDropdownOpen ? "rotate-180" : ""
+                        }`}
+                      />
+                    </button>
+
+                    {isDropdownOpen && (
+                      <>
+                        <div
+                          className="fixed inset-0 z-10"
+                          onClick={() => setIsDropdownOpen(false)}
+                        />
+
+                        <div className="absolute right-0 mt-2 w-64 bg-white border-2 border-gray-200 rounded-lg shadow-lg z-20 overflow-hidden">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSelectedDate("");
+                              setIsDropdownOpen(false);
+                            }}
+                            className={`w-full px-4 py-3 text-left text-sm hover:bg-purple-50 transition-colors flex items-center justify-between ${
+                              !selectedDate
+                                ? "bg-purple-50 text-purple-700 font-semibold"
+                                : "text-gray-700"
+                            }`}
+                          >
+                            <span>All Dates</span>
+                            <span className="text-xs text-gray-500">
+                              ({sortedDates.length})
+                            </span>
+                          </button>
+
+                          <div className="border-t border-gray-200" />
+
+                          {sortedDates.map((date) => (
+                            <button
+                              key={date}
+                              type="button"
+                              onClick={() => {
+                                setSelectedDate(date);
+                                setIsDropdownOpen(false);
+                              }}
+                              className={`w-full px-4 py-3 text-left text-sm hover:bg-purple-50 transition-colors flex items-center justify-between ${
+                                selectedDate === date
+                                  ? "bg-purple-50 text-purple-700 font-semibold"
+                                  : "text-gray-700"
+                              }`}
+                            >
+                              <span>
+                                {date !== "No Date"
+                                  ? new Date(date).toLocaleDateString("en-MY", {
+                                      weekday: "short",
+                                      month: "short",
+                                      day: "numeric",
+                                      year: "numeric",
+                                    })
+                                  : "Date Not Set"}
+                              </span>
+                              <span className="text-xs text-gray-500">
+                                ({shiftsByDate[date].length})
+                              </span>
+                            </button>
+                          ))}
+                        </div>
+                      </>
+                    )}
+                  </div>
                 )}
               </div>
 
@@ -342,26 +416,18 @@ export default function VolunteerRegistrationPage() {
                                     {shift.description}
                                   </p>
                                 )}
-                                {shift.total_capacity && (
+                                {shift.capacity && (
                                   <div className="mt-2">
                                     <div className="flex items-center justify-between text-xs text-gray-600 mb-1">
                                       <span>Capacity</span>
                                       <span className="font-medium">
-                                        {shift.current_volunteers || 0} /{" "}
-                                        {shift.total_capacity}
+                                        0 / {shift.capacity}
                                       </span>
                                     </div>
                                     <div className="w-full bg-gray-200 rounded-full h-2">
                                       <div
                                         className="bg-purple-600 h-2 rounded-full transition-all"
-                                        style={{
-                                          width: `${Math.min(
-                                            ((shift.current_volunteers || 0) /
-                                              shift.total_capacity) *
-                                              100,
-                                            100
-                                          )}%`,
-                                        }}
+                                        style={{ width: "0%" }}
                                       />
                                     </div>
                                   </div>
