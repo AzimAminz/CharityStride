@@ -23,15 +23,15 @@ L.Icon.Default.mergeOptions({
     "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png",
 });
 
-// Component to recenter map when user location changes
-function MapController({ center }) {
+// Component to recenter map when user location changes (only once on initial load)
+function MapController({ center, shouldRecenter }) {
   const map = useMap();
 
   useEffect(() => {
-    if (center) {
-      map.setView(center, 14);
+    if (center && shouldRecenter) {
+      map.setView(center, 16);
     }
-  }, [center, map]);
+  }, [center, map, shouldRecenter]);
 
   return null;
 }
@@ -77,6 +77,38 @@ export default function EventMap({
   const [userLocation, setUserLocation] = useState(null);
   const [mapCenter, setMapCenter] = useState([3.139, 101.6869]); // Default: Kuala Lumpur
   const [isLoadingLocation, setIsLoadingLocation] = useState(false);
+  const [shouldRecenter, setShouldRecenter] = useState(true); // Only recenter on initial load
+
+  // Auto-detect user location on component mount
+  useEffect(() => {
+    if ("geolocation" in navigator) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const { latitude, longitude } = position.coords;
+          const location = [latitude, longitude];
+          setUserLocation(location);
+          setMapCenter(location);
+
+          // Notify parent component about location change
+          if (onLocationChange) {
+            onLocationChange({ lat: latitude, lng: longitude });
+          }
+
+          // After initial centering, disable auto-recenter to allow free panning
+          setTimeout(() => setShouldRecenter(false), 1000);
+        },
+        (error) => {
+          console.log(
+            "Location permission denied or unavailable, using default location"
+          );
+          // Disable auto-recenter even on error
+          setShouldRecenter(false);
+        }
+      );
+    } else {
+      setShouldRecenter(false);
+    }
+  }, [onLocationChange]);
 
   // Filter events based on selected categories
   const filteredEvents = events.filter((event) => {
@@ -94,7 +126,7 @@ export default function EventMap({
     return false;
   });
 
-  // Get user's current location
+  // Get user's current location (manual trigger)
   const handleUseMyLocation = () => {
     setIsLoadingLocation(true);
 
@@ -106,6 +138,10 @@ export default function EventMap({
           setUserLocation(location);
           setMapCenter(location);
           setIsLoadingLocation(false);
+
+          // Temporarily enable recentering for manual location button click
+          setShouldRecenter(true);
+          setTimeout(() => setShouldRecenter(false), 1000);
 
           // Notify parent component about location change
           if (onLocationChange) {
@@ -132,17 +168,20 @@ export default function EventMap({
       <button
         onClick={handleUseMyLocation}
         disabled={isLoadingLocation}
-        className="absolute top-4 right-4 z-[1000] bg-white px-4 py-2 rounded-lg shadow-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+        className="absolute top-2 sm:top-4 right-2 sm:right-4 z-[1000] bg-white px-3 sm:px-4 py-2 rounded-lg shadow-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 text-xs sm:text-sm"
       >
         {isLoadingLocation ? (
           <>
-            <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-            <span className="text-sm font-medium">Getting location...</span>
+            <div className="w-3 h-3 sm:w-4 sm:h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+            <span className="hidden sm:inline font-medium">
+              Getting location...
+            </span>
+            <span className="sm:hidden font-medium">Loading...</span>
           </>
         ) : (
           <>
             <svg
-              className="w-4 h-4"
+              className="w-3 h-3 sm:w-4 sm:h-4"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -160,7 +199,10 @@ export default function EventMap({
                 d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
               />
             </svg>
-            <span className="text-sm font-medium">Use My Location</span>
+            <span className="hidden sm:inline font-medium">
+              Use My Location
+            </span>
+            <span className="sm:hidden font-medium">My Location</span>
           </>
         )}
       </button>
@@ -170,9 +212,9 @@ export default function EventMap({
         center={mapCenter}
         zoom={14}
         className="w-full h-full rounded-lg"
-        style={{ height: "600px" }}
+        style={{ height: "400px", minHeight: "400px" }}
       >
-        <MapController center={mapCenter} />
+        <MapController center={mapCenter} shouldRecenter={shouldRecenter} />
 
         {/* OpenStreetMap Tiles */}
         <TileLayer
@@ -259,25 +301,25 @@ export default function EventMap({
       </MapContainer>
 
       {/* Legend */}
-      <div className="absolute bottom-4 left-4 z-[1000] bg-white p-3 rounded-lg shadow-lg">
-        <div className="text-xs font-semibold text-gray-700 mb-2">
-          Category Legend
+      <div className="absolute bottom-2 sm:bottom-4 left-2 sm:left-4 z-[1000] bg-white p-2 sm:p-3 rounded-lg shadow-lg">
+        <div className="text-xs font-semibold text-gray-700 mb-1 sm:mb-2">
+          Legend
         </div>
         <div className="space-y-1">
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full bg-[#3B82F6]"></div>
+          <div className="flex items-center gap-1.5 sm:gap-2">
+            <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-[#3B82F6]"></div>
             <span className="text-xs text-gray-600">Volunteer</span>
           </div>
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full bg-[#10B981]"></div>
+          <div className="flex items-center gap-1.5 sm:gap-2">
+            <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-[#10B981]"></div>
             <span className="text-xs text-gray-600">Donation</span>
           </div>
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full bg-[#F59E0B]"></div>
+          <div className="flex items-center gap-1.5 sm:gap-2">
+            <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-[#F59E0B]"></div>
             <span className="text-xs text-gray-600">Participant</span>
           </div>
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full bg-[#8B5CF6]"></div>
+          <div className="flex items-center gap-1.5 sm:gap-2">
+            <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-[#8B5CF6]"></div>
             <span className="text-xs text-gray-600">Multiple</span>
           </div>
         </div>

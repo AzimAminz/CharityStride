@@ -4,6 +4,7 @@ import { Fragment, useState, useEffect } from "react";
 import { Dialog, Transition } from "@headlessui/react";
 import { X, Search, MapPin, Filter as FilterIcon } from "lucide-react";
 import dynamic from "next/dynamic";
+import { useRouter } from "next/navigation";
 
 // Dynamically import EventMap to avoid SSR issues with Leaflet
 const EventMap = dynamic(() => import("./EventMap"), {
@@ -22,6 +23,7 @@ export default function FilterModal({
   onApplyFilters,
   events,
 }) {
+  const router = useRouter();
   const [filters, setFilters] = useState({
     search: "",
     state: "all",
@@ -56,39 +58,71 @@ export default function FilterModal({
     { value: "putrajaya", label: "Putrajaya" },
   ];
 
-  // Initialize filters from props
+  // Initialize filters from props only when modal opens (isOpen changes from false to true)
   useEffect(() => {
-    if (initialFilters) {
+    if (isOpen && initialFilters) {
       setFilters(initialFilters);
     }
-  }, [initialFilters]);
+  }, [isOpen]); // Only depend on isOpen, not initialFilters
 
   const handleCategoryChange = (category) => {
-    setFilters({
-      ...filters,
+    setFilters((prevFilters) => ({
+      ...prevFilters,
       categories: {
-        ...filters.categories,
-        [category]: !filters.categories[category],
+        ...prevFilters.categories,
+        [category]: !prevFilters.categories[category],
       },
-    });
+    }));
   };
 
   const handleMapToggle = () => {
-    setFilters({
-      ...filters,
-      mapView: !filters.mapView,
+    setFilters((prevFilters) => {
+      const newFilters = {
+        ...prevFilters,
+        mapView: !prevFilters.mapView,
+      };
+      return newFilters;
     });
   };
 
   const handleLocationChange = (location) => {
-    setFilters({
-      ...filters,
+    setFilters((prevFilters) => ({
+      ...prevFilters,
       userLocation: location,
-    });
+    }));
   };
 
   const handleApply = () => {
-    onApplyFilters(filters);
+    // Build query parameters
+    const params = new URLSearchParams();
+
+    // Add search query
+    if (filters.search) {
+      params.append("q", filters.search);
+    }
+
+    // Add location/state
+    params.append("location", filters.state);
+
+    // Add geolocation if available
+    if (filters.userLocation) {
+      params.append("lat", filters.userLocation.lat.toString());
+      params.append("lng", filters.userLocation.lng.toString());
+      params.append("radius", filters.radius.toString());
+      params.append("sort", "nearest");
+    }
+
+    // Add categories if any selected
+    const selectedCategories = Object.entries(filters.categories)
+      .filter(([_, isSelected]) => isSelected)
+      .map(([category]) => category);
+
+    if (selectedCategories.length > 0) {
+      params.append("categories", selectedCategories.join(","));
+    }
+
+    // Navigate to search page
+    router.push(`/events/search?${params.toString()}`);
     onClose();
   };
 
@@ -154,7 +188,7 @@ export default function FilterModal({
                 </div>
 
                 {/* Map Toggle */}
-                <div className="mb-6 flex items-center justify-between p-4 bg-blue-50 rounded-lg">
+                <div className="mb-6 flex items-center justify-between p-4 bg-blue-50 rounded-lg relative z-[1001]">
                   <div>
                     <h4 className="font-semibold text-gray-900">Map View</h4>
                     <p className="text-sm text-gray-600">
@@ -165,12 +199,13 @@ export default function FilterModal({
                   </div>
                   <button
                     onClick={handleMapToggle}
-                    className={`relative inline-flex h-8 w-14 items-center rounded-full transition-colors ${
+                    type="button"
+                    className={`relative inline-flex h-8 w-14 items-center rounded-full transition-colors z-[1002] cursor-pointer ${
                       filters.mapView ? "bg-blue-600" : "bg-gray-300"
                     }`}
                   >
                     <span
-                      className={`inline-block h-6 w-6 transform rounded-full bg-white transition-transform ${
+                      className={`inline-block h-6 w-6 transform rounded-full bg-white transition-transform pointer-events-none ${
                         filters.mapView ? "translate-x-7" : "translate-x-1"
                       }`}
                     />
@@ -179,7 +214,7 @@ export default function FilterModal({
 
                 {/* Map View */}
                 {filters.mapView ? (
-                  <div className="mb-6">
+                  <div className="mb-6 relative z-0">
                     <EventMap
                       events={events}
                       selectedCategories={filters.categories}
