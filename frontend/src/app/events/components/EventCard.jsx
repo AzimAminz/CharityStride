@@ -1,142 +1,138 @@
+"use client";
+
+import React from "react";
 import Link from "next/link";
-import {
-  MapPin,
-  Users,
-  Navigation,
-  Clock,
-  Heart,
-  Utensils,
-  Trophy,
-} from "lucide-react";
+import Image from "next/image";
+import { MapPin, Calendar, Users } from "lucide-react";
 
-const EventCard = ({ event }) => {
-  const getEventIcon = (type) => {
-    switch (type) {
-      case "volunteer":
-        return <Heart size={14} className="mr-1" />;
-      case "food_rescue":
-        return <Utensils size={14} className="mr-1" />;
-      case "charity_run":
-        return <Trophy size={14} className="mr-1" />;
-      default:
-        return <Heart size={14} className="mr-1" />;
-    }
+const EventCard = ({ event, distance = null, showDistance = false }) => {
+  const formatDate = (dateString) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString("en-MY", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    });
   };
 
-  const getEventColor = (type) => {
-    switch (type) {
-      case "volunteer":
-        return "bg-green-100 text-green-800";
-      case "food_rescue":
-        return "bg-orange-100 text-orange-800";
-      case "charity_run":
-        return "bg-blue-100 text-blue-800";
-      default:
-        return "bg-gray-100 text-gray-800";
-    }
-  };
-
-  const getEventEmoji = (type) => {
-    switch (type) {
-      case "volunteer":
-        return "🤝";
-      case "food_rescue":
-        return "🍴";
-      case "charity_run":
-        return "🏃";
-      default:
-        return "🎯";
-    }
+  const getCategoryBadges = () => {
+    const badges = [];
+    if (event.has_volunteer)
+      badges.push({ label: "Volunteer", color: "bg-blue-100 text-blue-700" });
+    if (event.has_donation)
+      badges.push({ label: "Donation", color: "bg-green-100 text-green-700" });
+    if (event.has_participant)
+      badges.push({
+        label: "Participant",
+        color: "bg-purple-100 text-purple-700",
+      });
+    return badges;
   };
 
   return (
-    <Link href={`/events/${event.id}`} className="block">
-      <div className="bg-white rounded-xl shadow-md hover:shadow-xl hover:scale-105 transform transition duration-300 overflow-hidden cursor-pointer">
-        <div className="relative h-48 bg-gray-200">
+    <Link href={`/events/${event.id}`}>
+      <div className="group relative bg-white rounded-xl overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 cursor-pointer h-full flex flex-col">
+        {/* Thumbnail */}
+        <div className="relative h-48 w-full overflow-hidden bg-gray-200">
           {event.thumbnail ? (
-            // Show uploaded thumbnail
-            <img
-              src={
-                event.thumbnail.includes("charitystride.test")
-                  ? event.thumbnail.replace(
-                      "http://charitystride.test",
-                      process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"
-                    )
-                  : event.thumbnail
-              }
+            <Image
+              src={event.thumbnail}
               alt={event.title}
-              className="w-full h-full object-cover"
-              onError={(e) => {
-                // Fallback to gradient if image fails to load
-                e.target.style.display = "none";
-                e.target.nextElementSibling.style.display = "flex";
-              }}
+              fill
+              className="object-cover group-hover:scale-110 transition-transform duration-300"
             />
-          ) : null}
-          <div
-            className="w-full h-full bg-gradient-to-br from-emerald-400 to-blue-500 flex items-center justify-center"
-            style={{ display: event.thumbnail ? "none" : "flex" }}
-          >
-            <div className="text-white text-center">
-              <span className="text-4xl mb-2">{getEventEmoji(event.type)}</span>
-              <p className="text-sm opacity-90">{event.ngo_name}</p>
+          ) : (
+            <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-blue-400 to-purple-500">
+              <Users className="w-16 h-16 text-white opacity-50" />
             </div>
+          )}
+
+          {/* Gradient Overlay */}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+
+          {/* Category Badges */}
+          <div className="absolute top-3 left-3 flex flex-wrap gap-1">
+            {getCategoryBadges().map((badge, index) => (
+              <span
+                key={index}
+                className={`px-2 py-1 rounded-full text-xs font-medium ${badge.color} backdrop-blur-sm`}
+              >
+                {badge.label}
+              </span>
+            ))}
           </div>
-          <div className="absolute top-3 left-3">
-            <span
-              className={`px-2 py-1 rounded-full text-xs font-medium ${getEventColor(
-                event.type
-              )}`}
-            >
-              {event.type.replace("_", " ").toUpperCase()}
-            </span>
-          </div>
-          {event.fee > 0 && (
-            <div className="absolute top-3 right-3 bg-red-500 text-white px-2 py-1 rounded-full text-xs font-medium">
-              RM {event.fee}
+
+          {/* Distance Badge */}
+          {showDistance && distance !== null && (
+            <div className="absolute top-3 right-3 bg-white/90 backdrop-blur-sm px-2 py-1 rounded-full text-xs font-semibold text-gray-700">
+              {distance < 1
+                ? `${(distance * 1000).toFixed(0)}m`
+                : `${distance.toFixed(1)}km`}
             </div>
           )}
         </div>
 
-        <div className="p-4">
-          <h3 className="font-semibold text-lg mb-2 line-clamp-2">
-            {event.title}
-          </h3>
-          <p className="text-gray-600 text-sm mb-3 line-clamp-2">
-            {event.description}
-          </p>
-
-          <div className="flex items-center text-sm text-gray-500 mb-2">
-            <MapPin size={14} className="mr-1" />
-            <span className="line-clamp-1">{event.location}</span>
-          </div>
-
-          {event.distance && (
-            <div className="flex items-center text-sm text-gray-500 mb-2">
-              <Navigation size={14} className="mr-1" />
-              <span>{event.distance.toFixed(1)} km away</span>
-            </div>
-          )}
-
-          <div className="flex items-center text-sm text-gray-500 mb-3">
-            <Clock size={14} className="mr-1" />
-            <span>
-              {new Date(event.start_date).toLocaleDateString("en-MY", {
-                day: "numeric",
-                month: "short",
-                year: "numeric",
-              })}
+        {/* Content */}
+        <div className="p-4 flex-1 flex flex-col">
+          {/* NGO Name */}
+          <div className="flex items-center gap-2 mb-2">
+            {event.ngo?.logo_url && (
+              <Image
+                src={event.ngo.logo_url}
+                alt={event.ngo.name}
+                width={20}
+                height={20}
+                className="rounded-full"
+              />
+            )}
+            <span className="text-xs text-gray-500 font-medium">
+              {event.ngo?.name || "Unknown NGO"}
             </span>
           </div>
 
-          <div className="flex justify-between items-center">
-            <div className="flex items-center text-sm text-gray-600">
-              <Users size={14} className="mr-1" />
-              <span>{event.capacity} spots</span>
+          {/* Title */}
+          <h3 className="font-bold text-lg text-gray-900 mb-2 line-clamp-2 group-hover:text-blue-600 transition-colors">
+            {event.title}
+          </h3>
+
+          {/* Description */}
+          <p className="text-sm text-gray-600 mb-3 line-clamp-2 flex-1">
+            {event.description}
+          </p>
+
+          {/* Footer Info */}
+          <div className="space-y-2 text-sm text-gray-500">
+            {/* Date */}
+            <div className="flex items-center gap-2">
+              <Calendar className="w-4 h-4" />
+              <span>
+                {event.has_event_date && event.event_date
+                  ? formatDate(event.event_date)
+                  : `${formatDate(event.start_date)} - ${formatDate(
+                      event.end_date
+                    )}`}
+              </span>
             </div>
-            <div className="text-sm font-medium text-emerald-600">
-              +{event.points_per_participation} pts
-            </div>
+
+            {/* Location */}
+            {event.address && (
+              <div className="flex items-center gap-2">
+                <MapPin className="w-4 h-4" />
+                <span className="line-clamp-1">
+                  {event.city
+                    ? `${event.city}, ${event.state || ""}`
+                    : event.address}
+                </span>
+              </div>
+            )}
+
+            {/* Registration Count */}
+            {event.registration_count > 0 && (
+              <div className="flex items-center gap-2">
+                <Users className="w-4 h-4" />
+                <span>{event.registration_count} registered</span>
+              </div>
+            )}
           </div>
         </div>
       </div>

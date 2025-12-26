@@ -2,7 +2,7 @@
 
 import { useEventDetail } from "../../../../hooks/useEventDetail";
 import { useParams, useRouter } from "next/navigation";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -215,30 +215,6 @@ export default function EventPreviewPage() {
 
           {/* Floating Action Buttons */}
           <div className="absolute top-4 right-4 flex gap-2 z-10">
-            <button
-              onClick={handleLike}
-              className={`p-2.5 rounded-lg backdrop-blur-md border ${
-                isLiked
-                  ? "bg-white/95 border-red-500/20 text-red-500"
-                  : "bg-white/10 border-white/20 text-white hover:bg-white/20"
-              } transition-all shadow-sm`}
-            >
-              <Heart className={`h-4 w-4 ${isLiked ? "fill-current" : ""}`} />
-            </button>
-
-            <button
-              onClick={handleBookmark}
-              className={`p-2.5 rounded-lg backdrop-blur-md border ${
-                isBookmarked
-                  ? "bg-white/95 border-amber-500/20 text-amber-500"
-                  : "bg-white/10 border-white/20 text-white hover:bg-white/20"
-              } transition-all shadow-sm`}
-            >
-              <Bookmark
-                className={`h-4 w-4 ${isBookmarked ? "fill-current" : ""}`}
-              />
-            </button>
-
             <button
               onClick={handleShare}
               className="p-2.5 rounded-lg backdrop-blur-md bg-white/10 border border-white/20 text-white hover:bg-white/20 transition-all shadow-sm"
@@ -897,6 +873,178 @@ function OverviewTab({ event }) {
   );
 }
 
+// Category Dropdown Component
+function CategoryDropdown({ categories, selectedCategory, onSelect }) {
+  const [isOpen, setIsOpen] = useState(false);
+  const dropdownRef = useRef(null);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setIsOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const selectedCategoryName =
+    selectedCategory === "all"
+      ? "All Categories"
+      : categories.find((c) => c.id == selectedCategory)?.category_name ||
+        "Select Category";
+
+  return (
+    <div className="relative w-full md:w-1/2" ref={dropdownRef}>
+      {/* Dropdown Button */}
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className="w-full px-4 py-3 bg-white border-2 border-gray-200 rounded-xl hover:border-emerald-300 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 transition-all flex items-center justify-between text-left"
+      >
+        <span className="font-medium text-gray-900">
+          {selectedCategoryName}
+        </span>
+        <ChevronRight
+          className={`h-5 w-5 text-gray-400 transition-transform ${
+            isOpen ? "rotate-90" : "rotate-0"
+          }`}
+        />
+      </button>
+
+      {/* Dropdown Menu */}
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.2 }}
+            className="absolute z-50 w-full mt-2 bg-white border-2 border-gray-200 rounded-xl shadow-xl overflow-hidden"
+          >
+            <div className="max-h-64 overflow-y-auto">
+              {/* All Categories Option */}
+              <button
+                onClick={() => {
+                  onSelect("all");
+                  setIsOpen(false);
+                }}
+                className={`w-full px-4 py-3 text-left hover:bg-emerald-50 transition-colors flex items-center justify-between ${
+                  selectedCategory === "all"
+                    ? "bg-emerald-50 text-emerald-700"
+                    : "text-gray-700"
+                }`}
+              >
+                <span className="font-medium">All Categories</span>
+                {selectedCategory === "all" && (
+                  <CheckCircle className="h-5 w-5 text-emerald-600" />
+                )}
+              </button>
+
+              {/* Category Options */}
+              {categories.map((category) => (
+                <button
+                  key={category.id}
+                  onClick={() => {
+                    onSelect(category.id);
+                    setIsOpen(false);
+                  }}
+                  className={`w-full px-4 py-3 text-left hover:bg-emerald-50 transition-colors flex items-center justify-between border-t border-gray-100 ${
+                    selectedCategory == category.id
+                      ? "bg-emerald-50 text-emerald-700"
+                      : "text-gray-700"
+                  }`}
+                >
+                  <span className="font-medium">{category.category_name}</span>
+                  {selectedCategory == category.id && (
+                    <CheckCircle className="h-5 w-5 text-emerald-600" />
+                  )}
+                </button>
+              ))}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+// Generic Filter Dropdown Component
+function FilterDropdown({ options, selectedValue, onSelect }) {
+  const [isOpen, setIsOpen] = useState(false);
+  const dropdownRef = useRef(null);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setIsOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const selectedLabel =
+    options.find((opt) => opt.value == selectedValue)?.label || "Select option";
+
+  return (
+    <div className="relative w-full" ref={dropdownRef}>
+      {/* Dropdown Button */}
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className="w-full px-4 py-3 bg-white border-2 border-gray-200 rounded-xl hover:border-emerald-300 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 transition-all flex items-center justify-between text-left"
+      >
+        <span className="font-medium text-gray-900">{selectedLabel}</span>
+        <ChevronRight
+          className={`h-5 w-5 text-gray-400 transition-transform ${
+            isOpen ? "rotate-90" : "rotate-0"
+          }`}
+        />
+      </button>
+
+      {/* Dropdown Menu */}
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.2 }}
+            className="absolute z-50 w-full mt-2 bg-white border-2 border-gray-200 rounded-xl shadow-xl overflow-hidden"
+          >
+            <div className="max-h-64 overflow-y-auto">
+              {options.map((option, index) => (
+                <button
+                  key={option.value}
+                  onClick={() => {
+                    onSelect(option.value);
+                    setIsOpen(false);
+                  }}
+                  className={`w-full px-4 py-3 text-left hover:bg-emerald-50 transition-colors flex items-center justify-between ${
+                    index > 0 ? "border-t border-gray-100" : ""
+                  } ${
+                    selectedValue == option.value
+                      ? "bg-emerald-50 text-emerald-700"
+                      : "text-gray-700"
+                  }`}
+                >
+                  <span className="font-medium">{option.label}</span>
+                  {selectedValue == option.value && (
+                    <CheckCircle className="h-5 w-5 text-emerald-600" />
+                  )}
+                </button>
+              ))}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
 function DetailsTab({ event, selectedModule: propSelectedModule }) {
   const [localSelectedModule, setLocalSelectedModule] = useState(
     propSelectedModule ||
@@ -966,8 +1114,17 @@ function DetailsTab({ event, selectedModule: propSelectedModule }) {
     setCurrentPage(1);
   }, [selectedRole, selectedDate]);
 
-  // Get unique dates
-  const uniqueDates = [...new Set(allShifts.map((s) => s.shift_date))].sort();
+  // Get unique dates - filter by selected role if not "all"
+  const uniqueDates = [
+    ...new Set(
+      allShifts
+        .filter(
+          (shift) =>
+            selectedRole === "all" || shift.role.id === parseInt(selectedRole)
+        )
+        .map((s) => s.shift_date)
+    ),
+  ].sort();
 
   // Get selected shift for map
   const selectedShift = paginatedShifts[0]; // Show first shift's location
@@ -1002,18 +1159,19 @@ function DetailsTab({ event, selectedModule: propSelectedModule }) {
                         <label className="block text-sm font-medium text-gray-700 mb-2">
                           Volunteer Role
                         </label>
-                        <select
-                          value={selectedRole}
-                          onChange={(e) => setSelectedRole(e.target.value)}
-                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        >
-                          <option value="all">All Roles</option>
-                          {event.volunteer_roles.map((role) => (
-                            <option key={role.id} value={role.id}>
-                              {role.role_type?.name_en || role.custom_role_name}
-                            </option>
-                          ))}
-                        </select>
+                        <FilterDropdown
+                          options={[
+                            { value: "all", label: "All Roles" },
+                            ...event.volunteer_roles.map((role) => ({
+                              value: role.id,
+                              label:
+                                role.role_type?.name_en ||
+                                role.custom_role_name,
+                            })),
+                          ]}
+                          selectedValue={selectedRole}
+                          onSelect={setSelectedRole}
+                        />
                       </div>
 
                       {/* Date Filter */}
@@ -1021,18 +1179,17 @@ function DetailsTab({ event, selectedModule: propSelectedModule }) {
                         <label className="block text-sm font-medium text-gray-700 mb-2">
                           Shift Date
                         </label>
-                        <select
-                          value={selectedDate}
-                          onChange={(e) => setSelectedDate(e.target.value)}
-                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        >
-                          <option value="all">All Dates</option>
-                          {uniqueDates.map((date) => (
-                            <option key={date} value={date}>
-                              {format(parseISO(date), "dd MMM yyyy")}
-                            </option>
-                          ))}
-                        </select>
+                        <FilterDropdown
+                          options={[
+                            { value: "all", label: "All Dates" },
+                            ...uniqueDates.map((date) => ({
+                              value: date,
+                              label: format(parseISO(date), "dd MMM yyyy"),
+                            })),
+                          ]}
+                          selectedValue={selectedDate}
+                          onSelect={setSelectedDate}
+                        />
                       </div>
                     </div>
                     <p className="text-sm text-gray-500 mt-2">
@@ -1270,18 +1427,11 @@ function DetailsTab({ event, selectedModule: propSelectedModule }) {
                     <h4 className="font-semibold text-gray-900 mb-3">
                       Select Category
                     </h4>
-                    <select
-                      value={selectedCategory}
-                      onChange={(e) => setSelectedCategory(e.target.value)}
-                      className="w-full md:w-1/2 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent"
-                    >
-                      <option value="all">All Categories</option>
-                      {event.participant_categories.map((cat) => (
-                        <option key={cat.id} value={cat.id}>
-                          {cat.category_name}
-                        </option>
-                      ))}
-                    </select>
+                    <CategoryDropdown
+                      categories={event.participant_categories}
+                      selectedCategory={selectedCategory}
+                      onSelect={setSelectedCategory}
+                    />
                   </div>
 
                   {/* Categories Display */}
@@ -1513,38 +1663,67 @@ function OrganizerTab({ event }) {
       className="space-y-6"
     >
       <section>
-        <h3 className="text-2xl font-bold text-gray-900 mb-4">
-          About the Organizer
-        </h3>
-        <div className="p-6 bg-gray-50 rounded-2xl">
-          <div className="flex items-center gap-4 mb-4">
+        <div className="bg-white rounded-xl p-6">
+          {/* NGO Icon and Name Header */}
+          <div className="flex items-start gap-4 mb-5">
             {event.ngo?.logo_url ? (
-              <Image
-                src={event.ngo.logo_url}
-                alt={event.ngo.name}
-                width={64}
-                height={64}
-                className="rounded-full"
-              />
+              <div className="flex-shrink-0">
+                <Image
+                  src={event.ngo.logo_url}
+                  alt={event.ngo.name}
+                  width={64}
+                  height={64}
+                  className="rounded-xl"
+                />
+              </div>
             ) : (
-              <div className="w-16 h-16 rounded-full bg-emerald-100 flex items-center justify-center">
+              <div className="flex-shrink-0 w-16 h-16 rounded-xl bg-emerald-100 flex items-center justify-center">
                 <Building className="h-8 w-8 text-emerald-600" />
               </div>
             )}
-            <div>
-              <h4 className="font-bold text-gray-900 text-lg">
+
+            <div className="flex-1">
+              <h3 className="text-2xl font-bold text-gray-900 mb-3">
                 {event.ngo?.name || "Organization Name"}
-              </h4>
-              <p className="text-sm text-gray-600">
-                Reg: {event.ngo?.registration_no || "N/A"}
-              </p>
+              </h3>
+
+              {/* Description */}
+              {event.ngo?.description && (
+                <p className="text-gray-600 text-sm leading-relaxed mb-4">
+                  {event.ngo.description}
+                </p>
+              )}
+
+              {/* Stats Row - Rating and Events */}
+              <div className="flex items-center gap-4 text-sm">
+                {/* Rating Stars */}
+                <div className="flex items-center gap-1.5">
+                  <div className="flex items-center">
+                    {[1, 2, 3, 4].map((star) => (
+                      <Star
+                        key={star}
+                        className="h-4 w-4 fill-amber-400 text-amber-400"
+                      />
+                    ))}
+                    <Star className="h-4 w-4 fill-gray-300 text-gray-300" />
+                  </div>
+                  <span className="font-semibold text-gray-900">4.8</span>
+                  <span className="text-gray-500">(128 reviews)</span>
+                </div>
+
+                {/* Events Count */}
+                <div className="flex items-center gap-1.5 text-gray-600">
+                  <Calendar className="h-4 w-4" />
+                  <span>
+                    <span className="font-semibold text-gray-900">
+                      {event.ngo?.total_events || 0}
+                    </span>{" "}
+                    events organized
+                  </span>
+                </div>
+              </div>
             </div>
           </div>
-          {event.ngo?.description && (
-            <p className="text-gray-700 text-sm leading-relaxed">
-              {event.ngo.description}
-            </p>
-          )}
         </div>
       </section>
 
@@ -1623,44 +1802,73 @@ function OrganizerTab({ event }) {
 
 function OrganizerSidebar({ event, setActiveTab }) {
   return (
-    <div className="bg-white rounded-lg border border-gray-200 p-5">
-      <h3 className="text-base font-bold text-gray-900 mb-4">
+    <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
+      <h3 className="text-xl font-bold text-gray-900 mb-6">
         About the Organizer
       </h3>
-      <div className="space-y-4">
-        <div className="flex items-center gap-3">
+
+      <div className="space-y-5">
+        {/* NGO Icon and Name */}
+        <div className="flex items-start gap-4">
           {event.ngo?.logo_url ? (
-            <Image
-              src={event.ngo.logo_url}
-              alt={event.ngo.name}
-              width={44}
-              height={44}
-              className="rounded-lg"
-            />
+            <div className="flex-shrink-0">
+              <Image
+                src={event.ngo.logo_url}
+                alt={event.ngo.name}
+                width={64}
+                height={64}
+                className="rounded-2xl"
+              />
+            </div>
           ) : (
-            <div className="w-11 h-11 rounded-lg bg-slate-100 flex items-center justify-center border border-slate-200">
-              <Building className="h-5 w-5 text-slate-600" />
+            <div className="flex-shrink-0 w-16 h-16 rounded-2xl bg-emerald-100 flex items-center justify-center">
+              <Building className="h-8 w-8 text-emerald-600" />
             </div>
           )}
-          <div>
-            <p className="font-semibold text-gray-900 text-sm">
+
+          <div className="flex-1 min-w-0">
+            <h4 className="font-bold text-gray-900 text-lg mb-1">
               {event.ngo?.name || "Organization"}
+            </h4>
+            <p className="text-sm text-gray-600">
+              {event.ngo?.total_events || 0} events organized
             </p>
-            <p className="text-xs text-gray-500">Event Organizer</p>
           </div>
         </div>
 
+        {/* Description */}
         {event.ngo?.description && (
-          <p className="text-gray-700 text-xs leading-relaxed line-clamp-3">
+          <p className="text-gray-700 text-sm leading-relaxed line-clamp-4">
             {event.ngo.description}
           </p>
         )}
 
+        {/* Contact Information */}
+        <div className="space-y-3 pt-2">
+          {event.ngo?.contact_email && (
+            <div className="flex items-center gap-3 text-gray-700">
+              <Mail className="h-5 w-5 text-gray-400 flex-shrink-0" />
+              <span className="text-sm truncate">
+                {event.ngo.contact_email}
+              </span>
+            </div>
+          )}
+
+          {event.ngo?.contact_phone && (
+            <div className="flex items-center gap-3 text-gray-700">
+              <Phone className="h-5 w-5 text-gray-400 flex-shrink-0" />
+              <span className="text-sm">{event.ngo.contact_phone}</span>
+            </div>
+          )}
+        </div>
+
+        {/* View Profile Button */}
         <button
           onClick={() => setActiveTab("organizer")}
-          className="w-full text-center text-slate-700 hover:text-slate-900 font-medium text-xs py-2 hover:bg-slate-50 rounded-lg transition-colors"
+          className="w-full text-center text-emerald-600 hover:text-emerald-700 font-semibold text-sm py-3 hover:bg-emerald-50 rounded-xl transition-all flex items-center justify-center gap-2 mt-4"
         >
-          View Full Profile →
+          View Full Profile
+          <ChevronRight className="h-4 w-4" />
         </button>
       </div>
     </div>

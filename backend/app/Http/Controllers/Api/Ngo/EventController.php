@@ -293,7 +293,14 @@ class EventController extends Controller
         }
 
         $event->is_published = true;
+        $event->published_at = now();
         $event->save();
+
+        // Reload event with ngo relationship for broadcast
+        $event->load('ngo:id,name,logo_url');
+
+        // Broadcast event published for real-time updates
+        broadcast(new \App\Events\EventPublished($event));
 
         return response()->json([
             'message' => 'Event published successfully',

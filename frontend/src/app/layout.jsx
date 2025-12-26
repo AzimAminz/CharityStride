@@ -1,5 +1,6 @@
 import "./globals.css";
 import { LanguageProvider } from "./contexts/LanguageContext";
+import { WebSocketProvider } from "./contexts/WebSocketProvider";
 
 export const metadata = {
   title: {
@@ -46,7 +47,9 @@ export default function RootLayout({ children }) {
       </head>
 
       <body>
-        <LanguageProvider>{children}</LanguageProvider>
+        <LanguageProvider>
+          <WebSocketProvider>{children}</WebSocketProvider>
+        </LanguageProvider>
       </body>
     </html>
   );

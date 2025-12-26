@@ -22,7 +22,11 @@ class Event extends Model
         'longitude',
         'latitude',
         'address',
+        'city',
+        'state',
         'is_published',
+        'published_at',
+        'registration_count',
         'has_volunteer',
         'has_donation',
         'has_participant',
@@ -36,6 +40,8 @@ class Event extends Model
         'longitude' => 'decimal:7',
         'latitude' => 'decimal:7',
         'is_published' => 'boolean',
+        'published_at' => 'datetime',
+        'registration_count' => 'integer',
         'has_volunteer' => 'boolean',
         'has_donation' => 'boolean',
         'has_participant' => 'boolean',
@@ -110,5 +116,56 @@ class Event extends Model
     public function reviews()
     {
         return $this->hasMany(Review::class);
+    }
+
+    // Query Scopes for Public Event Discovery
+    
+    /**
+     * Scope to filter only published events
+     */
+    public function scopePublished($query)
+    {
+        return $query->where('is_published', true);
+    }
+
+    /**
+     * Scope to filter events with registration still open
+     */
+    public function scopeOpenForRegistration($query)
+    {
+        return $query->where('end_date', '>=', now()->toDateString());
+    }
+
+    /**
+     * Scope to filter events within a radius (in km) from a location
+     * Uses Haversine formula for distance calculation
+     */
+    public function scopeNearby($query, $latitude, $longitude, $radius = 10)
+    {
+        $haversine = "(6371 * acos(cos(radians(?)) 
+                     * cos(radians(latitude)) 
+                     * cos(radians(longitude) - radians(?)) 
+                     + sin(radians(?)) 
+                     * sin(radians(latitude))))";
+        
+        return $query
+            ->selectRaw("{$haversine} AS distance", [$latitude, $longitude, $latitude])
+            ->whereRaw("{$haversine} <= ?", [$latitude, $longitude, $latitude, $radius])
+            ->orderBy('distance');
+    }
+
+    /**
+     * Scope for full-text search
+     */
+    public function scopeSearch($query, $searchTerm)
+    {
+        if (empty($searchTerm)) {
+            return $query;
+        }
+
+        return $query->whereRaw(
+            "MATCH(title, description, address) AGAINST(? IN NATURAL LANGUAGE MODE)",
+            [$searchTerm]
+        );
     }
 }

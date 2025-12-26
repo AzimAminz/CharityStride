@@ -12,6 +12,7 @@ use App\Http\Controllers\Api\VolunteerController;
 use App\Http\Controllers\Api\DonationController;
 use App\Http\Controllers\Api\ParticipantController;
 use App\Http\Controllers\Api\LookupDataController;
+use App\Http\Controllers\Api\PublicEventController;
 
 
 // Lookup Data Routes (Public - needed for event creation forms)
@@ -22,6 +23,16 @@ Route::prefix('lookups')->group(function() {
     Route::get('/required-skills', [LookupDataController::class, 'requiredSkills']);
     Route::get('/shift-types', [LookupDataController::class, 'shiftTypes']);
 });
+
+// Public Event Discovery Routes
+Route::prefix('public/events')->group(function() {
+    Route::get('/', [PublicEventController::class, 'index']);
+    Route::get('/popular', [PublicEventController::class, 'popular']);
+    Route::get('/newest', [PublicEventController::class, 'newest']);
+    Route::get('/suggestions', [PublicEventController::class, 'suggestions']);
+    Route::get('/{id}', [PublicEventController::class, 'show']);
+});
+
 
 // Authentication Routes
 Route::middleware(['cors'])->prefix('auth')->group(function(){
