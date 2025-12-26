@@ -11,6 +11,7 @@ import {
 } from "../lib/api/publicEventsApi";
 import { useWebSocket } from "../contexts/WebSocketProvider";
 import SearchBar from "./components/SearchBar";
+import FilterModal from "./components/FilterModal";
 
 import EventCard from "./components/EventCard";
 import Pagination from "./components/Pagination";
@@ -22,6 +23,19 @@ const EventsPage = () => {
   const [pagination, setPagination] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
+  const [filters, setFilters] = useState({
+    search: "",
+    state: "all",
+    categories: {
+      volunteer: false,
+      donation: false,
+      participant: false,
+    },
+    mapView: false,
+    userLocation: null,
+    radius: 10,
+  });
 
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -91,6 +105,28 @@ const EventsPage = () => {
         per_page: 12,
       };
 
+      // Apply filters
+      if (filters.search) params.search = filters.search;
+      if (filters.state !== "all") params.state = filters.state;
+
+      // Category filters
+      const selectedCategories = [];
+      if (filters.categories.volunteer) selectedCategories.push("volunteer");
+      if (filters.categories.donation) selectedCategories.push("donation");
+      if (filters.categories.participant)
+        selectedCategories.push("participant");
+      if (selectedCategories.length > 0) {
+        params.category = selectedCategories.join(",");
+      }
+
+      // Geofencing (if map view and user location available)
+      if (filters.mapView && filters.userLocation) {
+        params.lat = filters.userLocation.lat;
+        params.lng = filters.userLocation.lng;
+        params.radius = filters.radius;
+      }
+
+      // Legacy URL params (for backward compatibility)
       if (category) params.category = category;
       if (lat && lng) {
         params.lat = lat;
@@ -118,6 +154,16 @@ const EventsPage = () => {
     params.set("page", page.toString());
     router.push(`/events?${params.toString()}`);
     window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const handleApplyFilters = (newFilters) => {
+    setFilters(newFilters);
+    // Trigger data refresh
+    fetchAllData();
+  };
+
+  const handleFilterClick = () => {
+    setIsFilterModalOpen(true);
   };
 
   if (loading && !allEvents.length) {
@@ -176,7 +222,7 @@ const EventsPage = () => {
 
           {/* Enhanced Search Bar */}
           <div className="max-w-3xl mx-auto">
-            <SearchBar />
+            <SearchBar onFilterClick={handleFilterClick} />
           </div>
         </div>
       </div>
@@ -297,6 +343,15 @@ const EventsPage = () => {
           )}
         </section>
       </div>
+
+      {/* Filter Modal */}
+      <FilterModal
+        isOpen={isFilterModalOpen}
+        onClose={() => setIsFilterModalOpen(false)}
+        initialFilters={filters}
+        onApplyFilters={handleApplyFilters}
+        events={allEvents}
+      />
     </div>
   );
 };
