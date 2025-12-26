@@ -117,49 +117,47 @@ class PublicEventController extends Controller
      */
     public function suggestions(Request $request)
     {
-        if (!$request->filled('q')) {
-            return response()->json([]);
+        $query = $request->q ?? '';
+        $state = $request->state ?? 'all';
+
+        // If query is empty, return 5 recent events
+        if (empty($query)) {
+            $recentQuery = Event::query()
+                ->published()
+                ->openForRegistration();
+
+            if ($state !== 'all') {
+                $recentQuery->where('address', 'LIKE', "%{$state}%");
+            }
+
+            $recentEvents = $recentQuery
+                ->orderBy('created_at', 'desc')
+                ->limit(5)
+                ->pluck('title')
+                ->map(fn($title) => ['type' => 'event', 'value' => $title]);
+
+            return response()->json($recentEvents);
         }
 
-        $query = $request->q;
-
-        // Get matching event titles
-        $eventTitles = Event::query()
+        // Get matching event titles (prioritize exact matches)
+        $eventQuery = Event::query()
             ->published()
-            ->openForRegistration()
+            ->openForRegistration();
+
+        if ($state !== 'all') {
+            $eventQuery->where('address', 'LIKE', "%{$state}%");
+        }
+
+        $eventTitles = $eventQuery
             ->where('title', 'LIKE', "%{$query}%")
+            ->orderByRaw("CASE WHEN title LIKE ? THEN 0 ELSE 1 END", ["{$query}%"]) // Starts with query first
+            ->orderByRaw("LENGTH(title)") // Shorter titles first
             ->limit(5)
             ->pluck('title')
-            ->map(fn($title) => ['type' => 'event', 'text' => $title]);
+            ->map(fn($title) => ['type' => 'event', 'value' => $title]);
 
-        // Get matching NGO names
-        $ngoNames = Event::query()
-            ->published()
-            ->openForRegistration()
-            ->join('ngos', 'events.ngo_id', '=', 'ngos.id')
-            ->where('ngos.name', 'LIKE', "%{$query}%")
-            ->distinct()
-            ->limit(3)
-            ->pluck('ngos.name')
-            ->map(fn($name) => ['type' => 'ngo', 'text' => $name]);
-
-        // Get matching cities
-        $cities = Event::query()
-            ->published()
-            ->openForRegistration()
-            ->where('city', 'LIKE', "%{$query}%")
-            ->whereNotNull('city')
-            ->distinct()
-            ->limit(2)
-            ->pluck('city')
-            ->map(fn($city) => ['type' => 'location', 'text' => $city]);
-
-        $suggestions = $eventTitles
-            ->concat($ngoNames)
-            ->concat($cities)
-            ->take(10);
-
-        return response()->json($suggestions);
+        // Only return event titles, limited to 5
+        return response()->json($eventTitles->take(5));
     }
 
     /**

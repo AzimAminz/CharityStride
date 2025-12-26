@@ -1,7 +1,6 @@
 import axios from "axios";
 
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 /**
  * Get published events with filters
@@ -32,7 +31,9 @@ export const getEvents = async (params = {}) => {
  */
 export const getPopularEvents = async () => {
   try {
-    const response = await axios.get(`${API_BASE_URL}/api/public/events/popular`);
+    const response = await axios.get(
+      `${API_BASE_URL}/api/public/events/popular`
+    );
     return response.data;
   } catch (error) {
     console.error("Error fetching popular events:", error);
@@ -45,7 +46,9 @@ export const getPopularEvents = async () => {
  */
 export const getNewestEvents = async () => {
   try {
-    const response = await axios.get(`${API_BASE_URL}/api/public/events/newest`);
+    const response = await axios.get(
+      `${API_BASE_URL}/api/public/events/newest`
+    );
     return response.data;
   } catch (error) {
     console.error("Error fetching newest events:", error);
@@ -55,14 +58,15 @@ export const getNewestEvents = async () => {
 
 /**
  * Get search suggestions for autocomplete
- * @param {string} query - Search query
+ * @param {string} query - Search query (can be empty)
+ * @param {string} state - State filter (default: 'all')
  */
-export const getSearchSuggestions = async (query) => {
+export const getSearchSuggestions = async (query = "", state = "all") => {
   try {
     const response = await axios.get(
       `${API_BASE_URL}/api/public/events/suggestions`,
       {
-        params: { q: query },
+        params: { q: query, state },
       }
     );
     return response.data;

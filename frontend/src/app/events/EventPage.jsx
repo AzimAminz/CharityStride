@@ -11,8 +11,7 @@ import {
 } from "../lib/api/publicEventsApi";
 import { useWebSocket } from "../contexts/WebSocketProvider";
 import SearchBar from "./components/SearchBar";
-import CategoryFilter from "./components/CategoryFilter";
-import LocationDropdown from "./components/LocationDropdown";
+
 import EventCard from "./components/EventCard";
 import Pagination from "./components/Pagination";
 
@@ -150,34 +149,34 @@ const EventsPage = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-50 via-white to-purple-50">
-      {/* Hero Section */}
+      {/* Hero Section - Malaysia Focused */}
       <div
-        className="relative text-white py-16 px-4 bg-cover bg-center bg-no-repeat"
+        className="relative text-white py-24 px-4 bg-cover bg-center bg-no-repeat"
         style={{ backgroundImage: "url(/hero-bg.jpg)" }}
       >
-        {/* Dark overlay for better text readability */}
-        <div className="absolute inset-0 bg-black/50"></div>
+        {/* Subtle gradient overlay */}
+        <div className="absolute inset-0 bg-gradient-to-b from-gray-900/70 via-gray-900/60 to-gray-900/70"></div>
 
-        <div className="max-w-7xl mx-auto relative z-10">
-          <div className="text-center mb-8">
-            <h1 className="text-4xl md:text-5xl font-bold mb-4">
-              Discover Amazing Events
+        <div className="max-w-5xl mx-auto relative z-10">
+          <div className="text-center space-y-4 mb-8">
+            {/* Malaysia-focused heading */}
+            <h1 className="text-4xl md:text-5xl font-bold leading-tight">
+              Don't miss out!
             </h1>
-            <p className="text-lg md:text-xl text-blue-100 max-w-2xl mx-auto">
-              Explore the vibrant events happening locally and globally. Make a
-              difference today!
+
+            {/* Highlighted vibrant events */}
+            <p className="text-xl md:text-2xl font-light">
+              Explore the{" "}
+              <span className="text-yellow-400 font-semibold">
+                vibrant events
+              </span>{" "}
+              happening across Malaysia.
             </p>
           </div>
 
-          {/* Search Bar */}
-          <div className="flex justify-center mb-6">
+          {/* Enhanced Search Bar */}
+          <div className="max-w-3xl mx-auto">
             <SearchBar />
-          </div>
-
-          {/* Filters */}
-          <div className="flex flex-wrap items-center justify-center gap-4">
-            <CategoryFilter />
-            <LocationDropdown />
           </div>
         </div>
       </div>
