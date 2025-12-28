@@ -29,7 +29,7 @@ function MapController({ center, shouldRecenter }) {
 
   useEffect(() => {
     if (center && shouldRecenter) {
-      map.setView(center, 16);
+      map.setView(center, 16 );
     }
   }, [center, map, shouldRecenter]);
 
