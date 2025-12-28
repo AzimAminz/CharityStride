@@ -12,6 +12,45 @@ import {
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 
+// Add custom CSS for markers
+if (typeof window !== "undefined") {
+  const style = document.createElement("style");
+  style.innerHTML = `
+    .custom-marker {
+      cursor: pointer !important;
+      pointer-events: auto !important;
+      z-index: 1000 !important;
+      position: relative;
+    }
+    .custom-marker > div {
+      cursor: pointer !important;
+      pointer-events: auto !important;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    .custom-marker > div:hover {
+      transform: scale(1.15);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.5) !important;
+    }
+    /* Add larger clickable area */
+    .custom-marker::before {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 48px;
+      height: 48px;
+      cursor: pointer;
+      pointer-events: auto;
+      z-index: 1001;
+    }
+  `;
+  if (!document.querySelector("style[data-marker-styles]")) {
+    style.setAttribute("data-marker-styles", "true");
+    document.head.appendChild(style);
+  }
+}
+
 // Fix for default marker icons in Next.js
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
@@ -29,7 +68,7 @@ function MapController({ center, shouldRecenter }) {
 
   useEffect(() => {
     if (center && shouldRecenter) {
-      map.setView(center, 16 );
+      map.setView(center, 16);
     }
   }, [center, map, shouldRecenter]);
 
@@ -54,10 +93,10 @@ const getMarkerColor = (event) => {
 const createCustomIcon = (color) => {
   return L.divIcon({
     className: "custom-marker",
-    html: `<div style="background-color: ${color}; width: 24px; height: 24px; border-radius: 50%; border: 3px solid white; box-shadow: 0 2px 5px rgba(0,0,0,0.3);"></div>`,
-    iconSize: [24, 24],
-    iconAnchor: [12, 12],
-    popupAnchor: [0, -12],
+    html: `<div style="background-color: ${color}; width: 32px; height: 32px; border-radius: 50%; border: 3px solid white; box-shadow: 0 3px 8px rgba(0,0,0,0.4);"></div>`,
+    iconSize: [32, 32],
+    iconAnchor: [16, 16],
+    popupAnchor: [0, -16],
   });
 };
 
@@ -240,14 +279,21 @@ export default function EventMap({
                 fillColor: "#3B82F6",
                 fillOpacity: 0.1,
                 weight: 2,
+                interactive: false, // Disable interaction
               }}
+              interactive={false} // Disable click events on circle
             />
           </>
         )}
 
         {/* Event Markers */}
         {filteredEvents.map((event) => {
-          if (!event.latitude || !event.longitude) return null;
+          if (!event.latitude || !event.longitude) {
+            console.log(
+              `Event ${event.id} (${event.title}) has no coordinates`
+            );
+            return null;
+          }
 
           const markerColor = getMarkerColor(event);
           const icon = createCustomIcon(markerColor);
@@ -255,10 +301,18 @@ export default function EventMap({
           return (
             <Marker
               key={event.id}
-              position={[event.latitude, event.longitude]}
+              position={[
+                parseFloat(event.latitude),
+                parseFloat(event.longitude),
+              ]}
               icon={icon}
             >
-              <Popup>
+              <Popup
+                autoPan={true}
+                closeButton={true}
+                autoClose={false}
+                closeOnClick={false}
+              >
                 <div className="w-48">
                   {event.thumbnail && (
                     <img

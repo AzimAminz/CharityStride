@@ -1065,32 +1065,13 @@ export default function CreateEventPage() {
                 ← Back
               </button>
 
-              <div className="flex gap-3">
-                <Link
-                  href="/ngo/events"
-                  className="px-6 py-3 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg font-semibold transition-colors"
-                >
-                  Save as Draft
-                </Link>
-                <button
-                  type="button"
-                  onClick={handlePublish}
-                  disabled={publishing}
-                  className="flex items-center gap-2 px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-semibold transition-colors disabled:opacity-50"
-                >
-                  {publishing ? (
-                    <>
-                      <div className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                      Publishing...
-                    </>
-                  ) : (
-                    <>
-                      <Globe className="h-5 w-5" />
-                      Publish Event
-                    </>
-                  )}
-                </button>
-              </div>
+              <Link
+                href="/ngo/events"
+                className="flex items-center gap-2 px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-semibold transition-colors"
+              >
+                <Save className="h-5 w-5" />
+                Save Event
+              </Link>
             </div>
           </div>
         )}

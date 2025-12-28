@@ -1054,34 +1054,45 @@ export default function EditEventPage() {
                 ← Back
               </button>
 
-              <div className="flex gap-3">
-                <Link
-                  href="/ngo/events"
-                  className="px-6 py-3 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg font-semibold transition-colors"
+              {event?.status !== "published" && (
+                <button
+                  type="button"
+                  onClick={async () => {
+                    // Save changes first
+                    setLoading(true);
+                    try {
+                      await updateEvent(id, formData);
+                      router.push("/ngo/events");
+                    } catch (err) {
+                      setAlertModal({
+                        isOpen: true,
+                        title: "Error Saving Event",
+                        message:
+                          err.response?.data?.message || "Failed to save event",
+                        type: "error",
+                        onClose: () =>
+                          setAlertModal((prev) => ({ ...prev, isOpen: false })),
+                      });
+                    } finally {
+                      setLoading(false);
+                    }
+                  }}
+                  disabled={loading}
+                  className="flex items-center gap-2 px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-semibold transition-colors disabled:opacity-50"
                 >
-                  Back to Events
-                </Link>
-                {event?.status !== "published" && (
-                  <button
-                    type="button"
-                    onClick={handlePublish}
-                    disabled={publishing}
-                    className="flex items-center gap-2 px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-semibold transition-colors disabled:opacity-50"
-                  >
-                    {publishing ? (
-                      <>
-                        <div className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                        Publishing...
-                      </>
-                    ) : (
-                      <>
-                        <Globe className="h-5 w-5" />
-                        Publish Event
-                      </>
-                    )}
-                  </button>
-                )}
-              </div>
+                  {loading ? (
+                    <>
+                      <div className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                      Saving...
+                    </>
+                  ) : (
+                    <>
+                      <Save className="h-5 w-5" />
+                      Save Event
+                    </>
+                  )}
+                </button>
+              )}
             </div>
           </div>
         )}

@@ -5,6 +5,7 @@ import { Dialog, Transition } from "@headlessui/react";
 import { X, Search, MapPin, Filter as FilterIcon } from "lucide-react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
+import StateDropdown from "./StateDropdown";
 
 // Dynamically import EventMap to avoid SSR issues with Leaflet
 const EventMap = dynamic(() => import("./EventMap"), {
@@ -247,22 +248,12 @@ export default function FilterModal({
                       <label className="block text-sm font-medium text-gray-700 mb-2">
                         State / Region
                       </label>
-                      <div className="relative">
-                        <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-                        <select
-                          value={filters.state}
-                          onChange={(e) =>
-                            setFilters({ ...filters, state: e.target.value })
-                          }
-                          className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none bg-white"
-                        >
-                          {states.map((state) => (
-                            <option key={state.value} value={state.value}>
-                              {state.label}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
+                      <StateDropdown
+                        value={filters.state}
+                        onChange={(value) =>
+                          setFilters({ ...filters, state: value })
+                        }
+                      />
                     </div>
                   </>
                 )}
@@ -319,9 +310,10 @@ export default function FilterModal({
                   </button>
                   <button
                     onClick={handleApply}
-                    className="px-6 py-2.5 text-white bg-blue-600 hover:bg-blue-700 rounded-lg font-medium transition-colors"
+                    className="px-6 py-2.5 text-white bg-blue-600 hover:bg-blue-700 rounded-lg font-medium transition-colors flex items-center gap-2"
                   >
-                    Apply Filters
+                    <Search className="w-4 h-4" />
+                    Search
                   </button>
                 </div>
               </Dialog.Panel>
