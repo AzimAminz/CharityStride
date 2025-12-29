@@ -822,10 +822,36 @@ export default function EditEventPage() {
                     latitude: formData.latitude,
                     longitude: formData.longitude,
                   }}
-                  onChange={(location) => {
+                  onChange={async (location) => {
+                    // Update local state immediately for UI feedback
                     handleChange("longitude", location.longitude);
                     handleChange("latitude", location.latitude);
                     handleChange("address", location.address);
+
+                    // Auto-save to database
+                    try {
+                      const updatedData = {
+                        ...formData,
+                        longitude: location.longitude,
+                        latitude: location.latitude,
+                        address: location.address,
+                      };
+                      await updateEvent(id, updatedData);
+                      // Silently save without showing alert for better UX
+                    } catch (err) {
+                      console.error("Failed to auto-save location:", err);
+                      // Show error if auto-save fails
+                      setAlertModal({
+                        isOpen: true,
+                        title: "Error Saving Location",
+                        message:
+                          err.response?.data?.message ||
+                          "Failed to save location. Please try again.",
+                        type: "error",
+                        onClose: () =>
+                          setAlertModal((prev) => ({ ...prev, isOpen: false })),
+                      });
+                    }
                   }}
                   placeholder="Search for event location..."
                 />

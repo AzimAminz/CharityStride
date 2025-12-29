@@ -825,16 +825,50 @@ export default function CreateEventPage() {
                     latitude: formData.latitude,
                     longitude: formData.longitude,
                   }}
-                  onChange={(location) => {
+                  onChange={async (location) => {
+                    // Update local state immediately for UI feedback
                     handleChange("longitude", location.longitude);
                     handleChange("latitude", location.latitude);
                     handleChange("address", location.address);
+
                     // Clear error when location is set
                     if (validationErrors.address && location.address) {
                       setValidationErrors({
                         ...validationErrors,
                         address: null,
                       });
+                    }
+
+                    // Auto-save to database if event was already created
+                    if (createdEventId) {
+                      try {
+                        const { updateEvent } = await import(
+                          "../../../lib/events"
+                        );
+                        await updateEvent(createdEventId, {
+                          ...formData,
+                          longitude: location.longitude,
+                          latitude: location.latitude,
+                          address: location.address,
+                        });
+                        // Silently save without showing alert for better UX
+                      } catch (err) {
+                        console.error("Failed to auto-save location:", err);
+                        // Show error if auto-save fails
+                        setAlertModal({
+                          isOpen: true,
+                          title: "Error Saving Location",
+                          message:
+                            err.response?.data?.message ||
+                            "Failed to save location. Please try again.",
+                          type: "error",
+                          onClose: () =>
+                            setAlertModal((prev) => ({
+                              ...prev,
+                              isOpen: false,
+                            })),
+                        });
+                      }
                     }
                   }}
                   placeholder="Search for event location..."

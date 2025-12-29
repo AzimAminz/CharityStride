@@ -3,15 +3,23 @@
 import { useParams, useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import { useEventDetail } from "../../../../hooks/useEventDetail";
+import { getMyRegistrationStatus } from "../../../../lib/events";
 import { ArrowLeft, Users, AlertCircle, CheckCircle } from "lucide-react";
 import { motion } from "framer-motion";
+import ErrorModal from "../../../../components/ErrorModal";
 
 export default function ParticipantRegistrationPage() {
   const router = useRouter();
   const params = useParams();
   const id = params.id;
 
-  const { event, loading, error } = useEventDetail(id);
+  // Use public API endpoint for event data
+  const { event, loading, error } = useEventDetail(id, true);
+
+  // Registration status states
+  const [checkingStatus, setCheckingStatus] = useState(true);
+  const [showErrorModal, setShowErrorModal] = useState(false);
+  const [alreadyRegistered, setAlreadyRegistered] = useState(false);
 
   const [formData, setFormData] = useState({
     participant_category_id: "",
@@ -25,7 +33,32 @@ export default function ParticipantRegistrationPage() {
   const [errors, setErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
 
-  if (loading) {
+  // Check registration status (user is already authenticated at this point)
+  useEffect(() => {
+    const checkRegistrationStatus = async () => {
+      try {
+        if (id) {
+          const status = await getMyRegistrationStatus(id);
+          if (status.has_participant_registration) {
+            setAlreadyRegistered(true);
+            setShowErrorModal(true);
+          }
+        }
+      } catch (err) {
+        console.error("Error checking registration status:", err);
+        // If error (e.g., not authenticated), redirect back to event page
+        if (err.response?.status === 401) {
+          router.push(`/events/${id}`);
+        }
+      } finally {
+        setCheckingStatus(false);
+      }
+    };
+
+    checkRegistrationStatus();
+  }, [id, router]);
+
+  if (checkingStatus || loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-teal-50/30 flex items-center justify-center">
         <div className="w-12 h-12 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
@@ -373,6 +406,16 @@ export default function ParticipantRegistrationPage() {
           </div>
         </form>
       </div>
+
+      {/* Already Registered Error Modal */}
+      <ErrorModal
+        isOpen={showErrorModal}
+        onClose={() => setShowErrorModal(false)}
+        title="Already Registered"
+        message="You have already registered as a participant for this event. You can view your registration details in your profile."
+        actionText="View Event Details"
+        onAction={() => router.push(`/events/${id}`)}
+      />
     </div>
   );
 }

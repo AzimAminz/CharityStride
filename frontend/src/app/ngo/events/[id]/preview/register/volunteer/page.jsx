@@ -384,7 +384,7 @@ export default function NGOVolunteerPreviewPage() {
           </div>
 
           {/* T-Shirt Size */}
-          {event.event_tshirts?.length > 0 && (
+          {selectedRole?.has_tshirt && (
             <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
               <h2 className="text-xl font-bold text-gray-900 mb-4">
                 T-Shirt Size *

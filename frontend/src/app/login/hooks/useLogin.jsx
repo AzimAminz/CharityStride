@@ -4,7 +4,7 @@ import { useRouter, usePathname } from "next/navigation";
 import { useState } from "react";
 import { login } from "../../lib/auth";
 
-export default function useLogin() {
+export default function useLogin(redirectUrl = null) {
   const router = useRouter();
   const pathname = usePathname();
 
@@ -44,9 +44,16 @@ export default function useLogin() {
       console.log("Login response:", res);
 
       if (res?.user) {
-        if (res.user.role === "admin") router.push("/admin/dashboard");
-        else if (res.user.role === "ngo") router.push("/ngo/dashboard");
-        else router.push("/events");
+        // If redirectUrl is provided, use it; otherwise use role-based redirect
+        if (redirectUrl) {
+          router.push(redirectUrl);
+        } else if (res.user.role === "admin") {
+          router.push("/admin/dashboard");
+        } else if (res.user.role === "ngo") {
+          router.push("/ngo/dashboard");
+        } else {
+          router.push("/events");
+        }
       } else {
         setPassword("");
         setPasswordError(res?.message || "Login failed. Please try again.");

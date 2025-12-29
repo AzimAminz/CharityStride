@@ -13,6 +13,7 @@ use App\Http\Controllers\Api\DonationController;
 use App\Http\Controllers\Api\ParticipantController;
 use App\Http\Controllers\Api\LookupDataController;
 use App\Http\Controllers\Api\PublicEventController;
+use App\Http\Controllers\Api\RegistrationStatusController;
 
 
 // Lookup Data Routes (Public - needed for event creation forms)
@@ -55,6 +56,9 @@ Route::middleware(['cors'])->prefix('auth')->group(function(){
 // File Upload Route (Protected)
 Route::middleware(['auth:sanctum'])->post('/upload', [FileUploadController::class, 'upload']);
 Route::middleware(['auth:sanctum'])->delete('/upload', [FileUploadController::class, 'delete']);
+
+// User Registration Status Check (Protected - User must be logged in)
+Route::middleware(['auth:sanctum'])->get('/events/{eventId}/my-registration-status', [RegistrationStatusController::class, 'checkStatus']);
 
 // NGO Routes (Protected - User/NGO role)
 Route::middleware(['auth:sanctum', 'role:user,ngo'])->prefix('ngo')->group(function(){

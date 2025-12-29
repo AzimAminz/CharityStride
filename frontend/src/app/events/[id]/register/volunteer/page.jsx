@@ -1,8 +1,9 @@
 "use client";
 
 import { useParams, useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useEventDetail } from "../../../../hooks/useEventDetail";
+import { getMyRegistrationStatus } from "../../../../lib/events";
 import {
   ArrowLeft,
   Heart,
@@ -10,6 +11,7 @@ import {
   CheckCircle,
   Clock,
   ChevronDown,
+  Ban,
 } from "lucide-react";
 
 export default function VolunteerRegistrationPage() {
@@ -17,7 +19,12 @@ export default function VolunteerRegistrationPage() {
   const params = useParams();
   const id = params.id;
 
-  const { event, loading, error } = useEventDetail(id);
+  // Use public API endpoint for event data
+  const { event, loading, error } = useEventDetail(id, true);
+
+  // Registration status states
+  const [checkingStatus, setCheckingStatus] = useState(true);
+  const [registeredShiftIds, setRegisteredShiftIds] = useState([]);
 
   const [formData, setFormData] = useState({
     volunteer_role_id: "",
@@ -32,7 +39,30 @@ export default function VolunteerRegistrationPage() {
   const [errors, setErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
 
-  if (loading) {
+  // Check registration status (user is already authenticated at this point)
+  useEffect(() => {
+    const checkRegistrationStatus = async () => {
+      try {
+        if (id) {
+          const status = await getMyRegistrationStatus(id);
+          // Store registered shift IDs to disable them
+          setRegisteredShiftIds(status.registered_volunteer_shift_ids || []);
+        }
+      } catch (err) {
+        console.error("Error checking registration status:", err);
+        // If error (e.g., not authenticated), redirect back to event page
+        if (err.response?.status === 401) {
+          router.push(`/events/${id}`);
+        }
+      } finally {
+        setCheckingStatus(false);
+      }
+    };
+
+    checkRegistrationStatus();
+  }, [id, router]);
+
+  if (checkingStatus || loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-purple-50/30 flex items-center justify-center">
         <div className="w-12 h-12 border-2 border-purple-500 border-t-transparent rounded-full animate-spin" />
@@ -126,7 +156,7 @@ export default function VolunteerRegistrationPage() {
       newErrors.volunteer_shift_id = "Please select a shift";
     }
 
-    if (event.event_tshirts?.length > 0 && !formData.tshirt_size) {
+    if (selectedRole?.has_tshirt && !formData.tshirt_size) {
       newErrors.tshirt_size = "Please select a t-shirt size";
     }
 
@@ -371,71 +401,99 @@ export default function VolunteerRegistrationPage() {
 
                       {/* Shifts for this date */}
                       <div className="p-3 space-y-2">
-                        {shiftsByDate[date].map((shift) => (
-                          <label
-                            key={shift.id}
-                            className={`block p-4 rounded-lg border-2 cursor-pointer transition-all ${
-                              formData.volunteer_shift_id ===
-                              shift.id.toString()
-                                ? "border-purple-500 bg-purple-50"
-                                : "border-gray-200 hover:border-gray-300"
-                            }`}
-                          >
-                            <div className="flex items-start gap-3">
-                              <input
-                                type="radio"
-                                name="volunteer_shift_id"
-                                value={shift.id}
-                                checked={
-                                  formData.volunteer_shift_id ===
-                                  shift.id.toString()
-                                }
-                                onChange={handleInputChange}
-                                className="mt-1"
-                              />
-                              <div className="flex-1">
-                                <div className="flex items-center justify-between mb-2">
-                                  <span className="font-semibold text-gray-900">
-                                    {shift.name}
-                                  </span>
-                                  <div className="flex items-center gap-2 text-xs">
-                                    {shift.start_time && (
-                                      <span className="font-medium text-purple-600">
-                                        🕐 {formatTime12h(shift.start_time)}
+                        {shiftsByDate[date].map((shift) => {
+                          const isAlreadyRegistered =
+                            registeredShiftIds.includes(shift.id);
+
+                          return (
+                            <label
+                              key={shift.id}
+                              className={`block p-4 rounded-lg border-2 transition-all ${
+                                isAlreadyRegistered
+                                  ? "border-gray-300 bg-gray-50 cursor-not-allowed opacity-60"
+                                  : formData.volunteer_shift_id ===
+                                    shift.id.toString()
+                                  ? "border-purple-500 bg-purple-50 cursor-pointer"
+                                  : "border-gray-200 hover:border-gray-300 cursor-pointer"
+                              }`}
+                            >
+                              <div className="flex items-start gap-3">
+                                <input
+                                  type="radio"
+                                  name="volunteer_shift_id"
+                                  value={shift.id}
+                                  checked={
+                                    formData.volunteer_shift_id ===
+                                    shift.id.toString()
+                                  }
+                                  onChange={handleInputChange}
+                                  disabled={isAlreadyRegistered}
+                                  className="mt-1"
+                                />
+                                <div className="flex-1">
+                                  <div className="flex items-center justify-between mb-2">
+                                    <div className="flex items-center gap-2">
+                                      <span
+                                        className={`font-semibold ${
+                                          isAlreadyRegistered
+                                            ? "text-gray-500"
+                                            : "text-gray-900"
+                                        }`}
+                                      >
+                                        {shift.name}
                                       </span>
-                                    )}
-                                    {shift.end_time && (
-                                      <span className="text-gray-500">
-                                        - {formatTime12h(shift.end_time)}
-                                      </span>
-                                    )}
+                                      {isAlreadyRegistered && (
+                                        <span className="px-2 py-1 bg-red-100 text-red-700 text-xs font-semibold rounded-md flex items-center gap-1">
+                                          <Ban className="h-3 w-3" />
+                                          Already Registered
+                                        </span>
+                                      )}
+                                    </div>
+                                    <div className="flex items-center gap-2 text-xs">
+                                      {shift.start_time && (
+                                        <span
+                                          className={`font-medium ${
+                                            isAlreadyRegistered
+                                              ? "text-gray-400"
+                                              : "text-purple-600"
+                                          }`}
+                                        >
+                                          🕐 {formatTime12h(shift.start_time)}
+                                        </span>
+                                      )}
+                                      {shift.end_time && (
+                                        <span className="text-gray-500">
+                                          - {formatTime12h(shift.end_time)}
+                                        </span>
+                                      )}
+                                    </div>
                                   </div>
+                                  {shift.description && (
+                                    <p className="text-sm text-gray-600 mb-2">
+                                      {shift.description}
+                                    </p>
+                                  )}
+                                  {shift.capacity && (
+                                    <div className="mt-2">
+                                      <div className="flex items-center justify-between text-xs text-gray-600 mb-1">
+                                        <span>Capacity</span>
+                                        <span className="font-medium">
+                                          0 / {shift.capacity}
+                                        </span>
+                                      </div>
+                                      <div className="w-full bg-gray-200 rounded-full h-2">
+                                        <div
+                                          className="bg-purple-600 h-2 rounded-full transition-all"
+                                          style={{ width: "0%" }}
+                                        />
+                                      </div>
+                                    </div>
+                                  )}
                                 </div>
-                                {shift.description && (
-                                  <p className="text-sm text-gray-600 mb-2">
-                                    {shift.description}
-                                  </p>
-                                )}
-                                {shift.capacity && (
-                                  <div className="mt-2">
-                                    <div className="flex items-center justify-between text-xs text-gray-600 mb-1">
-                                      <span>Capacity</span>
-                                      <span className="font-medium">
-                                        0 / {shift.capacity}
-                                      </span>
-                                    </div>
-                                    <div className="w-full bg-gray-200 rounded-full h-2">
-                                      <div
-                                        className="bg-purple-600 h-2 rounded-full transition-all"
-                                        style={{ width: "0%" }}
-                                      />
-                                    </div>
-                                  </div>
-                                )}
                               </div>
-                            </div>
-                          </label>
-                        ))}
+                            </label>
+                          );
+                        })}
                       </div>
                     </div>
                   ))}
@@ -480,7 +538,7 @@ export default function VolunteerRegistrationPage() {
           </div>
 
           {/* T-Shirt Size */}
-          {event.event_tshirts?.length > 0 && (
+          {selectedRole?.has_tshirt && (
             <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
               <h2 className="text-xl font-bold text-gray-900 mb-4">
                 T-Shirt Size *

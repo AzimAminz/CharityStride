@@ -1,14 +1,14 @@
 "use client";
 
 import { motion, AnimatePresence } from "framer-motion";
-import { Heart, X } from "lucide-react";
+import { Heart, X, AlertCircle } from "lucide-react";
 import Link from "next/link";
 import useLogin from "../hooks/useLogin";
 import { PasswordField } from "../../components/PasswordField";
 import { InputField } from "../../components/InputField";
 import GoogleField from "../../components/GoogleField";
 
-export default function LoginModal({ isOpen, onClose }) {
+export default function LoginModal({ isOpen, onClose, redirectUrl, message }) {
   const {
     email,
     setEmail,
@@ -20,7 +20,7 @@ export default function LoginModal({ isOpen, onClose }) {
     setShowPassword,
     loading,
     handleLogin,
-  } = useLogin();
+  } = useLogin(redirectUrl);
 
   return (
     <AnimatePresence>
@@ -65,6 +65,16 @@ export default function LoginModal({ isOpen, onClose }) {
               </h1>
               <p className="text-slate-500 text-sm">Empowering Kindness</p>
             </div>
+
+            {/* Optional Message */}
+            {message && (
+              <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-xl flex items-start gap-3">
+                <AlertCircle className="h-5 w-5 text-amber-600 mt-0.5 flex-shrink-0" />
+                <p className="text-sm text-amber-800 leading-relaxed">
+                  {message}
+                </p>
+              </div>
+            )}
 
             {/* Form */}
             <form onSubmit={handleLogin} className="space-y-5">

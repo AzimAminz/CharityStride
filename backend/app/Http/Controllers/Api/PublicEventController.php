@@ -169,7 +169,7 @@ class PublicEventController extends Controller
             ->with([
                 'ngo',
                 'sections',
-                'participantCategories.tiers',
+                'participantCategories.feeTiers',
                 'volunteerRoles' => function($query) {
                     $query->with(['shifts', 'roleType', 'requiredSkill']);
                 },

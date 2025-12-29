@@ -13,9 +13,15 @@ export const getEvents = async (filters = {}) => {
   return res.data;
 };
 
-// Get single event
+// Get single event (protected - requires NGO authentication)
 export const getEvent = async (id) => {
   const res = await api.get(`/ngo/events/${id}`);
+  return res.data;
+};
+
+// Get single event (public - no authentication required)
+export const getPublicEvent = async (id) => {
+  const res = await api.get(`/public/events/${id}`);
   return res.data;
 };
 
@@ -77,6 +83,16 @@ export const updateEventSection = async (eventId, sectionId, data) => {
 // Delete section
 export const deleteEventSection = async (eventId, sectionId) => {
   const res = await api.delete(`/ngo/events/${eventId}/sections/${sectionId}`);
+  return res.data;
+};
+
+/**
+ * User Registration Status API
+ */
+
+// Get user's registration status for an event (requires authentication)
+export const getMyRegistrationStatus = async (eventId) => {
+  const res = await api.get(`/events/${eventId}/my-registration-status`);
   return res.data;
 };
 
