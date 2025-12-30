@@ -96,6 +96,24 @@ export const getMyRegistrationStatus = async (eventId) => {
   return res.data;
 };
 
+// Register participant (requires authentication)
+export const registerParticipant = async (eventId, data) => {
+  const res = await api.post(`/events/${eventId}/register/participant`, data);
+  return res.data;
+};
+
+// Get user's registrations (requires authentication)
+export const getUserRegistrations = async () => {
+  const res = await api.get("/user/my-registrations");
+  return res.data;
+};
+
+// Get event registrations (NGO only)
+export const getEventRegistrations = async (eventId) => {
+  const res = await api.get(`/ngo/events/${eventId}/registrations`);
+  return res.data;
+};
+
 /**
  * Event Status Options
  */

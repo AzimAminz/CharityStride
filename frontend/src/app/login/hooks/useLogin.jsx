@@ -4,7 +4,7 @@ import { useRouter, usePathname } from "next/navigation";
 import { useState } from "react";
 import { login } from "../../lib/auth";
 
-export default function useLogin(redirectUrl = null) {
+export default function useLogin(redirectUrl = null, onClose = null) {
   const router = useRouter();
   const pathname = usePathname();
 
@@ -41,19 +41,28 @@ export default function useLogin(redirectUrl = null) {
     setLoading(true);
     try {
       const res = await login({ email, password });
-      console.log("Login response:", res);
 
       if (res?.user) {
-        // If redirectUrl is provided, use it; otherwise use role-based redirect
-        if (redirectUrl) {
-          router.push(redirectUrl);
-        } else if (res.user.role === "admin") {
-          router.push("/admin/dashboard");
-        } else if (res.user.role === "ngo") {
-          router.push("/ngo/dashboard");
-        } else {
-          router.push("/events");
-        }
+        // Close modal before redirect
+        if (onClose) onClose();
+
+        // Small delay to allow modal close animation
+        setTimeout(() => {
+          // If redirectUrl is provided, use it; otherwise use role-based redirect
+          if (redirectUrl) {
+            // Add success query parameter to URL
+            const urlWithSuccess = redirectUrl.includes("?")
+              ? `${redirectUrl}&login=success`
+              : `${redirectUrl}?login=success`;
+            router.push(urlWithSuccess);
+          } else if (res.user.role === "admin") {
+            router.push("/admin/dashboard?login=success");
+          } else if (res.user.role === "ngo") {
+            router.push("/ngo/dashboard?login=success");
+          } else {
+            router.push("/events?login=success");
+          }
+        }, 100);
       } else {
         setPassword("");
         setPasswordError(res?.message || "Login failed. Please try again.");

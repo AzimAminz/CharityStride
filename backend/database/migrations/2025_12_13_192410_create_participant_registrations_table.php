@@ -19,7 +19,7 @@ return new class extends Migration
             $table->text('special_requirements')->nullable();
             $table->foreignId('fee_tier_id')->nullable()->constrained('participant_fee_tiers');
             $table->bigInteger('amount_paid')->default(0); // In CENTS
-            $table->enum('status', ['pending', 'confirmed', 'cancelled', 'completed'])->default('pending');
+            $table->enum('status', ['pending', 'pending_payment', 'confirmed', 'cancelled', 'checked_in'])->default('pending');
             $table->string('bib_number')->unique()->nullable();
             $table->string('qr_code')->unique()->nullable(); // Auto-generated
             $table->enum('attendance_status', ['pending', 'checked_in', 'absent'])->default('pending');

@@ -32,6 +32,46 @@ class Event extends Model
         'has_participant',
     ];
 
+    protected $appends = ['stats', 'location'];
+
+    /**
+     * Get location attribute (backward compatibility with address)
+     */
+    public function getLocationAttribute()
+    {
+        return $this->address;
+    }
+
+    /**
+     * Get registration stats for this event
+     */
+    public function getStatsAttribute()
+    {
+        $stats = [];
+        
+        // Only include participants if has_participant is enabled
+        if ($this->has_participant) {
+            $stats['participants'] = $this->participantRegistrations()
+                ->where('status', 'confirmed')
+                ->count();
+        }
+        
+        // Only include volunteers if has_volunteer is enabled
+        if ($this->has_volunteer) {
+            $stats['volunteers'] = $this->volunteerRegistrations()
+                ->where('status', 'approved')
+                ->count();
+        }
+        
+        // Only include donations if has_donation is enabled
+        if ($this->has_donation) {
+            $stats['donations'] = $this->donationRegistrations()
+                ->count();
+        }
+        
+        return $stats;
+    }
+
     protected $casts = [
         'start_date' => 'date',
         'end_date' => 'date',

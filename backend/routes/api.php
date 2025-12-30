@@ -60,6 +60,22 @@ Route::middleware(['auth:sanctum'])->delete('/upload', [FileUploadController::cl
 // User Registration Status Check (Protected - User must be logged in)
 Route::middleware(['auth:sanctum'])->get('/events/{eventId}/my-registration-status', [RegistrationStatusController::class, 'checkStatus']);
 
+// Authenticated User Routes (General)
+Route::middleware(['auth:sanctum'])->group(function() {
+    // Participant Registration
+    Route::post('/events/{eventId}/register/participant', [\App\Http\Controllers\Api\ParticipantRegistrationController::class, 'store']);
+    
+    // Payment Process
+    Route::get('/payments/{id}', [\App\Http\Controllers\Api\PaymentController::class, 'show']);
+    Route::post('/payments/{id}/mock-process', [\App\Http\Controllers\Api\PaymentController::class, 'processMock']);
+    
+    // User Dashboard
+    Route::get('/user/my-registrations', [\App\Http\Controllers\Api\User\UserRegistrationController::class, 'index']);
+    
+    // Receipt Download
+    Route::get('/user/registrations/{id}/receipt', [\App\Http\Controllers\Api\ReceiptController::class, 'downloadReceipt']);
+});
+
 // NGO Routes (Protected - User/NGO role)
 Route::middleware(['auth:sanctum', 'role:user,ngo'])->prefix('ngo')->group(function(){
     // NGO Registration
@@ -104,16 +120,18 @@ Route::middleware(['auth:sanctum', 'role:user,ngo'])->prefix('ngo')->group(funct
         Route::get('events/{eventId}/participant/categories', [ParticipantController::class, 'getCategories']);
         Route::post('events/{eventId}/participant/categories', [ParticipantController::class, 'createCategory']);
         Route::put('events/{eventId}/participant/categories/{categoryId}', [ParticipantController::class, 'updateCategory']);
-        Route::delete('events/{eventId}/participant/categories/{categoryId}', [ParticipantController::class, 'deleteCategory']);
+        Route::delete('events/{eventId}/participant/categories/{id}', [ParticipantController::class, 'deleteCategory']);
+        
+        // Registration Management
+        Route::get('events/{eventId}/registrations', [\App\Http\Controllers\Api\Ngo\RegistrationManagementController::class, 'getEventRegistrations']);
         Route::post('events/{eventId}/participant/categories/{categoryId}/tiers', [ParticipantController::class, 'createTier']);
         Route::put('events/{eventId}/participant/tiers/{tierId}', [ParticipantController::class, 'updateTier']);
         Route::delete('events/{eventId}/participant/tiers/{tierId}', [ParticipantController::class, 'deleteTier']);
         
         // Registration Management Routes
-        Route::get('events/{eventId}/registrations', [RegistrationManagementController::class, 'getEventRegistrations']);
-        Route::post('events/{eventId}/check-in', [RegistrationManagementController::class, 'checkInByQr']);
-        Route::post('events/{eventId}/collect-tshirt', [RegistrationManagementController::class, 'collectTshirt']);
-        Route::post('events/{eventId}/registrations/{registrationId}/verify', [RegistrationManagementController::class, 'manualVerify']);
+        Route::post('events/{eventId}/check-in', [\App\Http\Controllers\Api\Ngo\RegistrationManagementController::class, 'checkInByQr']);
+        Route::post('events/{eventId}/collect-tshirt', [\App\Http\Controllers\Api\Ngo\RegistrationManagementController::class, 'collectTshirt']);
+        Route::post('events/{eventId}/registrations/{registrationId}/verify', [\App\Http\Controllers\Api\Ngo\RegistrationManagementController::class, 'manualVerify']);
         
         Route::get('saved-locations', [\App\Http\Controllers\Api\Ngo\SavedLocationController::class, 'index']);
         Route::post('saved-locations', [\App\Http\Controllers\Api\Ngo\SavedLocationController::class, 'store']);

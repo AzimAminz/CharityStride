@@ -1,7 +1,7 @@
 "use client";
 
 import { useEventDetail } from "../../hooks/useEventDetail";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
@@ -21,13 +21,16 @@ import {
   ChevronRight,
   Mail,
   Phone,
+  X,
 } from "lucide-react";
 import { format, parseISO, isAfter } from "date-fns";
 import LoginModal from "../../login/components/LoginModal";
+import AlertModal from "../../components/AlertModal";
 
 export default function EventDetailsPage() {
   const router = useRouter();
   const params = useParams();
+  const searchParams = useSearchParams();
   const id = params.id;
 
   // Fetch actual event data using public API (no authentication required)
@@ -39,6 +42,27 @@ export default function EventDetailsPage() {
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [pendingRegistration, setPendingRegistration] = useState(null);
   const [timeRemaining, setTimeRemaining] = useState(null);
+  const [showSuccessMessage, setShowSuccessMessage] = useState(false);
+
+  // Check for successful login via URL parameter
+  useEffect(() => {
+    const loginSuccess = searchParams?.get("login");
+
+    if (loginSuccess === "success") {
+      setShowSuccessMessage(true);
+
+      // Auto-close after 2 seconds and remove URL parameter
+      setTimeout(() => {
+        setShowSuccessMessage(false);
+        router.replace(`/events/${id}`, { scroll: false });
+      }, 2000);
+    }
+  }, [searchParams, id, router]);
+
+  // Debug: Log when showSuccessMessage state changes
+  useEffect(() => {
+    console.log("showSuccessMessage state changed to:", showSuccessMessage);
+  }, [showSuccessMessage]);
 
   // Countdown timer for registration deadline
   useEffect(() => {
@@ -100,7 +124,6 @@ export default function EventDetailsPage() {
       router.push(`/events/${id}/register/${moduleType}`);
     } else {
       // User not logged in, show login modal
-      console.log("User not authenticated, showing login modal");
       setPendingRegistration(moduleType);
       setShowLoginModal(true);
     }
@@ -158,6 +181,14 @@ export default function EventDetailsPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-teal-50/30">
+      {/* Success Message Modal */}
+      <AlertModal
+        type="success"
+        message="✅ Successfully logged in! Welcome back."
+        isOpen={showSuccessMessage}
+        onClose={() => setShowSuccessMessage(false)}
+      />
+
       {/* Back Button */}
       <div className="sticky top-0 z-40 bg-white border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
@@ -534,9 +565,9 @@ export default function EventDetailsPage() {
         isOpen={showLoginModal}
         onClose={() => setShowLoginModal(false)}
         redirectUrl={
-          pendingRegistration
-            ? `/events/${id}/register/${pendingRegistration}`
-            : undefined
+          typeof window !== "undefined"
+            ? window.location.pathname
+            : `/events/${id}`
         }
         message="You need to log in to register for this event."
       />

@@ -20,7 +20,7 @@ export default function LoginModal({ isOpen, onClose, redirectUrl, message }) {
     setShowPassword,
     loading,
     handleLogin,
-  } = useLogin(redirectUrl);
+  } = useLogin(redirectUrl, onClose);
 
   return (
     <AnimatePresence>
@@ -139,7 +139,7 @@ export default function LoginModal({ isOpen, onClose, redirectUrl, message }) {
             </div>
 
             {/* Google Login */}
-            <GoogleField />
+            <GoogleField redirectUrl={redirectUrl} onClose={onClose} />
 
             {/* Footer */}
             <div className="mt-6 text-center text-sm text-slate-600">

@@ -3,7 +3,10 @@
 import { useParams, useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import { useEventDetail } from "../../../../hooks/useEventDetail";
-import { getMyRegistrationStatus } from "../../../../lib/events";
+import {
+  getMyRegistrationStatus,
+  registerParticipant,
+} from "../../../../lib/events";
 import { ArrowLeft, Users, AlertCircle, CheckCircle } from "lucide-react";
 import { motion } from "framer-motion";
 import ErrorModal from "../../../../components/ErrorModal";
@@ -145,15 +148,29 @@ export default function ParticipantRegistrationPage() {
 
     setSubmitting(true);
 
-    // TODO: API call to submit registration
-    console.log("Form data:", formData);
+    // API call to submit registration
+    try {
+      const response = await registerParticipant(id, formData);
 
-    // Simulate API call
-    setTimeout(() => {
+      // Handle success
+      if (response.payment_url) {
+        // Redirect to payment page
+        window.location.href = response.payment_url;
+      } else {
+        // Free event success
+        alert("Registration successful!");
+        router.push("/user/registrations");
+      }
+    } catch (err) {
+      console.error("Registration error:", err);
+      // Show error message
+      const errorMessage =
+        err.response?.data?.message || "Registration failed. Please try again.";
+      // You might want to set a global error state here or use an AlertModal
+      alert(errorMessage);
+    } finally {
       setSubmitting(false);
-      alert("Registration submitted! (This is preview mode)");
-      router.push(`/events/${id}`);
-    }, 1500);
+    }
   };
 
   return (

@@ -19,7 +19,7 @@ class RegistrationManagementController extends Controller
         $event = Event::where('ngo_id', Auth::user()->ngo_id)->findOrFail($eventId);
 
         $participants = ParticipantRegistration::where('event_id', $eventId)
-            ->with(['user', 'participantCategory'])
+            ->with(['user', 'participantCategory', 'payments'])
             ->get();
 
         $volunteers = VolunteerRegistration::where('event_id', $eventId)
