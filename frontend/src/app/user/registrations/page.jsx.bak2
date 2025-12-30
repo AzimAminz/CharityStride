@@ -21,7 +21,6 @@ import {
 } from "lucide-react";
 import { getUserRegistrations } from "../../lib/events";
 import { api } from "../../lib/api";
-import { previewReceipt, downloadReceipt } from "../../lib/receiptGenerator";
 
 const RegistrationsPage = () => {
   const [activeTab, setActiveTab] = useState("participant");
@@ -50,9 +49,23 @@ const RegistrationsPage = () => {
     fetchData();
   }, []);
 
-  const handlePreviewReceipt = (payment) => {
-    if (payment.payable) {
-      previewReceipt(payment.payable, payment);
+  const handleDownloadReceipt = async (registrationId) => {
+    try {
+      const response = await api.get(`/user/registrations/${registrationId}/receipt`, {
+        responseType: 'blob',
+      });
+      
+      // Create blob link to download
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `receipt-${registrationId}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } catch (error) {
+      console.error('Error downloading receipt:', error);
+      alert('Failed to download receipt. Please try again.');
     }
   };
 
@@ -370,11 +383,16 @@ const RegistrationsPage = () => {
                           {payment.payment_status === "paid" &&
                             payment.payable && (
                               <button
-                                onClick={() => handlePreviewReceipt(payment)}
+                                onClick={() =>
+                                  window.open(
+                                    `${process.env.NEXT_PUBLIC_API_URL}/api/user/registrations/${payment.payable.id}/receipt`,
+                                    "_blank"
+                                  )
+                                }
                                 className="px-4 py-2 bg-emerald-50 text-emerald-700 rounded-lg hover:bg-emerald-100 transition-colors flex items-center gap-2 w-fit"
                               >
                                 <Download className="h-4 w-4" />
-                                Preview & Download Receipt
+                                Download Receipt
                               </button>
                             )}
                         </div>

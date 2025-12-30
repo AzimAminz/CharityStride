@@ -10,11 +10,6 @@ use Barryvdh\DomPDF\Facade\Pdf;
 
 class ReceiptController extends Controller
 {
-    public function __construct()
-    {
-        $this->middleware('auth:sanctum');
-    }
-
     public function downloadReceipt($registrationId)
     {
         // Check if user is authenticated
@@ -41,7 +36,7 @@ class ReceiptController extends Controller
             return $pdf->download('receipt-' . $registration->bib_number . '.pdf');
         } catch (\Exception $e) {
             \Log::error('Receipt generation failed: ' . $e->getMessage());
-            return response()->json(['message' => 'Failed to generate receipt'], 500);
+            return response()->json(['message' => 'Failed to generate receipt: ' . $e->getMessage()], 500);
         }
     }
 }

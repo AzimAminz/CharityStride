@@ -19,6 +19,8 @@
     "date-fns": "^4.1.0",
     "dotenv": "^17.2.3",
     "framer-motion": "^12.23.24",
+    "jspdf": "^3.0.4",
+    "jspdf-autotable": "^5.0.2",
     "laravel-echo": "^2.2.6",
     "leaflet": "^1.9.4",
     "lucide-react": "^0.546.0",
