@@ -64,6 +64,7 @@ Route::middleware(['auth:sanctum'])->get('/events/{eventId}/my-registration-stat
 Route::middleware(['auth:sanctum'])->group(function() {
     // Participant Registration
     Route::post('/events/{eventId}/register/participant', [\App\Http\Controllers\Api\ParticipantRegistrationController::class, 'store']);
+    Route::post('/events/{eventId}/register/volunteer', [\App\Http\Controllers\Api\VolunteerRegistrationController::class, 'store']);
     
     // Payment Process
     Route::get('/payments/{id}', [\App\Http\Controllers\Api\PaymentController::class, 'show']);

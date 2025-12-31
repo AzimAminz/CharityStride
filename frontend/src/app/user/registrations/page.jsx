@@ -53,6 +53,9 @@ const RegistrationsPage = () => {
   const handlePreviewReceipt = (payment) => {
     if (payment.payable) {
       previewReceipt(payment.payable, payment);
+    } else {
+      console.error("No payable data found in payment");
+      alert("Unable to generate receipt: Missing registration data");
     }
   };
 

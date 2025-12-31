@@ -15,28 +15,33 @@ class UserRegistrationController extends Controller
     {
         $userId = Auth::id();
 
+        // Get participant registrations with all relationships
         $participantRegistrations = ParticipantRegistration::where('user_id', $userId)
-            ->with(['event', 'participantCategory', 'feeTier', 'payments' => function($q) {
-                $q->latest();
-            }])
+            ->with(['event.ngo', 'participantCategory', 'payments', 'user'])
             ->orderBy('created_at', 'desc')
             ->get();
 
+
+        // Get volunteer registrations with all relationships
         $volunteerRegistrations = VolunteerRegistration::where('user_id', $userId)
-            ->with(['event', 'volunteerRole', 'volunteerShift'])
+            ->with(['event.ngo', 'volunteerRole', 'volunteerShift', 'payments', 'user'])
             ->orderBy('created_at', 'desc')
             ->get();
 
-        // Also fetch standalone payments (donations etc)
+        // Get payments with full payable relationships
         $payments = Payment::where('user_id', $userId)
-            ->with(['payable'])
+            ->with([
+                'payable.event.ngo',
+                'payable.participantCategory',
+                'payable.user'
+            ])
             ->orderBy('created_at', 'desc')
             ->get();
 
         return response()->json([
             'participant_registrations' => $participantRegistrations,
             'volunteer_registrations' => $volunteerRegistrations,
-            'payments' => $payments
+            'payments' => $payments,
         ]);
     }
 }

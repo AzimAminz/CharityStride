@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import Layout from "@/app/components/Layout";
 import { useParams, useRouter } from "next/navigation";
+import Echo from "../../../lib/echo";
 import {
   Users,
   UserCheck,
@@ -19,6 +20,7 @@ import {
   ArrowLeft,
   Check,
   X,
+  Wifi,
 } from "lucide-react";
 import { useEventDetail } from "../../../hooks/useEventDetail";
 import { getEventRegistrations } from "../../../lib/events";
@@ -30,11 +32,14 @@ const EventRegistrationsPage = () => {
 
   const [activeTab, setActiveTab] = useState("participants");
   const [searchQuery, setSearchQuery] = useState("");
+  const [toast, setToast] = useState(null);
+  const [isRealtime, setIsRealtime] = useState(false);
 
   const { event, loading: eventLoading } = useEventDetail(eventId);
   const [data, setData] = useState({
     participants: [],
     volunteers: [],
+    donations: [],
   });
   const [loading, setLoading] = useState(true);
 
@@ -53,20 +58,80 @@ const EventRegistrationsPage = () => {
     fetchData();
   }, [eventId]);
 
-  const tabs = [
-    {
+  // Real-time WebSocket updates
+  useEffect(() => {
+    if (!eventId || !Echo) return;
+
+    const channel = Echo.channel(`event.${eventId}`);
+
+    channel.listen("RegistrationCreated", (data) => {
+      console.log("New registration:", data);
+      setIsRealtime(true);
+
+      // Refresh data
+      getEventRegistrations(eventId).then((res) => {
+        setData(res);
+        setToast({
+          type: "success",
+          message: `New ${data.type} registration received!`,
+        });
+      });
+
+      setTimeout(() => setIsRealtime(false), 2000);
+    });
+
+    return () => {
+      if (Echo) {
+        channel.stopListening("RegistrationCreated");
+        Echo.leave(`event.${eventId}`);
+      }
+    };
+  }, [eventId]);
+
+  // Toast auto-hide
+  useEffect(() => {
+    if (toast) {
+      const timer = setTimeout(() => setToast(null), 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [toast]);
+
+  // Dynamic tabs based on event configuration
+  const tabs = [];
+
+  if (event?.participantConfig) {
+    tabs.push({
       id: "participants",
       label: "Participants",
       icon: Users,
       count: data.participants.length,
-    },
-    {
+    });
+  }
+
+  if (event?.volunteerConfig) {
+    tabs.push({
       id: "volunteers",
       label: "Volunteers",
       icon: UserCheck,
       count: data.volunteers.length,
-    },
-  ];
+    });
+  }
+
+  if (event?.donationConfig) {
+    tabs.push({
+      id: "donations",
+      label: "Donations",
+      icon: Heart,
+      count: data.donations?.length || 0,
+    });
+  }
+
+  // Set first available tab as active if current tab not available
+  useEffect(() => {
+    if (tabs.length > 0 && !tabs.find((t) => t.id === activeTab)) {
+      setActiveTab(tabs[0].id);
+    }
+  }, [event]);
 
   if (loading || eventLoading) {
     return (
@@ -79,7 +144,11 @@ const EventRegistrationsPage = () => {
   }
 
   const currentData =
-    activeTab === "participants" ? data.participants : data.volunteers;
+    activeTab === "participants"
+      ? data.participants
+      : activeTab === "volunteers"
+      ? data.volunteers
+      : data.donations || [];
 
   const filteredData = currentData.filter((item) => {
     const searchLower = searchQuery.toLowerCase();
@@ -130,23 +199,31 @@ const EventRegistrationsPage = () => {
         {/* Event Header */}
         <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
           <div className="flex items-start justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900 mb-3">
-                {event.name}
-              </h1>
-              <div className="flex flex-wrap items-center gap-4 text-gray-600">
-                <div className="flex items-center gap-2">
-                  <Calendar className="h-5 w-5" />
-                  <span>
-                    {event.start_date
-                      ? new Date(event.start_date).toLocaleDateString()
-                      : "Date TBA"}
+            <div className="flex-1">
+              <div className="flex items-center gap-3 mb-2">
+                <h1 className="text-3xl font-bold text-gray-900">
+                  {event.name}
+                </h1>
+                {isRealtime && (
+                  <span className="flex items-center gap-2 px-3 py-1 bg-emerald-100 text-emerald-700 rounded-full text-sm font-medium animate-pulse">
+                    <Wifi className="h-4 w-4" />
+                    Live
                   </span>
-                </div>
+                )}
+              </div>
+              <div className="flex flex-wrap gap-4 text-sm text-gray-600">
                 <div className="flex items-center gap-2">
-                  <MapPin className="h-5 w-5" />
-                  <span>{event.location || "Location TBA"}</span>
+                  <Calendar className="h-4 w-4" />
+                  {event.start_date
+                    ? new Date(event.start_date).toLocaleDateString()
+                    : "Date TBA"}
                 </div>
+                {event.location && (
+                  <div className="flex items-center gap-2">
+                    <MapPin className="h-4 w-4" />
+                    {event.location}
+                  </div>
+                )}
               </div>
             </div>
             <button className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-medium transition-colors">
@@ -338,6 +415,32 @@ const EventRegistrationsPage = () => {
             </div>
           )}
         </div>
+
+        {/* Toast Notification */}
+        {toast && (
+          <div className="fixed top-4 right-4 z-50 animate-slide-in-right">
+            <div
+              className={`flex items-center gap-3 px-6 py-4 rounded-lg shadow-lg ${
+                toast.type === "success"
+                  ? "bg-emerald-600 text-white"
+                  : "bg-red-600 text-white"
+              }`}
+            >
+              {toast.type === "success" ? (
+                <CheckCircle2 className="h-6 w-6" />
+              ) : (
+                <XCircle className="h-6 w-6" />
+              )}
+              <p className="font-medium">{toast.message}</p>
+              <button
+                onClick={() => setToast(null)}
+                className="ml-4 hover:opacity-80"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </Layout>
   );

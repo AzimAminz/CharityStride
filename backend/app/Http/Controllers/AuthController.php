@@ -32,6 +32,7 @@ class AuthController extends Controller
                 'role' => 'user',
                 'status' => true,
                 'phone' => $validate['phone'],
+                'ic_number' => $validate['ic_number'] ?? null,
                 'birthdate' => $validate['birthdate'],
                 'photo' => $avatarUrl
             ]);

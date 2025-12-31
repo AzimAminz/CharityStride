@@ -19,6 +19,7 @@ class User extends Authenticatable
         'role',
         'status',
         'phone',
+        'ic_number',
         'birthdate',
         'photo',
     ];

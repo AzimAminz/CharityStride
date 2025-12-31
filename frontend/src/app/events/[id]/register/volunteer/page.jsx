@@ -3,7 +3,10 @@
 import { useParams, useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import { useEventDetail } from "../../../../hooks/useEventDetail";
-import { getMyRegistrationStatus } from "../../../../lib/events";
+import {
+  getMyRegistrationStatus,
+  registerVolunteer,
+} from "../../../../lib/events";
 import {
   ArrowLeft,
   Heart,
@@ -172,13 +175,26 @@ export default function VolunteerRegistrationPage() {
     }
 
     setSubmitting(true);
-    console.log("Form data:", formData);
 
-    setTimeout(() => {
+    try {
+      const response = await registerVolunteer(id, formData);
+
+      // Redirect to payment page with payment ID
+      if (response.payment_id) {
+        router.push(`/payments/${response.payment_id}`);
+      } else {
+        // If no payment required, redirect to success page
+        router.push(`/user/registrations?success=volunteer`);
+      }
+    } catch (error) {
+      console.error("Registration error:", error);
+      setErrors({
+        api:
+          error.response?.data?.message ||
+          "Registration failed. Please try again.",
+      });
       setSubmitting(false);
-      alert("Volunteer registration submitted! (Preview mode)");
-      router.push(`/ngo/events/${id}/preview`);
-    }, 1500);
+    }
   };
 
   return (
@@ -208,6 +224,14 @@ export default function VolunteerRegistrationPage() {
 
         {/* Registration Form */}
         <form onSubmit={handleSubmit} className="space-y-8">
+          {/* API Error */}
+          {errors.api && (
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-start gap-3">
+              <AlertCircle className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
+              <p className="text-red-800 text-sm">{errors.api}</p>
+            </div>
+          )}
+
           {/* Role Selection */}
           <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
             <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">

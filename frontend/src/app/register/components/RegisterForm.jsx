@@ -100,6 +100,15 @@ export default function RegisterPage() {
               placeholder="e.g. 0123456789"
             />
 
+            <InputField
+              label="IC Number"
+              type="text"
+              value={form.ic_number}
+              onChange={(e) => setForm({ ...form, ic_number: e.target.value })}
+              error={errors.ic_number}
+              placeholder="e.g. 990101-01-1234"
+            />
+
             {/* Birthdate */}
             <div className="relative">
               <div className="w-full">

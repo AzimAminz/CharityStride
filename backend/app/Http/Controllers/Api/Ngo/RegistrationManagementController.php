@@ -16,26 +16,59 @@ class RegistrationManagementController extends Controller
      */
     public function getEventRegistrations($eventId)
     {
-        $event = Event::where('ngo_id', Auth::user()->ngo_id)->findOrFail($eventId);
+        try {
+            $user = Auth::user();
+            
+            // Get NGO ID from user.ngo_id or from ngos table
+            $ngoId = $user->ngo_id;
+            
+            if (!$ngoId) {
+                // Try to get NGO from ngos table using user_id
+                $ngo = \App\Models\Ngo::where('user_id', $user->id)->first();
+                if ($ngo) {
+                    $ngoId = $ngo->id;
+                } else {
+                    return response()->json(['message' => 'User is not associated with an NGO'], 403);
+                }
+            }
 
-        $participants = ParticipantRegistration::where('event_id', $eventId)
-            ->with(['user', 'participantCategory', 'payments'])
-            ->get();
+            $event = Event::where('ngo_id', $ngoId)->findOrFail($eventId);
 
-        $volunteers = VolunteerRegistration::where('event_id', $eventId)
-            ->with(['user', 'volunteerRole', 'volunteerShift'])
-            ->get();
+            $participants = ParticipantRegistration::where('event_id', $eventId)
+                ->with(['user', 'participantCategory', 'payments'])
+                ->get();
 
-        return response()->json([
-            'participants' => $participants,
-            'volunteers' => $volunteers,
-            'stats' => [
-                'total_registrations' => $participants->count() + $volunteers->count(),
-                'participants_checked_in' => $participants->where('attendance_status', 'checked_in')->count(),
-                'volunteers_checked_in' => $volunteers->where('attendance_status', 'checked_in')->count(),
-                'tshirts_collected' => $participants->where('tshirt_collected', true)->count() + $volunteers->where('tshirt_collected', true)->count(),
-            ]
-        ]);
+            $volunteers = VolunteerRegistration::where('event_id', $eventId)
+                ->with(['user', 'volunteerRole', 'volunteerShift'])
+                ->get();
+
+            // Get donations if donation module is enabled
+            $donations = [];
+            if ($event->donationConfig) {
+                $donations = \App\Models\DonationRegistration::where('event_id', $eventId)
+                    ->with(['user'])
+                    ->get();
+            }
+
+            return response()->json([
+                'participants' => $participants,
+                'volunteers' => $volunteers,
+                'donations' => $donations,
+                'stats' => [
+                    'total_registrations' => $participants->count() + $volunteers->count() + count($donations),
+                    'participants_checked_in' => $participants->where('attendance_status', 'checked_in')->count(),
+                    'volunteers_checked_in' => $volunteers->where('attendance_status', 'checked_in')->count(),
+                    'tshirts_collected' => $participants->where('tshirt_collected', true)->count() + $volunteers->where('tshirt_collected', true)->count(),
+                    'total_donations' => count($donations),
+                ]
+            ]);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            \Log::error('Event not found or unauthorized: ' . $eventId);
+            return response()->json(['message' => 'Event not found or unauthorized'], 404);
+        } catch (\Exception $e) {
+            \Log::error('Error fetching registrations: ' . $e->getMessage());
+            return response()->json(['message' => 'Error fetching registrations: ' . $e->getMessage()], 500);
+        }
     }
 
     /**

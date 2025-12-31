@@ -11,6 +11,7 @@ export function useRegister() {
     password: "",
     confirmPassword: "",
     phone: "",
+    ic_number: "",
     birthdate: null,
   });
 
@@ -34,6 +35,11 @@ export function useRegister() {
       newErrors.confirmPassword = "Passwords do not match.";
     if (!form.phone.match(/^[0-9]{9,15}$/))
       newErrors.phone = "Enter a valid phone number (9–15 digits).";
+    if (!form.ic_number || !form.ic_number.trim())
+      newErrors.ic_number = "IC number is required.";
+    else if (!form.ic_number.match(/^[0-9]{6}-[0-9]{2}-[0-9]{4}$/))
+      newErrors.ic_number =
+        "IC format must be YYMMDD-XX-XXXX (e.g. 990101-01-1234).";
     if (!form.birthdate) newErrors.birthdate = "Select your birthdate.";
 
     setErrors(newErrors);
@@ -68,6 +74,7 @@ export function useRegister() {
         password: "",
         confirmPassword: "",
         phone: "",
+        ic_number: "",
         birthdate: null,
       });
       setErrors({});

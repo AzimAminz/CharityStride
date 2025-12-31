@@ -3,6 +3,8 @@
 import React, { useState, useEffect } from "react";
 import Echo from "../../lib/echo";
 import Layout from "@/app/components/Layout";
+import QRScanner from "./components/QRScanner";
+import { api } from "../../lib/api";
 import {
   Calendar,
   Users,
@@ -11,16 +13,23 @@ import {
   ArrowRight,
   Search,
   TrendingUp,
+  QrCode,
+  CheckCircle,
+  XCircle,
 } from "lucide-react";
 import { getEvents } from "../../lib/events";
 
 const NGORegistrationsPage = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedEvent, setSelectedEvent] = useState(null);
-  const [sortBy, setSortBy] = useState("date-desc"); // date-desc, date-asc, name-asc, name-desc, registrations-desc
+  const [sortBy, setSortBy] = useState("date-desc");
 
   const [loading, setLoading] = useState(true);
   const [publishedEvents, setPublishedEvents] = useState([]);
+
+  // QR Scanner state
+  const [showScanner, setShowScanner] = useState(false);
+  const [toast, setToast] = useState(null);
 
   useEffect(() => {
     const fetchEvents = async () => {
@@ -87,6 +96,54 @@ const NGORegistrationsPage = () => {
       }
     };
   }, [publishedEvents.length]);
+
+  // Toast auto-hide
+  useEffect(() => {
+    if (toast) {
+      const timer = setTimeout(() => setToast(null), 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [toast]);
+
+  // QR Scanner handlers
+  const handleScanSuccess = async (qrCode) => {
+    try {
+      const response = await api.post("/ngo/registrations/check-in", {
+        qr_code: qrCode,
+      });
+
+      setToast({
+        type: "success",
+        message: `Successfully checked in: ${response.data.registration.user.name}`,
+      });
+
+      setShowScanner(false);
+
+      // Refresh events to update stats
+      const eventsResponse = await getEvents({ user_id: "me" });
+      const events = eventsResponse.data || eventsResponse;
+      if (Array.isArray(events)) {
+        const published = events.filter(
+          (e) => e.is_published || e.status === "open" || e.is_published === 1
+        );
+        setPublishedEvents(published);
+      }
+    } catch (error) {
+      setToast({
+        type: "error",
+        message:
+          error.response?.data?.message ||
+          "Failed to check in. Please try again.",
+      });
+    }
+  };
+
+  const handleScanError = (error) => {
+    setToast({
+      type: "error",
+      message: error,
+    });
+  };
 
   // Filter events by search
   const filteredEvents = publishedEvents.filter(
@@ -387,6 +444,49 @@ const NGORegistrationsPage = () => {
             </div>
           </div>
         </div>
+
+        {/* Scan QR Button - Fixed Position */}
+        <button
+          onClick={() => setShowScanner(true)}
+          className="fixed bottom-8 right-8 bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-4 rounded-full shadow-lg flex items-center gap-2 transition-all hover:scale-105 z-40"
+        >
+          <QrCode className="h-6 w-6" />
+          <span className="font-semibold">Scan QR</span>
+        </button>
+
+        {/* QR Scanner Modal */}
+        <QRScanner
+          isOpen={showScanner}
+          onClose={() => setShowScanner(false)}
+          onScanSuccess={handleScanSuccess}
+          onScanError={handleScanError}
+        />
+
+        {/* Toast Notification */}
+        {toast && (
+          <div className="fixed top-4 right-4 z-50 animate-slide-in-right">
+            <div
+              className={`flex items-center gap-3 px-6 py-4 rounded-lg shadow-lg ${
+                toast.type === "success"
+                  ? "bg-emerald-600 text-white"
+                  : "bg-red-600 text-white"
+              }`}
+            >
+              {toast.type === "success" ? (
+                <CheckCircle className="h-6 w-6" />
+              ) : (
+                <XCircle className="h-6 w-6" />
+              )}
+              <p className="font-medium">{toast.message}</p>
+              <button
+                onClick={() => setToast(null)}
+                className="ml-4 hover:opacity-80"
+              >
+                <XCircle className="h-5 w-5" />
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </Layout>
   );

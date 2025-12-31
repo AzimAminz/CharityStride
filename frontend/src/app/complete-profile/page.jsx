@@ -7,6 +7,7 @@ import {
   Phone,
   Calendar,
   User,
+  CreditCard,
   CheckCircle,
   AlertCircle,
   Loader2,
@@ -24,6 +25,7 @@ export default function CompleteProfilePage() {
 
   const [formData, setFormData] = useState({
     phone: "",
+    ic_number: "",
     birthdate: null,
   });
 
@@ -71,16 +73,26 @@ export default function CompleteProfilePage() {
     return null;
   };
 
+  const validateIC = (ic) => {
+    if (!ic) return "IC number is required";
+    const icRegex = /^[0-9]{6}-[0-9]{2}-[0-9]{4}$/;
+    if (!icRegex.test(ic))
+      return "IC format must be YYMMDD-XX-XXXX (e.g. 990101-01-1234)";
+    return null;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
 
     // Validate
     const phoneError = validatePhone(formData.phone);
+    const icError = validateIC(formData.ic_number);
     const birthdateError = validateBirthdate(formData.birthdate);
 
-    if (phoneError || birthdateError) {
+    if (phoneError || icError || birthdateError) {
       setErrors({
         phone: phoneError,
+        ic_number: icError,
         birthdate: birthdateError,
       });
       return;
@@ -96,6 +108,7 @@ export default function CompleteProfilePage() {
 
       await completeProfile({
         phone: formData.phone,
+        ic_number: formData.ic_number,
         birthdate: formattedDate,
       });
 
@@ -205,6 +218,33 @@ export default function CompleteProfilePage() {
               {errors.phone && (
                 <p className="text-sm text-red-600 flex items-center gap-1">
                   <AlertCircle className="h-4 w-4" /> {errors.phone}
+                </p>
+              )}
+            </div>
+
+            {/* IC Number Input */}
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-gray-700">
+                IC Number <span className="text-red-500">*</span>
+              </label>
+              <div className="relative">
+                <CreditCard className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="e.g. 990101-01-1234"
+                  value={formData.ic_number}
+                  onChange={(e) => {
+                    setFormData({ ...formData, ic_number: e.target.value });
+                    setErrors({ ...errors, ic_number: null });
+                  }}
+                  className={`w-full pl-10 pr-4 py-3 border rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all ${
+                    errors.ic_number ? "border-red-400" : "border-gray-300"
+                  }`}
+                />
+              </div>
+              {errors.ic_number && (
+                <p className="text-sm text-red-600 flex items-center gap-1">
+                  <AlertCircle className="h-4 w-4" /> {errors.ic_number}
                 </p>
               )}
             </div>

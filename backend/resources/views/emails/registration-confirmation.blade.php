@@ -80,15 +80,33 @@
         <div class="info-box">
             <h3 style="margin-top: 0; color: #10b981;">Registration Details</h3>
             
+            @if(isset($registration->bib_number))
             <div class="info-row">
                 <span class="label">BIB Number:</span>
                 <span class="value">{{ $registration->bib_number }}</span>
             </div>
+            @endif
             
+            @if(isset($registration->participantCategory))
             <div class="info-row">
                 <span class="label">Category:</span>
                 <span class="value">{{ $registration->participantCategory->category_name }}</span>
             </div>
+            @endif
+            
+            @if(isset($registration->volunteerRole))
+            <div class="info-row">
+                <span class="label">Volunteer Role:</span>
+                <span class="value">{{ $registration->volunteerRole->custom_role_name ?? ($registration->volunteerRole->role_type->name_en ?? 'Volunteer') }}</span>
+            </div>
+            @endif
+            
+            @if(isset($registration->volunteerShift))
+            <div class="info-row">
+                <span class="label">Shift:</span>
+                <span class="value">{{ $registration->volunteerShift->shift_date }} ({{ $registration->volunteerShift->start_time }} - {{ $registration->volunteerShift->end_time }})</span>
+            </div>
+            @endif
             
             <div class="info-row">
                 <span class="label">Event Date:</span>

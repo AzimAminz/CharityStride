@@ -3,6 +3,7 @@
 namespace App\Mail;
 
 use App\Models\ParticipantRegistration;
+use App\Models\VolunteerRegistration;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
@@ -23,9 +24,13 @@ class RegistrationConfirmation extends Mailable
     /**
      * Create a new message instance.
      */
-    public function __construct(ParticipantRegistration $registration)
+    public function __construct(ParticipantRegistration|VolunteerRegistration $registration)
     {
-        $this->registration = $registration->load(['event', 'user', 'participantCategory', 'payments']);
+        if ($registration instanceof ParticipantRegistration) {
+            $this->registration = $registration->load(['event', 'user', 'participantCategory', 'payments']);
+        } else {
+            $this->registration = $registration->load(['event', 'user', 'volunteerRole', 'volunteerShift', 'payments']);
+        }
         
         // Generate QR Code using GD (not imagick)
         $this->qrCodePath = storage_path('app/temp/qr_' . $registration->id . '.png');
@@ -35,10 +40,20 @@ class RegistrationConfirmation extends Mailable
             mkdir(storage_path('app/temp'), 0755, true);
         }
         
-        QrCode::format('png')
-            ->size(300)
-            ->errorCorrection('H')
-            ->generate($registration->qr_code, $this->qrCodePath);
+        
+        // Generate QR Code using online API (no imagick required)
+        try {
+            $qrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=' . urlencode($registration->qr_code);
+            $qrImage = file_get_contents($qrUrl);
+            
+            if ($qrImage) {
+                file_put_contents($this->qrCodePath, $qrImage);
+            } else {
+                \Log::error('Failed to generate QR code from API');
+            }
+        } catch (\Exception $e) {
+            \Log::error('QR code generation error: ' . $e->getMessage());
+        }
         
         // Generate PDF Receipt if paid
         if ($registration->amount_paid > 0) {

@@ -123,3 +123,9 @@ export const EVENT_STATUS = [
   { value: "closed", label: "Closed" },
   { value: "completed", label: "Completed" },
 ];
+
+// Register volunteer (requires authentication)
+export const registerVolunteer = async (eventId, data) => {
+  const res = await api.post(`/events/${eventId}/register/volunteer`, data);
+  return res.data;
+};

@@ -4,9 +4,10 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Payment;
+use App\Models\ParticipantRegistration;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 use App\Mail\RegistrationConfirmation;
 
@@ -43,25 +44,24 @@ class PaymentController extends Controller
             $payment->update([
                 'payment_status' => 'paid',
                 'paid_at' => now(),
-                'payment_method' => $request->payment_method ?? 'fpx', // Mock
+                'payment_method' => $request->payment_method ?? 'fpx',
                 'gateway_response' => ['status' => 'success', 'mock' => true],
             ]);
 
-            // 2. Update Registration (Payable) check
-            $registration = $payment->payable; 
+            // 2. Update Registration (Payable)
+            $registration = $payment->payable;
             
             if ($registration) {
-                 // Verify it is a registration model
-                 // If ParticipantRegistration
-                 if ($registration instanceof \App\Models\ParticipantRegistration) {
-                     $registration->update([
-                         'status' => 'confirmed',
-                         'amount_paid' => $payment->amount, // Update amount paid in reg
-                     ]);
-                     
-                     // Increment counts
-                     $registration->participantCategory->increment('current_registrations');
-                     if ($registration->event) {
+                // Handle ParticipantRegistration
+                if ($registration instanceof \App\Models\ParticipantRegistration) {
+                    $registration->update([
+                        'status' => 'confirmed',
+                        'amount_paid' => $payment->amount,
+                    ]);
+                    
+                    // Increment counts
+                    $registration->participantCategory->increment('current_registrations');
+                    if ($registration->event) {
                         $event = $registration->event;
                         $participantConfig = $event->participantConfig;
                         if ($participantConfig) {
@@ -70,24 +70,44 @@ class PaymentController extends Controller
                         
                         // Broadcast registration event
                         broadcast(new \App\Events\RegistrationCreated($event, 'participant'));
-                        
-                        // Send confirmation email (wrapped in try-catch to not break payment flow)
-                        try {
-                            Mail::to($registration->user->email)->send(new RegistrationConfirmation($registration));
-                        } catch (\Exception $emailError) {
-                            \Log::error('Failed to send registration email: ' . $emailError->getMessage());
-                            // Continue anyway - payment is successful
-                        }
                     }
-                 }
-                 // Handle other types later (Donation, etc.)
+                }
+                // Handle VolunteerRegistration
+                elseif ($registration instanceof \App\Models\VolunteerRegistration) {
+                    $registration->update([
+                        'status' => 'confirmed',
+                    ]);
+                }
+                // Handle Donation
+                elseif ($registration instanceof \App\Models\DonationRegistration) {
+                    $registration->update([
+                        'status' => 'confirmed',
+                    ]);
+                }
+
+                // Send confirmation email for all types
+                try {
+                    // Load necessary relationships based on type
+                    if ($registration instanceof \App\Models\ParticipantRegistration) {
+                        $registration->load(['event.ngo', 'user', 'participantCategory', 'payments']);
+                    } elseif ($registration instanceof \App\Models\VolunteerRegistration) {
+                        $registration->load(['event.ngo', 'user', 'volunteerRole', 'volunteerShift', 'payments']);
+                    } elseif ($registration instanceof \App\Models\DonationRegistration) {
+                        $registration->load(['event.ngo', 'user', 'payments']);
+                    }
+                    
+                    Mail::to($registration->user->email)->send(new RegistrationConfirmation($registration));
+                } catch (\Exception $emailError) {
+                    \Log::error('Failed to send registration email: ' . $emailError->getMessage());
+                    // Continue anyway - payment is successful
+                }
             }
 
             DB::commit();
 
             return response()->json([
                 'message' => 'Payment successful',
-                'redirect_url' => '/user/registrations' 
+                'redirect_url' => '/user/registrations'
             ]);
 
         } catch (\Exception $e) {
