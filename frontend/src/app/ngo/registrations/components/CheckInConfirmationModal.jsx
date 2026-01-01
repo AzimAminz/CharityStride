@@ -1,17 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import {
-  X,
-  User,
-  Mail,
-  Phone,
-  Calendar,
-  MapPin,
-  CheckCircle,
-  XCircle,
-  Loader2,
-} from "lucide-react";
+import { X, User, CheckCircle, Loader2, IdCard, FileText } from "lucide-react";
 
 export default function CheckInConfirmationModal({
   isOpen,
@@ -20,18 +10,30 @@ export default function CheckInConfirmationModal({
   onConfirm,
   loading,
 }) {
+  const [activeTab, setActiveTab] = useState("personal");
+
   if (!isOpen || !registration) return null;
 
   const { type, data, event } = registration;
   const user = data.user;
   const alreadyCheckedIn = data.attendance_status === "checked_in";
 
+  // Format time to 12-hour
+  const format12Hour = (time24) => {
+    if (!time24) return "N/A";
+    const [hours, minutes] = time24.split(":");
+    const hour = parseInt(hours);
+    const ampm = hour >= 12 ? "PM" : "AM";
+    const hour12 = hour % 12 || 12;
+    return `${hour12}:${minutes} ${ampm}`;
+  };
+
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl max-w-md w-full max-h-[90vh] overflow-y-auto">
+      <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[85vh] overflow-hidden flex flex-col">
         {/* Header */}
-        <div className="p-6 border-b border-gray-200 flex items-center justify-between">
-          <h2 className="text-2xl font-bold text-gray-900">
+        <div className="p-4 border-b border-gray-200 flex items-center justify-between flex-shrink-0">
+          <h2 className="text-xl font-bold text-gray-900">
             {alreadyCheckedIn ? "Already Checked In" : "Confirm Check-In"}
           </h2>
           <button
@@ -42,143 +44,186 @@ export default function CheckInConfirmationModal({
           </button>
         </div>
 
-        {/* Content */}
-        <div className="p-6 space-y-6">
-          {/* Status Badge */}
-          {alreadyCheckedIn && (
-            <div className="flex items-center gap-2 px-4 py-3 bg-green-50 border border-green-200 rounded-lg">
-              <CheckCircle className="h-5 w-5 text-green-600" />
-              <span className="text-green-800 font-medium">
-                This {type} has already been checked in
-              </span>
-            </div>
-          )}
-
-          {/* Event Info */}
-          <div className="bg-gray-50 rounded-lg p-4">
-            <h3 className="font-semibold text-gray-900 mb-2">Event</h3>
-            <p className="text-gray-700">{event?.title || event?.name}</p>
+        {/* Status Badge */}
+        {alreadyCheckedIn && (
+          <div className="mx-4 mt-4 flex items-center gap-2 px-3 py-2 bg-green-50 border border-green-200 rounded-lg flex-shrink-0">
+            <CheckCircle className="h-4 w-4 text-green-600" />
+            <span className="text-sm text-green-800 font-medium">
+              This {type} has already been checked in
+            </span>
           </div>
+        )}
 
-          {/* User Details */}
-          <div className="space-y-3">
-            <h3 className="font-semibold text-gray-900">
-              {type === "participant" ? "Participant" : "Volunteer"} Details
-            </h3>
-
-            <div className="flex items-center gap-3">
-              <User className="h-5 w-5 text-gray-400" />
-              <div>
-                <p className="text-sm text-gray-500">Name</p>
-                <p className="font-medium text-gray-900">{user?.name}</p>
-              </div>
+        {/* Event Info */}
+        <div className="mx-4 mt-4 bg-emerald-50 border border-emerald-200 rounded-lg p-3 flex-shrink-0">
+          <div className="grid grid-cols-2 gap-3 text-sm">
+            <div>
+              <p className="text-emerald-700 text-xs font-medium mb-1">Event</p>
+              <p className="font-semibold text-emerald-900">
+                {event?.title || event?.name}
+              </p>
             </div>
-
-            <div className="flex items-center gap-3">
-              <Mail className="h-5 w-5 text-gray-400" />
-              <div>
-                <p className="text-sm text-gray-500">Email</p>
-                <p className="font-medium text-gray-900">{user?.email}</p>
-              </div>
+            <div>
+              <p className="text-emerald-700 text-xs font-medium mb-1">Type</p>
+              <p className="font-semibold text-emerald-900 capitalize">
+                {type}
+              </p>
             </div>
+          </div>
+        </div>
 
-            {user?.phone && (
-              <div className="flex items-center gap-3">
-                <Phone className="h-5 w-5 text-gray-400" />
+        {/* Tabs */}
+        <div className="flex gap-2 px-4 mt-4 border-b border-gray-200 flex-shrink-0">
+          <button
+            onClick={() => setActiveTab("personal")}
+            className={`px-4 py-2 font-medium text-sm transition-colors border-b-2 -mb-px ${
+              activeTab === "personal"
+                ? "border-emerald-600 text-emerald-600"
+                : "border-transparent text-gray-600 hover:text-gray-900"
+            }`}
+          >
+            <div className="flex items-center gap-2">
+              <IdCard className="h-4 w-4" />
+              Personal Info
+            </div>
+          </button>
+          <button
+            onClick={() => setActiveTab("details")}
+            className={`px-4 py-2 font-medium text-sm transition-colors border-b-2 -mb-px ${
+              activeTab === "details"
+                ? "border-emerald-600 text-emerald-600"
+                : "border-transparent text-gray-600 hover:text-gray-900"
+            }`}
+          >
+            <div className="flex items-center gap-2">
+              <FileText className="h-4 w-4" />
+              Registration Details
+            </div>
+          </button>
+        </div>
+
+        {/* Tab Content - Scrollable */}
+        <div className="flex-1 overflow-y-auto">
+          <div className="p-4">
+            {/* Personal Info Tab */}
+            {activeTab === "personal" && (
+              <div className="grid grid-cols-2 gap-3 text-sm">
                 <div>
-                  <p className="text-sm text-gray-500">Phone</p>
-                  <p className="font-medium text-gray-900">{user?.phone}</p>
+                  <p className="text-gray-500 text-xs mb-1">Name</p>
+                  <p className="font-medium text-gray-900">{user?.name}</p>
                 </div>
+
+                {user?.email && (
+                  <div>
+                    <p className="text-gray-500 text-xs mb-1">Email</p>
+                    <p className="font-medium text-gray-900">{user?.email}</p>
+                  </div>
+                )}
+
+                {user?.phone && (
+                  <div>
+                    <p className="text-gray-500 text-xs mb-1">Phone</p>
+                    <p className="font-medium text-gray-900">{user?.phone}</p>
+                  </div>
+                )}
+
+                {user?.ic_number && (
+                  <div>
+                    <p className="text-gray-500 text-xs mb-1">IC Number</p>
+                    <p className="font-medium text-gray-900">
+                      {user?.ic_number}
+                    </p>
+                  </div>
+                )}
               </div>
             )}
 
-            {user?.ic_number && (
-              <div className="flex items-center gap-3">
-                <User className="h-5 w-5 text-gray-400" />
-                <div>
-                  <p className="text-sm text-gray-500">IC Number</p>
-                  <p className="font-medium text-gray-900">{user?.ic_number}</p>
-                </div>
-              </div>
-            )}
+            {/* Registration Details Tab */}
+            {activeTab === "details" && (
+              <div className="grid grid-cols-2 gap-3 text-sm">
+                {/* Participant specific */}
+                {type === "participant" && data.participant_category && (
+                  <div>
+                    <p className="text-gray-500 text-xs mb-1">Category</p>
+                    <p className="font-medium text-gray-900">
+                      {data.participant_category.name}
+                    </p>
+                  </div>
+                )}
 
-            {/* Type-specific details */}
-            {type === "participant" && data.participantCategory && (
-              <div className="flex items-center gap-3">
-                <Calendar className="h-5 w-5 text-gray-400" />
-                <div>
-                  <p className="text-sm text-gray-500">Category</p>
-                  <p className="font-medium text-gray-900">
-                    {data.participantCategory.name}
-                  </p>
-                </div>
-              </div>
-            )}
+                {data.bib_number && (
+                  <div>
+                    <p className="text-gray-500 text-xs mb-1">BIB Number</p>
+                    <p className="font-medium text-gray-900">
+                      {data.bib_number}
+                    </p>
+                  </div>
+                )}
 
-            {type === "volunteer" && data.volunteerRole && (
-              <div className="flex items-center gap-3">
-                <MapPin className="h-5 w-5 text-gray-400" />
-                <div>
-                  <p className="text-sm text-gray-500">Role</p>
-                  <p className="font-medium text-gray-900">
-                    {data.volunteerRole.name}
-                  </p>
-                </div>
-              </div>
-            )}
+                {/* Volunteer specific */}
+                {type === "volunteer" && data.volunteer_role && (
+                  <div>
+                    <p className="text-gray-500 text-xs mb-1">Role</p>
+                    <p className="font-medium text-gray-900">
+                      {data.volunteer_role.role_type?.name_en === "Other"
+                        ? data.volunteer_role.custom_role_name || "N/A"
+                        : data.volunteer_role.role_type?.name_en || "N/A"}
+                    </p>
+                  </div>
+                )}
+                {type === "volunteer" && data.volunteer_shift && (
+                  <>
+                    <div>
+                      <p className="text-gray-500 text-xs mb-1">Shift Date</p>
+                      <p className="font-medium text-gray-900">
+                        {data.volunteer_shift.shift_date
+                          ? new Date(
+                              data.volunteer_shift.shift_date
+                            ).toLocaleDateString("en-GB", {
+                              day: "numeric",
+                              month: "long",
+                              year: "numeric",
+                            })
+                          : "N/A"}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-gray-500 text-xs mb-1">Shift Time</p>
+                      <p className="font-medium text-gray-900">
+                        {format12Hour(data.volunteer_shift.start_time)} -{" "}
+                        {format12Hour(data.volunteer_shift.end_time)}
+                      </p>
+                    </div>
+                  </>
+                )}
 
-            {type === "volunteer" && data.volunteerShift && (
-              <div className="flex items-center gap-3">
-                <Calendar className="h-5 w-5 text-gray-400" />
-                <div>
-                  <p className="text-sm text-gray-500">Shift</p>
-                  <p className="font-medium text-gray-900">
-                    {data.volunteerShift.start_time} -{" "}
-                    {data.volunteerShift.end_time}
-                  </p>
-                </div>
-              </div>
-            )}
+                {data.tshirt_size && (
+                  <div>
+                    <p className="text-gray-500 text-xs mb-1">T-Shirt Size</p>
+                    <p className="font-medium text-gray-900">
+                      {data.tshirt_size}
+                    </p>
+                  </div>
+                )}
 
-            {data.bib_number && (
-              <div className="flex items-center gap-3">
-                <CheckCircle className="h-5 w-5 text-gray-400" />
-                <div>
-                  <p className="text-sm text-gray-500">BIB Number</p>
-                  <p className="font-medium text-gray-900">{data.bib_number}</p>
-                </div>
-              </div>
-            )}
-
-            {data.tshirt_size && (
-              <div className="flex items-center gap-3">
-                <User className="h-5 w-5 text-gray-400" />
-                <div>
-                  <p className="text-sm text-gray-500">T-Shirt Size</p>
-                  <p className="font-medium text-gray-900">
-                    {data.tshirt_size}
-                  </p>
-                </div>
-              </div>
-            )}
-
-            {data.message && (
-              <div className="flex items-start gap-3">
-                <Mail className="h-5 w-5 text-gray-400 mt-1" />
-                <div className="flex-1">
-                  <p className="text-sm text-gray-500">Message</p>
-                  <p className="font-medium text-gray-900">{data.message}</p>
-                </div>
+                {data.message && (
+                  <div className="col-span-2">
+                    <p className="text-gray-500 text-xs mb-1">
+                      Request/Message
+                    </p>
+                    <p className="font-medium text-gray-900">{data.message}</p>
+                  </div>
+                )}
               </div>
             )}
           </div>
         </div>
 
         {/* Actions */}
-        <div className="p-6 border-t border-gray-200 flex gap-3">
+        <div className="p-4 border-t border-gray-200 flex gap-3 flex-shrink-0">
           <button
             onClick={onClose}
-            className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition-colors"
+            className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50 transition-colors"
           >
             Cancel
           </button>
@@ -186,18 +231,15 @@ export default function CheckInConfirmationModal({
             <button
               onClick={onConfirm}
               disabled={loading}
-              className="flex-1 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:bg-gray-400 text-white rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
+              className="flex-1 px-4 py-2 bg-emerald-600 text-white rounded-lg font-medium hover:bg-emerald-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               {loading ? (
                 <>
-                  <Loader2 className="h-5 w-5 animate-spin" />
-                  Checking In...
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Checking in...
                 </>
               ) : (
-                <>
-                  <CheckCircle className="h-5 w-5" />
-                  Confirm Check-In
-                </>
+                "Confirm Check-in"
               )}
             </button>
           )}

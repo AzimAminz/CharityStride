@@ -39,7 +39,7 @@ class RegistrationManagementController extends Controller
                 ->get();
 
             $volunteers = VolunteerRegistration::where('event_id', $eventId)
-                ->with(['user', 'volunteerRole', 'volunteerShift'])
+                ->with(['user', 'volunteerRole.roleType', 'volunteerShift'])
                 ->get();
 
             // Get donations if donation module is enabled
@@ -111,7 +111,7 @@ class RegistrationManagementController extends Controller
                 ->whereHas('event', function($query) use ($ngoId) {
                     $query->where('ngo_id', $ngoId);
                 })
-                ->with(['user', 'volunteerRole', 'volunteerShift', 'payments', 'event'])
+                ->with(['user', 'volunteerRole.roleType', 'volunteerShift', 'payments', 'event'])
                 ->first();
 
             if ($volunteer) {

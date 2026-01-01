@@ -4,6 +4,8 @@ import React, { useState, useEffect } from "react";
 import Layout from "@/app/components/Layout";
 import { useParams, useRouter } from "next/navigation";
 import Echo from "../../../lib/echo";
+import QRScanner from "../components/QRScanner";
+import CheckInConfirmationModal from "../components/CheckInConfirmationModal";
 import {
   Users,
   UserCheck,
@@ -24,6 +26,7 @@ import {
 } from "lucide-react";
 import { useEventDetail } from "../../../hooks/useEventDetail";
 import { getEventRegistrations } from "../../../lib/events";
+import { api } from "../../../lib/api";
 
 const EventRegistrationsPage = () => {
   const params = useParams();
@@ -34,6 +37,11 @@ const EventRegistrationsPage = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [toast, setToast] = useState(null);
   const [isRealtime, setIsRealtime] = useState(false);
+
+  // QR Scanner state
+  const [showScanner, setShowScanner] = useState(false);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [scannedData, setScannedData] = useState(null);
 
   const { event, loading: eventLoading } = useEventDetail(eventId);
   const [data, setData] = useState({
@@ -47,6 +55,17 @@ const EventRegistrationsPage = () => {
     const fetchData = async () => {
       try {
         const res = await getEventRegistrations(eventId);
+        console.log("Fetched event registrations:", res);
+        if (res.volunteers?.length > 0) {
+          console.log(
+            "Sample volunteer role:",
+            res.volunteers[0].volunteer_role
+          );
+          console.log(
+            "Sample role type:",
+            res.volunteers[0].volunteer_role?.role_type
+          );
+        }
         setData(res);
       } catch (err) {
         console.error("Error fetching registrations:", err);
@@ -99,7 +118,73 @@ const EventRegistrationsPage = () => {
   // Dynamic tabs based on event configuration
   const tabs = [];
 
-  if (event?.participantConfig) {
+  // QR Scanner handlers
+  const handleScanSuccess = async (qrCode) => {
+    try {
+      // Call verifyQR to get registration details (auto-detects event)
+      const response = await api.post("/ngo/verify-qr", {
+        qr_code: qrCode,
+      });
+
+      console.log("Scanned data:", response.data);
+
+      // Store scanned data and show confirmation modal
+      setScannedData({
+        qr_code: qrCode,
+        type: response.data.type,
+        registration: response.data.registration,
+        event: response.data.event,
+      });
+      setShowConfirmModal(true);
+      setShowScanner(false);
+    } catch (error) {
+      setToast({
+        type: "error",
+        message:
+          error.response?.data?.message ||
+          "Failed to verify QR code. Please try again.",
+      });
+    }
+  };
+
+  const handleConfirmCheckIn = async () => {
+    if (!scannedData) return;
+
+    try {
+      await api.post(`/ngo/events/${scannedData.event.id}/check-in`, {
+        qr_code: scannedData.qr_code,
+        type: scannedData.type,
+      });
+
+      setToast({
+        type: "success",
+        message: `Successfully checked in: ${scannedData.registration.user.name}`,
+      });
+
+      setShowConfirmModal(false);
+      setScannedData(null);
+
+      // Refresh data
+      const res = await getEventRegistrations(eventId);
+      setData(res);
+    } catch (error) {
+      setToast({
+        type: "error",
+        message:
+          error.response?.data?.message ||
+          "Failed to check in. Please try again.",
+      });
+    }
+  };
+
+  const handleScanError = (error) => {
+    setToast({
+      type: "error",
+      message: error,
+    });
+  };
+
+  if (event?.participantConfig || event?.has_participant) {
     tabs.push({
       id: "participants",
       label: "Participants",
@@ -108,7 +193,7 @@ const EventRegistrationsPage = () => {
     });
   }
 
-  if (event?.volunteerConfig) {
+  if (event?.volunteerConfig || event?.has_volunteer) {
     tabs.push({
       id: "volunteers",
       label: "Volunteers",
@@ -117,7 +202,7 @@ const EventRegistrationsPage = () => {
     });
   }
 
-  if (event?.donationConfig) {
+  if (event?.donationConfig || event?.has_donation) {
     tabs.push({
       id: "donations",
       label: "Donations",
@@ -279,6 +364,30 @@ const EventRegistrationsPage = () => {
           Showing {filteredData.length} of {currentData.length} {activeTab}
         </div>
 
+        {/* Header */}
+        <div className="mb-8 flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <button
+              onClick={() => router.push("/ngo/registrations")}
+              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            >
+              <ArrowLeft className="h-5 w-5 text-gray-600" />
+            </button>
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900">
+                {event?.title}
+              </h1>
+              <p className="text-gray-600">Event Registrations</p>
+            </div>
+          </div>
+          <button
+            onClick={() => setShowScanner(true)}
+            className="bg-emerald-600 text-white px-4 py-2 rounded-lg hover:bg-emerald-700 transition-colors flex items-center gap-2"
+          >
+            <QrCode className="h-5 w-5" />
+            Scan QR Code
+          </button>
+        </div>
         {/* Content */}
         <div className="bg-white rounded-xl shadow-sm overflow-hidden">
           {filteredData.length === 0 ? (
@@ -361,58 +470,131 @@ const EventRegistrationsPage = () => {
                     </div>
                   );
                 })}
-
               {activeTab === "volunteers" &&
                 filteredData.map((volunteer) => {
-                  const badge = getStatusBadge(volunteer.status);
-                  const BadgeIcon = badge.icon;
+                  const hasAttended =
+                    volunteer.attendance_status === "checked_in";
+                  const shiftDate = volunteer.volunteer_shift?.shift_date;
+                  const startTime = volunteer.volunteer_shift?.start_time;
+                  const endTime = volunteer.volunteer_shift?.end_time;
+
+                  // Check if shift is today
+                  const isToday =
+                    shiftDate &&
+                    new Date(shiftDate).toDateString() ===
+                      new Date().toDateString();
+
+                  // Format date
+                  const formattedDate = shiftDate
+                    ? new Date(shiftDate).toLocaleDateString("en-GB", {
+                        day: "numeric",
+                        month: "long",
+                        year: "numeric",
+                      })
+                    : "N/A";
+
+                  // Format time to 12-hour
+                  const format12Hour = (time24) => {
+                    if (!time24) return "N/A";
+                    const [hours, minutes] = time24.split(":");
+                    const hour = parseInt(hours);
+                    const ampm = hour >= 12 ? "PM" : "AM";
+                    const hour12 = hour % 12 || 12;
+                    return `${hour12}:${minutes} ${ampm}`;
+                  };
 
                   return (
                     <div
                       key={volunteer.id}
-                      className="p-6 hover:bg-gray-50 transition-colors"
+                      className="p-6 hover:bg-gray-50 transition-colors border-l-4"
+                      style={{
+                        borderLeftColor: hasAttended ? "#10b981" : "#d1d5db",
+                      }}
                     >
-                      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                      <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
                         <div className="flex-1">
-                          <div className="flex items-center gap-3 mb-2">
+                          {/* Name & Attendance Status */}
+                          <div className="flex items-center gap-3 mb-3">
                             <h3 className="text-lg font-semibold text-gray-900">
                               {volunteer.user?.name}
                             </h3>
                             <span
-                              className={`px-3 py-1 rounded-full text-xs font-medium flex items-center gap-1 ${badge.bg} ${badge.text}`}
+                              className={`px-3 py-1 rounded-full text-xs font-medium flex items-center gap-1 ${
+                                hasAttended
+                                  ? "bg-emerald-100 text-emerald-700"
+                                  : "bg-gray-100 text-gray-600"
+                              }`}
                             >
-                              <BadgeIcon className="h-3 w-3" />
-                              {volunteer.status?.toUpperCase()}
+                              {hasAttended ? (
+                                <CheckCircle2 className="h-3 w-3" />
+                              ) : (
+                                <Clock className="h-3 w-3" />
+                              )}
+                              {hasAttended ? "Attended" : "Not Attended"}
                             </span>
                           </div>
 
-                          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm mt-3">
+                          {/* Info Grid */}
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                             <div>
-                              <p className="text-gray-500">Email</p>
+                              <p className="text-gray-500 text-xs mb-1">
+                                IC Number
+                              </p>
                               <p className="font-medium text-gray-900">
-                                {volunteer.user?.email}
+                                {volunteer.user?.ic_number || "N/A"}
                               </p>
                             </div>
                             <div>
-                              <p className="text-gray-500">Role</p>
+                              <p className="text-gray-500 text-xs mb-1">Role</p>
                               <p className="font-medium text-gray-900">
-                                {volunteer.volunteer_role?.role_name}
+                                {volunteer.volunteer_role?.role_type
+                                  ?.name_en === "Other"
+                                  ? volunteer.volunteer_role
+                                      ?.custom_role_name || "N/A"
+                                  : volunteer.volunteer_role?.role_type
+                                      ?.name_en || "N/A"}
                               </p>
                             </div>
                             <div>
-                              <p className="text-gray-500">Shift</p>
+                              <p className="text-gray-500 text-xs mb-1">
+                                Shift Date
+                              </p>
+                              <p
+                                className={`font-medium ${
+                                  isToday
+                                    ? "text-emerald-700 font-bold"
+                                    : "text-gray-900"
+                                }`}
+                              >
+                                {formattedDate}
+                                {isToday && (
+                                  <span className="ml-2 text-xs bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded">
+                                    Today
+                                  </span>
+                                )}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-gray-500 text-xs mb-1">
+                                Shift Time
+                              </p>
                               <p className="font-medium text-gray-900">
-                                {volunteer.volunteer_shift?.start_time} -{" "}
-                                {volunteer.volunteer_shift?.end_time}
+                                {format12Hour(startTime)} -{" "}
+                                {format12Hour(endTime)}
                               </p>
                             </div>
                           </div>
                         </div>
+
+                        {/* Details Button */}
+                        <button className="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition-colors flex items-center gap-2 whitespace-nowrap">
+                          <QrCode className="h-4 w-4" />
+                          Details
+                        </button>
                       </div>
                     </div>
                   );
                 })}
-
               {activeTab === "donations" &&
                 filteredData.map((donation) => {
                   const isDonorAnonymous = donation.is_donor_anonymous;
@@ -510,6 +692,33 @@ const EventRegistrationsPage = () => {
               </button>
             </div>
           </div>
+        )}
+
+        {/* QR Scanner */}
+        {showScanner && (
+          <QRScanner
+            isOpen={showScanner}
+            onClose={() => setShowScanner(false)}
+            onScanSuccess={handleScanSuccess}
+            onScanError={handleScanError}
+          />
+        )}
+
+        {/* Check-in Confirmation Modal */}
+        {showConfirmModal && scannedData && (
+          <CheckInConfirmationModal
+            isOpen={showConfirmModal}
+            onClose={() => {
+              setShowConfirmModal(false);
+              setScannedData(null);
+            }}
+            onConfirm={handleConfirmCheckIn}
+            registration={{
+              type: scannedData.type,
+              data: scannedData.registration,
+              event: scannedData.event,
+            }}
+          />
         )}
       </div>
     </Layout>
