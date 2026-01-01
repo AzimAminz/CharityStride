@@ -1549,7 +1549,9 @@ function DetailsTab({ event, selectedModule: propSelectedModule }) {
                       Event Location
                     </h4>
                     <p className="text-sm text-gray-600 mt-1">
-                      {category.location || event.location || "Event location"}
+                      {category.location_name ||
+                        event.location ||
+                        "Event location"}
                     </p>
                   </div>
                   <div className="w-full h-[400px]">

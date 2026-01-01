@@ -146,7 +146,7 @@ export default function CheckInConfirmationModal({
                   <div>
                     <p className="text-gray-500 text-xs mb-1">Category</p>
                     <p className="font-medium text-gray-900">
-                      {data.participant_category.name}
+                      {data.participant_category.category_name}
                     </p>
                   </div>
                 )}

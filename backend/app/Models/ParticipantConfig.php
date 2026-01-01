@@ -12,6 +12,7 @@ class ParticipantConfig extends Model
     protected $fillable = [
         'event_id',
         'has_categories',
+        'current_registrations',
     ];
 
     protected $casts = [

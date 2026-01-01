@@ -223,20 +223,22 @@ const RegistrationsPage = () => {
                                   )}`
                                 : reg.amount_paid > 0
                                 ? `RM ${(reg.amount_paid / 100).toFixed(2)}`
-                                : "Free/Pending"}
+                                : "Free"}
                             </p>
                           </div>
-                          <div>
-                            <p className="text-xs text-gray-500 mb-1">
-                              T-Shirt
-                            </p>
-                            <p className="font-medium text-gray-900">
-                              {reg.tshirt_size || "N/A"}{" "}
-                              {reg.tshirt_collected && (
-                                <Shirt className="inline h-4 w-4 text-green-600 ml-1" />
-                              )}
-                            </p>
-                          </div>
+                          {reg.tshirt_size && (
+                            <div>
+                              <p className="text-xs text-gray-500 mb-1">
+                                T-Shirt
+                              </p>
+                              <p className="font-medium text-gray-900">
+                                {reg.tshirt_size}{" "}
+                                {reg.tshirt_collected && (
+                                  <Shirt className="inline h-4 w-4 text-green-600 ml-1" />
+                                )}
+                              </p>
+                            </div>
+                          )}
                         </div>
 
                         <div className="flex items-center gap-2 mb-4">
@@ -467,8 +469,8 @@ const RegistrationsPage = () => {
                             <h3 className="text-xl font-bold text-gray-900 mb-1">
                               {reg.event?.title || "Event"}
                             </h3>
-                            <p className="text-sm text-gray-600 capitalize">
-                              {reg.donation_type} Donation
+                            <p className="text-sm text-gray-600">
+                              Monetary Donation
                             </p>
                           </div>
                           <span
@@ -487,7 +489,7 @@ const RegistrationsPage = () => {
                           </span>
                         </div>
 
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+                        <div className="grid grid-cols-2 gap-4 mb-4">
                           <div>
                             <p className="text-xs text-gray-500 mb-1">Date</p>
                             <p className="font-semibold text-gray-900">
@@ -495,44 +497,27 @@ const RegistrationsPage = () => {
                             </p>
                           </div>
                           <div>
-                            <p className="text-xs text-gray-500 mb-1">
-                              {reg.donation_type === "money"
-                                ? "Amount"
-                                : "Item"}
-                            </p>
+                            <p className="text-xs text-gray-500 mb-1">Amount</p>
                             <p className="font-semibold text-gray-900">
-                              {reg.donation_type === "money"
-                                ? `RM ${(reg.amount_paid / 100).toFixed(2)}`
-                                : reg.item_name}
-                            </p>
-                          </div>
-                          {reg.donation_type === "item" && (
-                            <div>
-                              <p className="text-xs text-gray-500 mb-1">
-                                Quantity
-                              </p>
-                              <p className="font-semibold text-gray-900">
-                                {reg.quantity}
-                              </p>
-                            </div>
-                          )}
-                          <div>
-                            <p className="text-xs text-gray-500 mb-1">
-                              Event Date
-                            </p>
-                            <p className="font-semibold text-gray-900">
-                              {new Date(
-                                reg.event?.start_date
-                              ).toLocaleDateString("en-GB", {
-                                day: "2-digit",
-                                month: "2-digit",
-                                year: "2-digit",
-                              })}
+                              RM {(reg.amount_paid / 100).toFixed(2)}
                             </p>
                           </div>
                         </div>
 
                         <div className="flex gap-3">
+                          {reg.status === "confirmed" &&
+                            reg.payments &&
+                            reg.payments[0] && (
+                              <button
+                                onClick={() =>
+                                  previewReceipt(reg, reg.payments[0])
+                                }
+                                className="px-4 py-2 bg-emerald-50 text-emerald-700 rounded-lg hover:bg-emerald-100 transition-colors flex items-center gap-2"
+                              >
+                                <Download className="h-4 w-4" />
+                                Download Receipt
+                              </button>
+                            )}
                           {reg.status === "pending_payment" &&
                             reg.payments &&
                             reg.payments[0] &&

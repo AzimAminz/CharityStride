@@ -112,7 +112,7 @@ export default function NGOParticipantPreviewPage() {
                     <div className="flex-1">
                       <div className="flex items-center justify-between mb-1">
                         <span className="font-semibold text-gray-900">
-                          {category.name}
+                          {category.category_name}
                         </span>
                         {category.base_fee > 0 && (
                           <span className="text-teal-600 font-bold">

@@ -12,11 +12,17 @@ const getRegistrationType = (payment) => {
     return "donation";
   }
 
-  if (payment?.payable?.participant_category) {
+  if (
+    payment?.payable?.participant_category ||
+    payment?.payable_type?.includes("ParticipantRegistration")
+  ) {
     return "participant";
-  } else if (payment?.payable?.volunteer_role) {
+  } else if (
+    payment?.payable?.volunteer_role ||
+    payment?.payable_type?.includes("VolunteerRegistration")
+  ) {
     return "volunteer";
-  } else if (payment?.payable?.donation_type) {
+  } else {
     return "donation";
   }
 
@@ -172,12 +178,7 @@ export const generateReceipt = (registration, payment) => {
     detailsTitle = "Donation Details";
     eventDetails = [
       ["Event/Campaign:", eventTitle],
-      [
-        "Donation Type:",
-        registration?.donation_type === "money"
-          ? "Monetary Donation"
-          : "Item Donation",
-      ],
+      ["Donation Type:", "Monetary Donation"],
       [
         "Date:",
         registration?.created_at
