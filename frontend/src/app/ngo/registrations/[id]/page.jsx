@@ -412,6 +412,76 @@ const EventRegistrationsPage = () => {
                     </div>
                   );
                 })}
+
+              {activeTab === "donations" &&
+                filteredData.map((donation) => {
+                  const isDonorAnonymous = donation.is_donor_anonymous;
+
+                  return (
+                    <div
+                      key={donation.id}
+                      className="p-6 hover:bg-gray-50 transition-colors"
+                    >
+                      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-3 mb-2">
+                            <h3 className="text-lg font-semibold text-gray-900">
+                              {isDonorAnonymous
+                                ? "Anonymous Donor"
+                                : donation.user?.name || "Unknown"}
+                            </h3>
+                            <span
+                              className={`px-3 py-1 rounded-full text-xs font-medium ${
+                                donation.type === "money"
+                                  ? "bg-emerald-100 text-emerald-700"
+                                  : "bg-blue-100 text-blue-700"
+                              }`}
+                            >
+                              {donation.type === "money" ? "Money" : "Item"}
+                            </span>
+                          </div>
+
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm mt-3">
+                            {!isDonorAnonymous && (
+                              <div>
+                                <p className="text-gray-500">Email</p>
+                                <p className="font-medium text-gray-900">
+                                  {donation.user?.email}
+                                </p>
+                              </div>
+                            )}
+                            <div>
+                              <p className="text-gray-500">
+                                {donation.type === "money" ? "Amount" : "Item"}
+                              </p>
+                              <p className="font-medium text-gray-900">
+                                {donation.type === "money"
+                                  ? `RM ${donation.amount?.toFixed(2)}`
+                                  : donation.item_name}
+                              </p>
+                            </div>
+                            {donation.type === "item" && donation.quantity && (
+                              <div>
+                                <p className="text-gray-500">Quantity</p>
+                                <p className="font-medium text-gray-900">
+                                  {donation.quantity}
+                                </p>
+                              </div>
+                            )}
+                            <div>
+                              <p className="text-gray-500">Date</p>
+                              <p className="font-medium text-gray-900">
+                                {new Date(
+                                  donation.created_at
+                                ).toLocaleDateString()}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
             </div>
           )}
         </div>

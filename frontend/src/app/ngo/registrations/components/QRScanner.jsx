@@ -103,10 +103,12 @@ export default function QRScanner({
       const { Html5Qrcode } = await import("html5-qrcode");
       const html5QrCode = new Html5Qrcode("qr-file-reader");
 
-      const decodedText = await html5QrCode.scanFile(file, true);
+      const decodedText = await html5QrCode.scanFile(file, false);
       onScanSuccess(decodedText);
+      onClose();
     } catch (error) {
-      onScanError("Failed to read QR code from image. Please try again.");
+      console.error("QR code scan error:", error);
+      onScanError("Failed to read QR code from image. Please ensure the image contains a clear QR code.");
     } finally {
       setProcessing(false);
       if (fileInputRef.current) {
@@ -184,7 +186,7 @@ export default function QRScanner({
             </div>
           )}
 
-          {!processing && activeTab === "upload" && (
+          {activeTab === "upload" && (
             <div className="space-y-4">
               <div
                 onClick={() => fileInputRef.current?.click()}
