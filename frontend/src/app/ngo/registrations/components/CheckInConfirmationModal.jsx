@@ -6,16 +6,17 @@ import { X, User, CheckCircle, Loader2, IdCard, FileText } from "lucide-react";
 export default function CheckInConfirmationModal({
   isOpen,
   onClose,
-  registration,
+  data,
+  type,
+  event,
   onConfirm,
-  loading,
+  isConfirming = false,
+  isViewOnly = false,
 }) {
   const [activeTab, setActiveTab] = useState("personal");
 
-  if (!isOpen || !registration) return null;
+  if (!isOpen || !data) return null;
 
-  const { type, data, event } = registration;
-  const user = data.user;
   const alreadyCheckedIn = data.attendance_status === "checked_in";
 
   // Format time to 12-hour
@@ -60,7 +61,7 @@ export default function CheckInConfirmationModal({
             <div>
               <p className="text-emerald-700 text-xs font-medium mb-1">Event</p>
               <p className="font-semibold text-emerald-900">
-                {event?.title || event?.name}
+                {event?.title || event?.name || "N/A"}
               </p>
             </div>
             <div>
@@ -107,34 +108,45 @@ export default function CheckInConfirmationModal({
           <div className="p-4">
             {/* Personal Info Tab */}
             {activeTab === "personal" && (
-              <div className="grid grid-cols-2 gap-3 text-sm">
-                <div>
-                  <p className="text-gray-500 text-xs mb-1">Name</p>
-                  <p className="font-medium text-gray-900">{user?.name}</p>
+              <div className="space-y-6">
+                <div className="flex items-center gap-4">
+                  {data.user?.profile_picture ? (
+                    <img
+                      src={data.user.profile_picture}
+                      alt="Profile"
+                      className="flex-shrink-0 w-12 h-12 rounded-xl object-cover"
+                    />
+                  ) : (
+                    <div className="flex-shrink-0 w-12 h-12 rounded-xl bg-emerald-100 flex items-center justify-center">
+                      <User className="h-6 w-6 text-emerald-600" />
+                    </div>
+                  )}
+                  <div>
+                    <h3 className="text-xl font-bold text-gray-900">
+                      {data.user?.name}
+                    </h3>
+                    <p className="text-gray-500 text-sm">{data.user?.email}</p>
+                  </div>
                 </div>
 
-                {user?.email && (
+                <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <p className="text-gray-500 text-xs mb-1">Email</p>
-                    <p className="font-medium text-gray-900">{user?.email}</p>
-                  </div>
-                )}
-
-                {user?.phone && (
-                  <div>
-                    <p className="text-gray-500 text-xs mb-1">Phone</p>
-                    <p className="font-medium text-gray-900">{user?.phone}</p>
-                  </div>
-                )}
-
-                {user?.ic_number && (
-                  <div>
-                    <p className="text-gray-500 text-xs mb-1">IC Number</p>
+                    <p className="text-gray-500 text-xs mb-1 uppercase tracking-wider font-semibold">
+                      Phone Number
+                    </p>
                     <p className="font-medium text-gray-900">
-                      {user?.ic_number}
+                      {data.user?.phone || "N/A"}
                     </p>
                   </div>
-                )}
+                  <div>
+                    <p className="text-gray-500 text-xs mb-1 uppercase tracking-wider font-semibold">
+                      IC Number
+                    </p>
+                    <p className="font-medium text-gray-900">
+                      {data.user?.ic_number || "N/A"}
+                    </p>
+                  </div>
+                </div>
               </div>
             )}
 
@@ -159,15 +171,35 @@ export default function CheckInConfirmationModal({
                     </p>
                   </div>
                 )}
+                {type === "participant" && data.emergency_contact_name && (
+                  <div>
+                    <p className="text-gray-500 text-xs mb-1">
+                      Emergency Contact Name
+                    </p>
+                    <p className="font-medium text-gray-900">
+                      {data.emergency_contact_name}
+                    </p>
+                  </div>
+                )}
+                {type === "participant" && data.emergency_contact_phone && (
+                  <div>
+                    <p className="text-gray-500 text-xs mb-1">
+                      Emergency Contact Phone
+                    </p>
+                    <p className="font-medium text-gray-900">
+                      {data.emergency_contact_phone}
+                    </p>
+                  </div>
+                )}
 
                 {/* Volunteer specific */}
                 {type === "volunteer" && data.volunteer_role && (
                   <div>
                     <p className="text-gray-500 text-xs mb-1">Role</p>
                     <p className="font-medium text-gray-900">
-                      {data.volunteer_role.role_type?.name_en === "Other"
-                        ? data.volunteer_role.custom_role_name || "N/A"
-                        : data.volunteer_role.role_type?.name_en || "N/A"}
+                      {data.volunteer_role.custom_role_name ||
+                        data.volunteer_role.role_type?.name_en ||
+                        "N/A"}
                     </p>
                   </div>
                 )}
@@ -196,6 +228,26 @@ export default function CheckInConfirmationModal({
                     </div>
                   </>
                 )}
+                {type === "volunteer" && data.experience_level && (
+                  <div>
+                    <p className="text-gray-500 text-xs mb-1">
+                      Experience Level
+                    </p>
+                    <p className="font-medium text-gray-900 capitalize">
+                      {data.experience_level}
+                    </p>
+                  </div>
+                )}
+                {type === "volunteer" && data.availability_notes && (
+                  <div className="col-span-2">
+                    <p className="text-gray-500 text-xs mb-1">
+                      Availability Notes
+                    </p>
+                    <p className="font-medium text-gray-900 leading-relaxed">
+                      {data.availability_notes}
+                    </p>
+                  </div>
+                )}
 
                 {data.tshirt_size && (
                   <div>
@@ -223,17 +275,19 @@ export default function CheckInConfirmationModal({
         <div className="p-4 border-t border-gray-200 flex gap-3 flex-shrink-0">
           <button
             onClick={onClose}
-            className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50 transition-colors"
+            className={`flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50 transition-colors ${
+              isViewOnly ? "bg-gray-100" : ""
+            }`}
           >
-            Cancel
+            {isViewOnly ? "Close" : "Cancel"}
           </button>
-          {!alreadyCheckedIn && (
+          {!alreadyCheckedIn && !isViewOnly && (
             <button
               onClick={onConfirm}
-              disabled={loading}
+              disabled={isConfirming}
               className="flex-1 px-4 py-2 bg-emerald-600 text-white rounded-lg font-medium hover:bg-emerald-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
-              {loading ? (
+              {isConfirming ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" />
                   Checking in...

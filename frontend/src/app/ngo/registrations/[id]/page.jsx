@@ -42,6 +42,7 @@ const EventRegistrationsPage = () => {
   const [showScanner, setShowScanner] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [scannedData, setScannedData] = useState(null);
+  const [isViewOnly, setIsViewOnly] = useState(false);
 
   const { event, loading: eventLoading } = useEventDetail(eventId);
   const [data, setData] = useState({
@@ -135,6 +136,7 @@ const EventRegistrationsPage = () => {
         registration: response.data.registration,
         event: response.data.event,
       });
+      setIsViewOnly(false); // Show confirm button for QR scans
       setShowConfirmModal(true);
       setShowScanner(false);
     } catch (error) {
@@ -408,15 +410,20 @@ const EventRegistrationsPage = () => {
                 filteredData.map((participant) => {
                   const badge = getStatusBadge(participant.status);
                   const BadgeIcon = badge.icon;
+                  const hasAttended =
+                    participant.attendance_status === "checked_in";
 
                   return (
                     <div
                       key={participant.id}
-                      className="p-6 hover:bg-gray-50 transition-colors"
+                      className="p-6 hover:bg-gray-50 transition-colors border-l-4"
+                      style={{
+                        borderLeftColor: hasAttended ? "#10b981" : "#d1d5db",
+                      }}
                     >
-                      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                      <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
                         <div className="flex-1">
-                          <div className="flex items-center gap-3 mb-2">
+                          <div className="flex items-center gap-3 mb-3">
                             <h3 className="text-lg font-semibold text-gray-900">
                               {participant.user?.name}
                             </h3>
@@ -428,23 +435,43 @@ const EventRegistrationsPage = () => {
                                 ?.replace("_", " ")
                                 .toUpperCase()}
                             </span>
+                            <span
+                              className={`px-3 py-1 rounded-full text-xs font-medium flex items-center gap-1 ${
+                                hasAttended
+                                  ? "bg-emerald-100 text-emerald-700"
+                                  : "bg-gray-100 text-gray-600"
+                              }`}
+                            >
+                              {hasAttended ? (
+                                <CheckCircle2 className="h-3 w-3" />
+                              ) : (
+                                <Clock className="h-3 w-3" />
+                              )}
+                              {hasAttended ? "ATTENDED" : "NOT ATTENDED"}
+                            </span>
                           </div>
 
-                          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm mt-3">
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm mt-3">
                             <div>
-                              <p className="text-gray-500">Email</p>
+                              <p className="text-gray-500 text-xs mb-1">
+                                IC Number
+                              </p>
                               <p className="font-medium text-gray-900">
-                                {participant.user?.email}
+                                {participant.user?.ic_number || "N/A"}
                               </p>
                             </div>
                             <div>
-                              <p className="text-gray-500">Contact</p>
+                              <p className="text-gray-500 text-xs mb-1">
+                                Contact
+                              </p>
                               <p className="font-medium text-gray-900">
-                                {participant.emergency_contact_phone || "-"}
+                                {participant.user?.phone || "-"}
                               </p>
                             </div>
                             <div>
-                              <p className="text-gray-500">Category</p>
+                              <p className="text-gray-500 text-xs mb-1">
+                                Category
+                              </p>
                               <p className="font-medium text-gray-900">
                                 {
                                   participant.participant_category
@@ -453,7 +480,9 @@ const EventRegistrationsPage = () => {
                               </p>
                             </div>
                             <div>
-                              <p className="text-gray-500">BIB Number</p>
+                              <p className="text-gray-500 text-xs mb-1">
+                                BIB Number
+                              </p>
                               <p className="font-semibold text-emerald-600">
                                 {participant.bib_number || "Pending"}
                               </p>
@@ -462,7 +491,19 @@ const EventRegistrationsPage = () => {
                         </div>
 
                         <div className="flex gap-2">
-                          <button className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors">
+                          <button
+                            onClick={() => {
+                              setScannedData({
+                                type: "participant",
+                                registration: participant,
+                                event: event,
+                              });
+                              setIsViewOnly(true); // Hide confirm button when viewing details
+                              setShowConfirmModal(true);
+                            }}
+                            className="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition-colors flex items-center gap-2 whitespace-nowrap"
+                          >
+                            <QrCode className="h-4 w-4" />
                             Details
                           </button>
                         </div>
@@ -547,9 +588,10 @@ const EventRegistrationsPage = () => {
                             <div>
                               <p className="text-gray-500 text-xs mb-1">Role</p>
                               <p className="font-medium text-gray-900">
-                                {volunteer.volunteer_role?.role_type?.name_en === "Other"
-                                  ? volunteer.volunteer_role?.custom_role_name || "N/A"
-                                  : volunteer.volunteer_role?.role_type?.name_en || "N/A"}
+                                {volunteer.volunteer_role?.custom_role_name ||
+                                  volunteer.volunteer_role?.role_type
+                                    ?.name_en ||
+                                  "N/A"}
                               </p>
                             </div>
                             <div>
@@ -589,8 +631,9 @@ const EventRegistrationsPage = () => {
                             setScannedData({
                               type: "volunteer",
                               registration: volunteer,
-                              event: event
+                              event: event,
                             });
+                            setIsViewOnly(true); // Hide confirm button when viewing details
                             setShowConfirmModal(true);
                           }}
                           className="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition-colors flex items-center gap-2 whitespace-nowrap"
@@ -604,7 +647,12 @@ const EventRegistrationsPage = () => {
                 })}
               {activeTab === "donations" &&
                 filteredData.map((donation) => {
-                  const isDonorAnonymous = donation.is_donor_anonymous;
+                  const amount = (donation.amount_paid || 0) / 100;
+                  const payment = donation.payments?.[0];
+                  const badge = getStatusBadge(
+                    payment?.payment_status || "pending"
+                  );
+                  const BadgeIcon = badge.icon;
 
                   return (
                     <div
@@ -615,48 +663,36 @@ const EventRegistrationsPage = () => {
                         <div className="flex-1">
                           <div className="flex items-center gap-3 mb-2">
                             <h3 className="text-lg font-semibold text-gray-900">
-                              {isDonorAnonymous
-                                ? "Anonymous Donor"
-                                : donation.user?.name || "Unknown"}
+                              {donation.user?.name || "Unknown"}
                             </h3>
                             <span
-                              className={`px-3 py-1 rounded-full text-xs font-medium ${
-                                donation.type === "money"
-                                  ? "bg-emerald-100 text-emerald-700"
-                                  : "bg-blue-100 text-blue-700"
-                              }`}
+                              className={`px-3 py-1 rounded-full text-xs font-medium flex items-center gap-1 ${badge.bg} ${badge.text}`}
                             >
-                              {donation.type === "money" ? "Money" : "Item"}
+                              <BadgeIcon className="h-3 w-3" />
+                              {payment?.payment_status?.toUpperCase() ||
+                                "PENDING"}
                             </span>
                           </div>
 
                           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm mt-3">
-                            {!isDonorAnonymous && (
-                              <div>
-                                <p className="text-gray-500">Email</p>
-                                <p className="font-medium text-gray-900">
-                                  {donation.user?.email}
-                                </p>
-                              </div>
-                            )}
                             <div>
-                              <p className="text-gray-500">
-                                {donation.type === "money" ? "Amount" : "Item"}
-                              </p>
+                              <p className="text-gray-500">Email</p>
                               <p className="font-medium text-gray-900">
-                                {donation.type === "money"
-                                  ? `RM ${donation.amount?.toFixed(2)}`
-                                  : donation.item_name}
+                                {donation.user?.email || "-"}
                               </p>
                             </div>
-                            {donation.type === "item" && donation.quantity && (
-                              <div>
-                                <p className="text-gray-500">Quantity</p>
-                                <p className="font-medium text-gray-900">
-                                  {donation.quantity}
-                                </p>
-                              </div>
-                            )}
+                            <div>
+                              <p className="text-gray-500">Amount Paid</p>
+                              <p className="font-bold text-emerald-600">
+                                RM {amount.toFixed(2)}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-gray-500">Payment Reference</p>
+                              <p className="font-mono text-gray-600">
+                                {payment?.payment_reference || "-"}
+                              </p>
+                            </div>
                             <div>
                               <p className="text-gray-500">Date</p>
                               <p className="font-medium text-gray-900">
@@ -720,11 +756,10 @@ const EventRegistrationsPage = () => {
               setScannedData(null);
             }}
             onConfirm={handleConfirmCheckIn}
-            registration={{
-              type: scannedData.type,
-              data: scannedData.registration,
-              event: scannedData.event,
-            }}
+            data={scannedData?.registration}
+            type={scannedData?.type}
+            event={scannedData?.event || event}
+            isViewOnly={isViewOnly}
           />
         )}
       </div>

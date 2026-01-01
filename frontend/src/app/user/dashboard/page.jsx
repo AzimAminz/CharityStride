@@ -11,94 +11,87 @@ import {
   Clock,
 } from "lucide-react";
 
+import { api } from "@/app/lib/api";
+
+const activityIcons = {
+  calendar: Calendar,
+  users: Users,
+  receipt: Receipt,
+  award: Award,
+};
+
 const DashboardPage = () => {
-  // Mock user data
-  const user =
-    typeof window !== "undefined"
-      ? JSON.parse(localStorage.getItem("user") || "{}")
-      : {};
+  const [data, setData] = React.useState(null);
+  const [isLoading, setIsLoading] = React.useState(true);
+  const [currentPage, setCurrentPage] = React.useState(1);
+
+  React.useEffect(() => {
+    const fetchDashboardData = async () => {
+      try {
+        const response = await api.get("/user/dashboard");
+        setData(response.data);
+      } catch (error) {
+        console.error("Failed to fetch dashboard data:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchDashboardData();
+  }, []);
+
+  if (isLoading) {
+    return (
+      <Layout>
+        <div className="flex items-center justify-center min-h-[60vh]">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-500"></div>
+        </div>
+      </Layout>
+    );
+  }
+
+  const {
+    stats: backendStats,
+    recent_activities: allActivities,
+    user,
+  } = data || {};
+
+  // Pagination Logic
+  const itemsPerPage = 5;
+  const totalPages = Math.ceil((allActivities?.length || 0) / itemsPerPage);
+  const recentActivities = allActivities?.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
 
   const stats = [
     {
       icon: Calendar,
       label: "Events Joined",
-      value: "12",
+      value: backendStats?.total_events || "0",
       color: "bg-blue-50 text-blue-600",
       iconBg: "bg-blue-100",
     },
     {
       icon: Users,
       label: "Volunteer Hours",
-      value: "45.5",
+      value: backendStats?.total_hours || "0.0",
       color: "bg-green-50 text-green-600",
       iconBg: "bg-green-100",
     },
     {
       icon: Receipt,
       label: "Total Donated",
-      value: "RM 850.00",
+      value: backendStats?.total_donated || "RM 0.00",
       color: "bg-purple-50 text-purple-600",
       iconBg: "bg-purple-100",
     },
     {
       icon: Award,
       label: "Certificates",
-      value: "8",
+      value: backendStats?.certificates_count || "0",
       color: "bg-orange-50 text-orange-600",
       iconBg: "bg-orange-100",
-    },
-  ];
-
-  const recentActivities = [
-    {
-      id: 1,
-      type: "registration",
-      title: "Registered for Charity Run 2024",
-      description: "Successfully registered as participant - 10KM Marathon",
-      date: "2 hours ago",
-      icon: Calendar,
-      color: "text-blue-600",
-      bg: "bg-blue-100",
-    },
-    {
-      id: 2,
-      type: "payment",
-      title: "Payment Confirmed",
-      description: "RM 50.00 - Registration fee paid for Charity Run 2024",
-      date: "5 hours ago",
-      icon: Receipt,
-      color: "text-green-600",
-      bg: "bg-green-100",
-    },
-    {
-      id: 3,
-      type: "certificate",
-      title: "Certificate Available",
-      description: "Food Bank Volunteer 2024 certificate ready for download",
-      date: "1 day ago",
-      icon: Award,
-      color: "text-orange-600",
-      bg: "bg-orange-100",
-    },
-    {
-      id: 4,
-      type: "volunteer",
-      title: "Volunteer Shift Completed",
-      description: "Community Kitchen Helper - 4 hours logged",
-      date: "2 days ago",
-      icon: Users,
-      color: "text-green-600",
-      bg: "bg-green-100",
-    },
-    {
-      id: 5,
-      type: "donation",
-      title: "Donation Received",
-      description: "Thank you for your RM 100.00 donation to Education Fund",
-      date: "3 days ago",
-      icon: Receipt,
-      color: "text-purple-600",
-      bg: "bg-purple-100",
     },
   ];
 
@@ -198,30 +191,72 @@ const DashboardPage = () => {
           </div>
 
           <div className="space-y-3">
-            {recentActivities.map((activity) => (
-              <div
-                key={activity.id}
-                className="flex items-start gap-4 p-4 rounded-lg border border-gray-200 hover:border-emerald-300 hover:bg-emerald-50/30 transition-all cursor-pointer"
-              >
-                <div className={`p-3 rounded-lg ${activity.bg}`}>
-                  <activity.icon className={`h-5 w-5 ${activity.color}`} />
-                </div>
-                <div className="flex-1">
-                  <h3 className="font-semibold text-gray-900">
-                    {activity.title}
-                  </h3>
-                  <p className="text-sm text-gray-600 mt-1">
-                    {activity.description}
-                  </p>
-                  <div className="flex items-center gap-2 mt-2">
-                    <Clock className="h-4 w-4 text-gray-400" />
-                    <span className="text-xs text-gray-500">
-                      {activity.date}
-                    </span>
+            {recentActivities?.length > 0 ? (
+              <>
+                {recentActivities.map((activity) => {
+                  const IconComponent =
+                    activityIcons[activity.icon] || Calendar;
+                  return (
+                    <div
+                      key={activity.id}
+                      className="flex items-start gap-4 p-4 rounded-lg border border-gray-200 hover:border-emerald-300 hover:bg-emerald-50/30 transition-all cursor-pointer"
+                    >
+                      <div className={`p-3 rounded-lg ${activity.bg}`}>
+                        <IconComponent
+                          className={`h-5 w-5 ${activity.color}`}
+                        />
+                      </div>
+                      <div className="flex-1">
+                        <h3 className="font-semibold text-gray-900">
+                          {activity.title}
+                        </h3>
+                        <p className="text-sm text-gray-600 mt-1">
+                          {activity.description}
+                        </p>
+                        <div className="flex items-center gap-2 mt-2">
+                          <Clock className="h-4 w-4 text-gray-400" />
+                          <span className="text-xs text-gray-500">
+                            {activity.date}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+
+                {/* Pagination Controls */}
+                {totalPages > 1 && (
+                  <div className="flex items-center justify-between pt-6 border-t border-gray-100 mt-4">
+                    <button
+                      onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                      disabled={currentPage === 1}
+                      className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >
+                      Previous
+                    </button>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-gray-600">
+                        Page {currentPage} of {totalPages}
+                      </span>
+                    </div>
+                    <button
+                      onClick={() =>
+                        setCurrentPage((p) => Math.min(totalPages, p + 1))
+                      }
+                      disabled={currentPage === totalPages}
+                      className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >
+                      Next
+                    </button>
                   </div>
-                </div>
+                )}
+              </>
+            ) : (
+              <div className="text-center py-12 bg-gray-50 rounded-lg">
+                <Clock className="h-12 w-12 text-gray-300 mx-auto mb-3" />
+                <p className="text-gray-500">No recent activities found</p>
               </div>
-            ))}
+            )}
           </div>
         </div>
       </div>

@@ -1117,8 +1117,8 @@ function DetailsTab({ event, selectedModule: propSelectedModule }) {
                             ...event.volunteer_roles.map((role) => ({
                               value: role.id,
                               label:
-                                role.role_type?.name_en ||
-                                role.custom_role_name,
+                                role.custom_role_name ||
+                                role.role_type?.name_en,
                             })),
                           ]}
                           selectedValue={selectedRole}
@@ -1180,8 +1180,8 @@ function DetailsTab({ event, selectedModule: propSelectedModule }) {
                             <div className="flex justify-between items-start mb-2">
                               <div>
                                 <h5 className="font-semibold text-gray-900">
-                                  {shift.role.role_type?.name_en ||
-                                    shift.role.custom_role_name ||
+                                  {shift.role.custom_role_name ||
+                                    shift.role.role_type?.name_en ||
                                     "Volunteer Role"}
                                 </h5>
                                 <p className="text-sm text-gray-600">

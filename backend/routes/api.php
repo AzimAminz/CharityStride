@@ -70,6 +70,7 @@ Route::middleware(['auth:sanctum'])->group(function() {
     Route::post('/payments/{id}/mock-process', [\App\Http\Controllers\Api\PaymentController::class, 'processMock']);
     
     // User Dashboard
+    Route::get('/user/dashboard', [\App\Http\Controllers\Api\User\DashboardController::class, 'index']);
     Route::get('/user/my-registrations', [\App\Http\Controllers\Api\User\UserRegistrationController::class, 'index']);
     
     // Receipt Download
@@ -83,6 +84,9 @@ Route::middleware(['auth:sanctum', 'role:user,ngo'])->prefix('ngo')->group(funct
     
     // Event Management (NGO role only)
     Route::middleware('role:ngo')->group(function(){
+        Route::get('/dashboard', [\App\Http\Controllers\Api\Ngo\DashboardController::class, 'index']);
+        Route::get('/analytics', [\App\Http\Controllers\Api\Ngo\AnalyticsController::class, 'index']);
+        Route::get('/analytics/report', [\App\Http\Controllers\Api\Ngo\AnalyticsController::class, 'generateReport']);
         Route::apiResource('events', EventController::class);
         Route::post('events/{id}/publish', [EventController::class, 'publish']);
         Route::post('events/{id}/unpublish', [EventController::class, 'unpublish']);

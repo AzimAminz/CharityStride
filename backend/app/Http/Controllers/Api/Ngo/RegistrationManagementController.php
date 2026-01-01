@@ -46,7 +46,7 @@ class RegistrationManagementController extends Controller
             $donations = [];
             if ($event->donationConfig) {
                 $donations = \App\Models\DonationRegistration::where('event_id', $eventId)
-                    ->with(['user'])
+                    ->with(['user', 'payments'])
                     ->get();
             }
 
