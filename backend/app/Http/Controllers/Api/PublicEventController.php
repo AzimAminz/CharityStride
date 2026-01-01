@@ -174,7 +174,6 @@ class PublicEventController extends Controller
                     $query->with(['shifts', 'roleType', 'requiredSkill']);
                 },
                 'donationConfig',
-                'moneyDonationOptions',
                 'itemDonationOptions'
             ])
             ->published()

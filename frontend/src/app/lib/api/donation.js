@@ -18,42 +18,6 @@ export const getDonationConfig = async (eventId) => {
 };
 
 /**
- * Money Donation Options API
- */
-
-// Create money donation option
-export const createMoneyOption = async (eventId, data) => {
-  const res = await api.post(
-    `/ngo/events/${eventId}/donation/money-options`,
-    data
-  );
-  return res.data;
-};
-
-// Update money donation option
-export const updateMoneyOption = async (eventId, optionId, data) => {
-  const res = await api.put(
-    `/ngo/events/${eventId}/donation/money-options/${optionId}`,
-    data
-  );
-  return res.data;
-};
-
-// Delete money donation option
-export const deleteMoneyOption = async (eventId, optionId) => {
-  const res = await api.delete(
-    `/ngo/events/${eventId}/donation/money-options/${optionId}`
-  );
-  return res.data;
-};
-
-// Get money donation options
-export const getMoneyOptions = async (eventId) => {
-  const res = await api.get(`/ngo/events/${eventId}/donation/money-options`);
-  return res.data;
-};
-
-/**
  * Item Donation Options API
  */
 

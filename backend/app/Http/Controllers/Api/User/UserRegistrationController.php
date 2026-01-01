@@ -28,6 +28,12 @@ class UserRegistrationController extends Controller
             ->orderBy('created_at', 'desc')
             ->get();
 
+        // Get donation registrations with relationships
+        $donationRegistrations = \App\Models\DonationRegistration::where('user_id', $userId)
+            ->with(['event.ngo', 'payments'])
+            ->orderBy('created_at', 'desc')
+            ->get();
+
         // Get payments with full payable relationships
         $payments = Payment::where('user_id', $userId)
             ->with([
@@ -41,6 +47,7 @@ class UserRegistrationController extends Controller
         return response()->json([
             'participant_registrations' => $participantRegistrations,
             'volunteer_registrations' => $volunteerRegistrations,
+            'donation_registrations' => $donationRegistrations,
             'payments' => $payments,
         ]);
     }

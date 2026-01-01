@@ -13,6 +13,8 @@ class DonationConfig extends Model
         'event_id',
         'accepts_money',
         'accepts_items',
+        'poster_url',
+        'target_amount',
     ];
 
     protected $casts = [

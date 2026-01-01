@@ -30,6 +30,7 @@ const RegistrationsPage = () => {
   const [data, setData] = useState({
     participant_registrations: [],
     volunteer_registrations: [],
+    donation_registrations: [],
     payments: [],
   });
   const [selectedQR, setSelectedQR] = useState(null);
@@ -76,7 +77,7 @@ const RegistrationsPage = () => {
       id: "donations",
       label: "Donations",
       icon: Heart,
-      count: 0,
+      count: data.donation_registrations?.length || 0,
     },
     {
       id: "payments",
@@ -362,7 +363,23 @@ const RegistrationsPage = () => {
                               Shift Time
                             </p>
                             <p className="font-semibold text-gray-900">
-                              {reg.volunteer_shift?.start_time && reg.volunteer_shift?.end_time ? `${new Date("2000-01-01 " + reg.volunteer_shift.start_time).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true })} - ${new Date("2000-01-01 " + reg.volunteer_shift.end_time).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true })}` : "TBA"}
+                              {reg.volunteer_shift?.start_time &&
+                              reg.volunteer_shift?.end_time
+                                ? `${new Date(
+                                    "2000-01-01 " +
+                                      reg.volunteer_shift.start_time
+                                  ).toLocaleTimeString("en-US", {
+                                    hour: "numeric",
+                                    minute: "2-digit",
+                                    hour12: true,
+                                  })} - ${new Date(
+                                    "2000-01-01 " + reg.volunteer_shift.end_time
+                                  ).toLocaleTimeString("en-US", {
+                                    hour: "numeric",
+                                    minute: "2-digit",
+                                    hour12: true,
+                                  })}`
+                                : "TBA"}
                             </p>
                           </div>
                           <div>
@@ -370,7 +387,13 @@ const RegistrationsPage = () => {
                               Event Date
                             </p>
                             <p className="font-semibold text-gray-900">
-                              {new Date(reg.event?.start_date).toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "2-digit" })}
+                              {new Date(
+                                reg.event?.start_date
+                              ).toLocaleDateString("en-GB", {
+                                day: "2-digit",
+                                month: "2-digit",
+                                year: "2-digit",
+                              })}
                             </p>
                           </div>
                           <div>
@@ -406,6 +429,122 @@ const RegistrationsPage = () => {
                             <QrCode className="h-4 w-4" />
                             View QR Code
                           </button>
+                          <a
+                            href={`/events/${reg.event_id}`}
+                            className="px-4 py-2 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition-colors flex items-center gap-2"
+                          >
+                            <Calendar className="h-4 w-4" />
+                            Event Details
+                          </a>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </>
+              )}
+
+              {/* Donations Tab */}
+              {activeTab === "donations" && (
+                <>
+                  {data.donation_registrations?.length === 0 ? (
+                    <div className="bg-white rounded-xl p-12 text-center border border-gray-200">
+                      <Heart className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+                      <h3 className="text-xl font-semibold text-gray-900 mb-2">
+                        No Donation Records
+                      </h3>
+                      <p className="text-gray-600">
+                        You haven't made any donations yet.
+                      </p>
+                    </div>
+                  ) : (
+                    data.donation_registrations?.map((reg) => (
+                      <div
+                        key={reg.id}
+                        className="bg-white rounded-xl p-6 shadow-sm border border-gray-200 hover:shadow-md transition-shadow"
+                      >
+                        <div className="flex items-start justify-between mb-4">
+                          <div>
+                            <h3 className="text-xl font-bold text-gray-900 mb-1">
+                              {reg.event?.title || "Event"}
+                            </h3>
+                            <p className="text-sm text-gray-600 capitalize">
+                              {reg.donation_type} Donation
+                            </p>
+                          </div>
+                          <span
+                            className={`px-3 py-1 rounded-full text-xs font-medium uppercase ${
+                              reg.status === "confirmed"
+                                ? "bg-green-100 text-green-700"
+                                : "bg-yellow-100 text-yellow-700"
+                            }`}
+                          >
+                            {reg.status === "confirmed" ? (
+                              <CheckCircle2 className="inline h-3 w-3 mr-1" />
+                            ) : (
+                              <Clock className="inline h-3 w-3 mr-1" />
+                            )}
+                            {reg.status?.replace("_", " ")}
+                          </span>
+                        </div>
+
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+                          <div>
+                            <p className="text-xs text-gray-500 mb-1">Date</p>
+                            <p className="font-semibold text-gray-900">
+                              {new Date(reg.created_at).toLocaleDateString()}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-xs text-gray-500 mb-1">
+                              {reg.donation_type === "money"
+                                ? "Amount"
+                                : "Item"}
+                            </p>
+                            <p className="font-semibold text-gray-900">
+                              {reg.donation_type === "money"
+                                ? `RM ${(reg.amount_paid / 100).toFixed(2)}`
+                                : reg.item_name}
+                            </p>
+                          </div>
+                          {reg.donation_type === "item" && (
+                            <div>
+                              <p className="text-xs text-gray-500 mb-1">
+                                Quantity
+                              </p>
+                              <p className="font-semibold text-gray-900">
+                                {reg.quantity}
+                              </p>
+                            </div>
+                          )}
+                          <div>
+                            <p className="text-xs text-gray-500 mb-1">
+                              Event Date
+                            </p>
+                            <p className="font-semibold text-gray-900">
+                              {new Date(
+                                reg.event?.start_date
+                              ).toLocaleDateString("en-GB", {
+                                day: "2-digit",
+                                month: "2-digit",
+                                year: "2-digit",
+                              })}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="flex gap-3">
+                          {reg.status === "pending_payment" &&
+                            reg.payments &&
+                            reg.payments[0] &&
+                            reg.payments[0].payment_status === "pending" && (
+                              <a
+                                href={`/payment/mock/${reg.payments[0].id}`}
+                                className="px-4 py-2 bg-yellow-50 text-yellow-700 rounded-lg hover:bg-yellow-100 transition-colors flex items-center gap-2"
+                              >
+                                <Receipt className="h-4 w-4" />
+                                Pay Now
+                              </a>
+                            )}
                           <a
                             href={`/events/${reg.event_id}`}
                             className="px-4 py-2 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition-colors flex items-center gap-2"

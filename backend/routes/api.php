@@ -65,6 +65,7 @@ Route::middleware(['auth:sanctum'])->group(function() {
     // Participant Registration
     Route::post('/events/{eventId}/register/participant', [\App\Http\Controllers\Api\ParticipantRegistrationController::class, 'store']);
     Route::post('/events/{eventId}/register/volunteer', [\App\Http\Controllers\Api\VolunteerRegistrationController::class, 'store']);
+    Route::post('/events/{eventId}/register/donation', [\App\Http\Controllers\Api\DonationRegistrationController::class, 'store']);
     
     // Payment Process
     Route::get('/payments/{id}', [\App\Http\Controllers\Api\PaymentController::class, 'show']);
@@ -106,10 +107,7 @@ Route::middleware(['auth:sanctum', 'role:user,ngo'])->prefix('ngo')->group(funct
         // Donation Module
         Route::get('events/{eventId}/donation/config', [DonationController::class, 'getConfig']);
         Route::post('events/{eventId}/donation/config', [DonationController::class, 'saveConfig']);
-        Route::get('events/{eventId}/donation/money-options', [DonationController::class, 'getMoneyOptions']);
-        Route::post('events/{eventId}/donation/money-options', [DonationController::class, 'createMoneyOption']);
-        Route::put('events/{eventId}/donation/money-options/{optionId}', [DonationController::class, 'updateMoneyOption']);
-        Route::delete('events/{eventId}/donation/money-options/{optionId}', [DonationController::class, 'deleteMoneyOption']);
+
         Route::get('events/{eventId}/donation/item-options', [DonationController::class, 'getItemOptions']);
         Route::post('events/{eventId}/donation/item-options', [DonationController::class, 'createItemOption']);
         Route::put('events/{eventId}/donation/item-options/{optionId}', [DonationController::class, 'updateItemOption']);

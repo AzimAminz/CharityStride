@@ -3,6 +3,7 @@
 import { useParams, useRouter } from "next/navigation";
 import { useState } from "react";
 import { useEventDetail } from "../../../../hooks/useEventDetail";
+import { registerDonation } from "../../../../lib/events";
 import {
   ArrowLeft,
   DollarSign,
@@ -17,7 +18,7 @@ export default function DonationRegistrationPage() {
   const params = useParams();
   const id = params.id;
 
-  const { event, loading, error } = useEventDetail(id);
+  const { event, loading, error } = useEventDetail(id, true); // true = use public API endpoint
 
   const [donationType, setDonationType] = useState("money"); // 'money' or 'item'
   const [showCustomInput, setShowCustomInput] = useState(false); // For 'Others' button
@@ -32,6 +33,7 @@ export default function DonationRegistrationPage() {
 
   const [errors, setErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
+  const [initialized, setInitialized] = useState(false);
 
   if (loading) {
     return (
@@ -71,6 +73,24 @@ export default function DonationRegistrationPage() {
     );
   }
 
+  const donationConfig = event.donation_config || {};
+  const acceptsMoney = donationConfig.accepts_money !== false; // Default to true if not set
+  const acceptsItems = donationConfig.accepts_items !== false; // Default to true if not set
+
+  // Set initial donation type based on config
+  // We use a separate effect to avoid infinite loops if we just set it in render
+  // But strictly, we can initialize state based on this if we move state init after this check
+  // or use an effect. Using an effect is safer with data loading.
+
+  if (!initialized && event) {
+    if (acceptsMoney) {
+      setDonationType("money");
+    } else if (acceptsItems) {
+      setDonationType("item");
+    }
+    setInitialized(true);
+  }
+
   const moneyOptions = event.money_donation_options || [];
   const itemOptions = event.item_donation_options || [];
 
@@ -85,6 +105,9 @@ export default function DonationRegistrationPage() {
   // Debug: Check donation options data
   console.log("=== DONATION OPTIONS DEBUG ===");
   console.log("Event:", event.title);
+  console.log("Config:", donationConfig);
+  console.log("Accepts Money:", acceptsMoney);
+  console.log("Accepts Items:", acceptsItems);
   console.log("Money options count:", moneyOptions.length);
   console.log("Fixed amounts:", fixedAmounts);
   console.log("Has free amount option:", hasFreeAmount);
@@ -155,8 +178,18 @@ export default function DonationRegistrationPage() {
       if (formData.money_amount) {
         // Using suggested amount (already in cents)
         const selectedOption = moneyOptions.find(
-          (opt) => opt.suggested_amount.toString() === formData.money_amount
+          (opt) => opt.suggested_amount?.toString() === formData.money_amount
         );
+
+        if (!selectedOption) {
+          // Fallback if option not found (shouldn't happen)
+          setErrors((prev) => ({
+            ...prev,
+            money_amount: "Invalid option selected",
+          }));
+          return;
+        }
+
         amountInCents = selectedOption.suggested_amount;
       } else {
         // Custom amount - convert RM to cents
@@ -179,11 +212,31 @@ export default function DonationRegistrationPage() {
 
     console.log("Donation payload:", payload);
 
-    setTimeout(() => {
+    try {
+      const response = await registerDonation(id, payload);
+      console.log("Donation response:", response); // Debug response
+
       setSubmitting(false);
-      alert("Donation submitted! (Preview mode)");
-      router.push(`/events/${id}`);
-    }, 1500);
+
+      if (response.requires_payment && response.payment_id) {
+        console.log("Redirecting to payment:", response.payment_id);
+        // Money donation - redirect to payment page
+        router.push(`/payment/mock/${response.payment_id}`);
+      } else {
+        // Item donation - show success and redirect to registrations
+        alert(
+          "Thank you for your donation! A receipt has been sent to your email."
+        );
+        router.push("/user/registrations");
+      }
+    } catch (error) {
+      setSubmitting(false);
+      console.error("Donation registration error:", error);
+      alert(
+        error.response?.data?.message ||
+          "Failed to submit donation. Please try again."
+      );
+    }
   };
 
   return (
@@ -211,50 +264,52 @@ export default function DonationRegistrationPage() {
           <p className="text-lg text-gray-600">{event.title}</p>
         </div>
 
-        {/* Donation Type Tabs */}
-        <div className="flex gap-2 mb-8">
-          <button
-            onClick={() => {
-              setDonationType("money");
-              // Clear item donation data when switching to money
-              setFormData((prev) => ({
-                ...prev,
-                item_donation_option_id: "",
-                quantity: "1",
-              }));
-              setErrors({});
-            }}
-            className={`flex-1 px-6 py-3 rounded-lg font-bold transition-all flex items-center justify-center gap-2 ${
-              donationType === "money"
-                ? "bg-amber-600 text-white shadow-md"
-                : "bg-white text-gray-700 border-2 border-gray-200 hover:border-gray-300"
-            }`}
-          >
-            <DollarSign className="h-5 w-5" />
-            Money Donation
-          </button>
-          <button
-            onClick={() => {
-              setDonationType("item");
-              // Clear money donation data when switching to item
-              setFormData((prev) => ({
-                ...prev,
-                money_amount: "",
-                custom_amount: "",
-              }));
-              setShowCustomInput(false);
-              setErrors({});
-            }}
-            className={`flex-1 px-6 py-3 rounded-lg font-bold transition-all flex items-center justify-center gap-2 ${
-              donationType === "item"
-                ? "bg-amber-600 text-white shadow-md"
-                : "bg-white text-gray-700 border-2 border-gray-200 hover:border-gray-300"
-            }`}
-          >
-            <Package className="h-5 w-5" />
-            Item Donation
-          </button>
-        </div>
+        {/* Donation Type Tabs - Only show if both are enabled */}
+        {acceptsMoney && acceptsItems && (
+          <div className="flex gap-2 mb-8">
+            <button
+              onClick={() => {
+                setDonationType("money");
+                // Clear item donation data when switching to money
+                setFormData((prev) => ({
+                  ...prev,
+                  item_donation_option_id: "",
+                  quantity: "1",
+                }));
+                setErrors({});
+              }}
+              className={`flex-1 px-6 py-3 rounded-lg font-bold transition-all flex items-center justify-center gap-2 ${
+                donationType === "money"
+                  ? "bg-amber-600 text-white shadow-md"
+                  : "bg-white text-gray-700 border-2 border-gray-200 hover:border-gray-300"
+              }`}
+            >
+              <DollarSign className="h-5 w-5" />
+              Money Donation
+            </button>
+            <button
+              onClick={() => {
+                setDonationType("item");
+                // Clear money donation data when switching to item
+                setFormData((prev) => ({
+                  ...prev,
+                  money_amount: "",
+                  custom_amount: "",
+                }));
+                setShowCustomInput(false);
+                setErrors({});
+              }}
+              className={`flex-1 px-6 py-3 rounded-lg font-bold transition-all flex items-center justify-center gap-2 ${
+                donationType === "item"
+                  ? "bg-amber-600 text-white shadow-md"
+                  : "bg-white text-gray-700 border-2 border-gray-200 hover:border-gray-300"
+              }`}
+            >
+              <Package className="h-5 w-5" />
+              Item Donation
+            </button>
+          </div>
+        )}
 
         {/* Clear Button */}
         {(formData.money_amount ||

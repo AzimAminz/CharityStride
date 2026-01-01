@@ -126,7 +126,6 @@ class EventController extends Controller
                     $query->with(['shifts', 'roleType', 'requiredSkill']);
                 },
                 'donationConfig',
-                'moneyDonationOptions',
                 'itemDonationOptions'
             ])
             ->first();

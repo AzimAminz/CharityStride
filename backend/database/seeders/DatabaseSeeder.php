@@ -15,7 +15,6 @@ class DatabaseSeeder extends Seeder
         $this->call([
             UserSeeder::class,
             VolunteerRoleTypeSeeder::class,
-            ParticipantCategoryTypeSeeder::class,
             RequiredSkillSeeder::class,
             ShiftTypeSeeder::class,
         ]);

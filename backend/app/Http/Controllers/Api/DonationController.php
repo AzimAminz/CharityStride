@@ -5,7 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Event;
 use App\Models\DonationConfig;
-use App\Models\MoneyDonationOption;
+
 use App\Models\ItemDonationOption;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
@@ -33,6 +33,8 @@ class DonationController extends Controller
         $validator = Validator::make($request->all(), [
             'accepts_money' => 'required|boolean',
             'accepts_items' => 'required|boolean',
+            'poster_url' => 'nullable|string',
+            'target_amount' => 'nullable|integer|min:1',
         ]);
 
         if ($validator->fails()) {
@@ -41,68 +43,13 @@ class DonationController extends Controller
 
         $config = DonationConfig::updateOrCreate(
             ['event_id' => $eventId],
-            $request->only(['accepts_money', 'accepts_items'])
+            $request->only(['accepts_money', 'accepts_items', 'poster_url', 'target_amount'])
         );
 
         return response()->json($config);
     }
     
-    // ===== MONEY OPTIONS =====
-    
-    public function getMoneyOptions($eventId)
-    {
-        $options = MoneyDonationOption::where('event_id', $eventId)->get();
-        return response()->json($options);
-    }
-    
-    public function createMoneyOption(Request $request, $eventId)
-    {
-        $validator = Validator::make($request->all(), [
-            'suggested_amount' => 'nullable|integer|min:0',  // Nullable for free amount
-            'description' => 'nullable|string|max:255',
-        ]);
 
-        if ($validator->fails()) {
-            return response()->json(['errors' => $validator->errors()], 422);
-        }
-
-        $option = MoneyDonationOption::create([
-            'event_id' => $eventId,
-            ...$request->only(['suggested_amount', 'description'])
-        ]);
-
-        return response()->json($option, 201);
-    }
-    
-    public function updateMoneyOption(Request $request, $eventId, $optionId)
-    {
-        $option = MoneyDonationOption::where('event_id', $eventId)
-            ->where('id', $optionId)
-            ->firstOrFail();
-        
-        $validator = Validator::make($request->all(), [
-            'suggested_amount' => 'nullable|integer|min:0',  // Nullable for free amount
-            'description' => 'nullable|string|max:255',
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json(['errors' => $validator->errors()], 422);
-        }
-
-        $option->update($request->only(['suggested_amount', 'description']));
-
-        return response()->json($option);
-    }
-    
-    public function deleteMoneyOption($eventId, $optionId)
-    {
-        $option = MoneyDonationOption::where('event_id', $eventId)
-            ->where('id', $optionId)
-            ->firstOrFail();
-        $option->delete();
-        
-        return response()->json(['message' => 'Money option deleted successfully']);
-    }
     
     // ===== ITEM OPTIONS =====
     

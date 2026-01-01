@@ -965,15 +965,7 @@ export default function CreateEventPage() {
             <div className="bg-white rounded-lg shadow-sm p-6">
               <DonationConfigManager
                 config={donationModule.config}
-                moneyOptions={donationModule.moneyOptions}
-                itemOptions={donationModule.itemOptions}
                 onUpdateConfig={donationModule.updateConfig}
-                onAddMoneyOption={donationModule.addMoneyOption}
-                onUpdateMoneyOption={donationModule.updateMoneyOpt}
-                onRemoveMoneyOption={donationModule.removeMoneyOption}
-                onAddItemOption={donationModule.addItemOption}
-                onUpdateItemOption={donationModule.updateItemOpt}
-                onRemoveItemOption={donationModule.removeItemOption}
               />
             </div>
 

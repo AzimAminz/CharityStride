@@ -129,3 +129,9 @@ export const registerVolunteer = async (eventId, data) => {
   const res = await api.post(`/events/${eventId}/register/volunteer`, data);
   return res.data;
 };
+
+// Register donation (requires authentication)
+export const registerDonation = async (eventId, data) => {
+  const res = await api.post(`/events/${eventId}/register/donation`, data);
+  return res.data;
+};

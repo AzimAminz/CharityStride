@@ -24,6 +24,9 @@ export const logout = async () => {
 };
 
 export const register = async (form) => {
+  // Debug: Log registration data
+  console.log("🔍 register - Sending data:", form);
+
   const res = await api.post("/auth/register", form);
 
   // Store token and user
@@ -50,11 +53,22 @@ export const getCurrentUser = async () => {
 
 /**
  * Complete user profile
- * @param {Object} data - Profile data { phone, birthdate }
+ * @param {Object} data - Profile data { phone, ic_number, birthdate }
  * @returns {Promise<Object>} Response data
  */
-export const completeProfile = async ({ phone, birthdate }) => {
-  const res = await api.post("/auth/complete-profile", { phone, birthdate });
+export const completeProfile = async ({ phone, ic_number, birthdate }) => {
+  // Debug: Log data being sent
+  console.log("🔍 completeProfile - Sending data:", {
+    phone,
+    ic_number,
+    birthdate,
+  });
+
+  const res = await api.post("/auth/complete-profile", {
+    phone,
+    ic_number,
+    birthdate,
+  });
 
   // Update localStorage with completed user data
   localStorage.setItem("user", JSON.stringify(res.data.user));

@@ -117,6 +117,7 @@ export default function EventMap({
   const [mapCenter, setMapCenter] = useState([3.139, 101.6869]); // Default: Kuala Lumpur
   const [isLoadingLocation, setIsLoadingLocation] = useState(false);
   const [shouldRecenter, setShouldRecenter] = useState(true); // Only recenter on initial load
+  const [locationError, setLocationError] = useState(null); // Track location errors
 
   // Auto-detect user location on component mount
   useEffect(() => {
@@ -137,9 +138,45 @@ export default function EventMap({
           setTimeout(() => setShouldRecenter(false), 1000);
         },
         (error) => {
+          // Extract error details safely
+          const errorCode = error?.code ?? null;
+          const errorMessage = error?.message ?? "Unknown error";
+
           console.log(
-            "Location permission denied or unavailable, using default location"
+            "Location permission denied or unavailable, using default location",
+            {
+              errorObject: error,
+              code: errorCode,
+              message: errorMessage,
+              errorType:
+                errorCode === 1
+                  ? "PERMISSION_DENIED"
+                  : errorCode === 2
+                  ? "POSITION_UNAVAILABLE"
+                  : errorCode === 3
+                  ? "TIMEOUT"
+                  : "UNKNOWN",
+              allKeys: error ? Object.keys(error) : [],
+              stringified: JSON.stringify(
+                error,
+                Object.getOwnPropertyNames(error)
+              ),
+            }
           );
+
+          // Set error state for UI
+          setLocationError({
+            code: errorCode,
+            type:
+              errorCode === 1
+                ? "PERMISSION_DENIED"
+                : errorCode === 2
+                ? "POSITION_UNAVAILABLE"
+                : errorCode === 3
+                ? "TIMEOUT"
+                : "UNKNOWN",
+          });
+
           // Disable auto-recenter even on error
           setShouldRecenter(false);
         }
@@ -188,10 +225,42 @@ export default function EventMap({
           }
         },
         (error) => {
-          console.error("Error getting location:", error);
-          alert(
-            "Unable to get your location. Please enable location services."
-          );
+          // GeolocationPositionError properties: code, message, PERMISSION_DENIED (1), POSITION_UNAVAILABLE (2), TIMEOUT (3)
+          // Extract error details safely
+          const errorCode = error?.code ?? null;
+          const errorMessage = error?.message ?? "Unknown error";
+
+          const errorMessages = {
+            1: "Location access denied. Please allow location access in your browser settings.",
+            2: "Location unavailable. Please check your device's location settings.",
+            3: "Location request timed out. Please try again.",
+          };
+
+          const userMessage =
+            errorMessages[errorCode] ||
+            "Unable to get your location. Please enable location services.";
+
+          // Comprehensive error logging
+          console.error("Geolocation error:", {
+            errorObject: error,
+            code: errorCode,
+            message: errorMessage,
+            errorType:
+              errorCode === 1
+                ? "PERMISSION_DENIED"
+                : errorCode === 2
+                ? "POSITION_UNAVAILABLE"
+                : errorCode === 3
+                ? "TIMEOUT"
+                : "UNKNOWN",
+            allKeys: error ? Object.keys(error) : [],
+            stringified: JSON.stringify(
+              error,
+              Object.getOwnPropertyNames(error)
+            ),
+          });
+
+          alert(userMessage);
           setIsLoadingLocation(false);
         }
       );
@@ -245,6 +314,66 @@ export default function EventMap({
           </>
         )}
       </button>
+
+      {/* Location Error Info Banner */}
+      {locationError && !userLocation && (
+        <div className="absolute top-14 sm:top-16 left-2 right-2 sm:left-4 sm:right-4 z-[1000] bg-blue-50 border border-blue-200 rounded-lg p-3 shadow-lg">
+          <div className="flex items-start gap-2">
+            <svg
+              className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
+            </svg>
+            <div className="flex-1 text-xs sm:text-sm">
+              <p className="font-semibold text-blue-900 mb-1">
+                {locationError.type === "PERMISSION_DENIED"
+                  ? "Location Access Denied"
+                  : locationError.type === "POSITION_UNAVAILABLE"
+                  ? "Location Unavailable"
+                  : "Location Timeout"}
+              </p>
+              <p className="text-blue-800 mb-2">
+                {locationError.type === "PERMISSION_DENIED"
+                  ? "Please allow location access in your browser settings to use this feature."
+                  : locationError.type === "POSITION_UNAVAILABLE"
+                  ? "Your device cannot determine your location. Try using the filters to search by state instead."
+                  : "Location request timed out. Please try again or use the state filter."}
+              </p>
+              <p className="text-blue-700 text-xs">
+                <strong>Tip:</strong> Close this modal and use the State
+                dropdown in the filters to find events near you!
+              </p>
+            </div>
+            <button
+              onClick={() => setLocationError(null)}
+              className="text-blue-600 hover:text-blue-800 transition-colors flex-shrink-0"
+              aria-label="Dismiss"
+            >
+              <svg
+                className="w-4 h-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M6 18L18 6M6 6l12 12"
+                />
+              </svg>
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Leaflet Map */}
       <MapContainer

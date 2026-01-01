@@ -116,10 +116,7 @@ class Event extends Model
         return $this->hasOne(DonationConfig::class);
     }
 
-    public function moneyDonationOptions()
-    {
-        return $this->hasMany(MoneyDonationOption::class);
-    }
+
 
     public function itemDonationOptions()
     {

@@ -20,6 +20,15 @@ class AuthController extends Controller
 
         $validate = $request->validated();
 
+        // Debug: Log received registration data
+        \Log::info('🔍 register - Received data:', [
+            'name' => $validate['name'] ?? null,
+            'email' => $validate['email'] ?? null,
+            'phone' => $validate['phone'] ?? null,
+            'ic_number' => $validate['ic_number'] ?? null,
+            'birthdate' => $validate['birthdate'] ?? null,
+        ]);
+
         try {
             // 1️⃣ Auto generate avatar berdasarkan nama user
             $avatarUrl = 'https://ui-avatars.com/api/?name=' . urlencode($validate['name']) . '&background=random&color=fff';
@@ -35,6 +44,14 @@ class AuthController extends Controller
                 'ic_number' => $validate['ic_number'] ?? null,
                 'birthdate' => $validate['birthdate'],
                 'photo' => $avatarUrl
+            ]);
+
+            // Debug: Log created user
+            \Log::info('🔍 register - Created user:', [
+                'id' => $user->id,
+                'phone' => $user->phone,
+                'ic_number' => $user->ic_number,
+                'birthdate' => $user->birthdate,
             ]);
 
             // 3️⃣ Create Sanctum token
@@ -152,13 +169,30 @@ class AuthController extends Controller
     {
         $request->validate([
             'phone' => 'required|string|max:30',
+            'ic_number' => 'required|string|max:20',
             'birthdate' => 'required|date',
+        ]);
+
+        // Debug: Log received data
+        \Log::info('🔍 completeProfile - Received data:', [
+            'phone' => $request->phone,
+            'ic_number' => $request->ic_number,
+            'birthdate' => $request->birthdate,
         ]);
 
         $user = $request->user();
         $user->update([
             'phone' => $request->phone,
+            'ic_number' => $request->ic_number,
             'birthdate' => $request->birthdate,
+        ]);
+
+        // Debug: Log updated user
+        \Log::info('🔍 completeProfile - Updated user:', [
+            'id' => $user->id,
+            'phone' => $user->phone,
+            'ic_number' => $user->ic_number,
+            'birthdate' => $user->birthdate,
         ]);
 
         return response()->json([
