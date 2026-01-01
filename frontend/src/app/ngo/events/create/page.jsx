@@ -57,6 +57,7 @@ export default function CreateEventPage() {
     message: "",
     type: "info",
   });
+  const [unsavedDonationConfig, setUnsavedDonationConfig] = useState(null);
 
   const [confirmModal, setConfirmModal] = useState({
     isOpen: false,
@@ -112,7 +113,7 @@ export default function CreateEventPage() {
         const needsLocation =
           formData.has_volunteer || formData.has_participant;
         if (needsLocation) {
-          if (!formData.location) errors.push("Event location (address)");
+          if (!formData.address) errors.push("Event location (address)");
           if (!formData.latitude || !formData.longitude)
             errors.push("Map location (click on map to set)");
         }
@@ -140,7 +141,7 @@ export default function CreateEventPage() {
 
       if (
         needsLocation &&
-        (!formData.location || !formData.latitude || !formData.longitude)
+        (!formData.address || !formData.latitude || !formData.longitude)
       ) {
         setAlertModal({
           isOpen: true,
@@ -781,7 +782,7 @@ export default function CreateEventPage() {
 
                 <ModuleToggle
                   label="Donation Module"
-                  description="Accept money or item donations for your event"
+                  description="Accept monetary donations for your event"
                   checked={formData.has_donation}
                   onChange={(checked) => handleChange("has_donation", checked)}
                   icon={DollarSign}
@@ -958,7 +959,7 @@ export default function CreateEventPage() {
           <div className="space-y-6">
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
               <p className="text-sm text-blue-800">
-                Configure donation options for your event (money and/or items).
+                Configure donation options for your event.
               </p>
             </div>
 
@@ -966,6 +967,7 @@ export default function CreateEventPage() {
               <DonationConfigManager
                 config={donationModule.config}
                 onUpdateConfig={donationModule.updateConfig}
+                onConfigChange={setUnsavedDonationConfig}
               />
             </div>
 
@@ -983,14 +985,35 @@ export default function CreateEventPage() {
               </button>
               <button
                 type="button"
-                onClick={() => {
-                  if (formData.has_participant)
-                    setActiveTab("participant_config");
-                  else setActiveTab("content");
+                onClick={async () => {
+                  try {
+                    if (unsavedDonationConfig) {
+                      setLoading(true);
+                      await donationModule.updateConfig(unsavedDonationConfig);
+                      setUnsavedDonationConfig(null);
+                    }
+                    if (formData.has_participant)
+                      setActiveTab("participant_config");
+                    else setActiveTab("content");
+                  } catch (err) {
+                    setAlertModal({
+                      isOpen: true,
+                      title: "Error Saving Donation",
+                      message:
+                        err.response?.data?.message ||
+                        "Failed to save donation config",
+                      type: "error",
+                      onClose: () =>
+                        setAlertModal((prev) => ({ ...prev, isOpen: false })),
+                    });
+                  } finally {
+                    setLoading(false);
+                  }
                 }}
-                className="px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-semibold transition-colors"
+                className="px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-semibold transition-colors disabled:opacity-50"
+                disabled={loading}
               >
-                Next →
+                {loading ? "Saving..." : "Next →"}
               </button>
             </div>
           </div>
@@ -1091,13 +1114,29 @@ export default function CreateEventPage() {
                 ← Back
               </button>
 
-              <Link
-                href="/ngo/events"
+              <button
+                type="button"
+                onClick={async () => {
+                  try {
+                    if (unsavedDonationConfig && createdEventId) {
+                      await donationModule.updateConfig(unsavedDonationConfig);
+                    }
+                    router.push("/ngo/events");
+                  } catch (err) {
+                    setAlertModal({
+                      isOpen: true,
+                      title: "Error Saving Donation Config",
+                      message:
+                        err.message || "Failed to save donation settings",
+                      type: "error",
+                    });
+                  }
+                }}
                 className="flex items-center gap-2 px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-semibold transition-colors"
               >
                 <Save className="h-5 w-5" />
                 Save Event
-              </Link>
+              </button>
             </div>
           </div>
         )}

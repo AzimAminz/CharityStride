@@ -17,7 +17,6 @@ import {
 import SavedLocationPicker from "../SavedLocationPicker";
 import {
   fetchVolunteerRoleTypes,
-  fetchRequiredSkills,
   fetchShiftTypes,
 } from "../../lib/lookupHelpers";
 import { NumericInput, DateInput } from "../inputs";
@@ -64,7 +63,6 @@ export default function VolunteerRoleManager({
   const { language } = useLanguage();
   // Lookup data from API
   const [roleTypes, setRoleTypes] = useState([]);
-  const [requiredSkills, setRequiredSkills] = useState([]);
   const [shiftTypes, setShiftTypes] = useState([]);
   const [loadingLookups, setLoadingLookups] = useState(true);
 
@@ -73,7 +71,6 @@ export default function VolunteerRoleManager({
   const [roleForm, setRoleForm] = useState({
     role_type_id: "",
     custom_role_name: "",
-    required_skill_id: "",
     role_description: "",
     has_role_location: false,
     location: "",
@@ -134,13 +131,11 @@ export default function VolunteerRoleManager({
   useEffect(() => {
     async function loadLookups() {
       try {
-        const [types, skills, shifts] = await Promise.all([
+        const [types, shifts] = await Promise.all([
           fetchVolunteerRoleTypes(),
-          fetchRequiredSkills(),
           fetchShiftTypes(),
         ]);
         setRoleTypes(types);
-        setRequiredSkills(skills);
         setShiftTypes(shifts);
       } catch (error) {
         console.error("Failed to load lookup data:", error);
@@ -158,7 +153,6 @@ export default function VolunteerRoleManager({
     setRoleForm({
       role_type_id: "",
       custom_role_name: "",
-      required_skill_id: "",
       role_description: "",
       has_role_location: false,
       location: "",
@@ -260,12 +254,6 @@ export default function VolunteerRoleManager({
         }
       }
     }
-    if (!roleForm.required_skill_id) {
-      errors.required_skill_id =
-        language === "ms"
-          ? "Kemahiran diperlukan"
-          : "Required skill is required";
-    }
 
     return errors;
   };
@@ -283,7 +271,6 @@ export default function VolunteerRoleManager({
       const roleData = {
         ...roleForm,
         role_type_id: parseInt(roleForm.role_type_id),
-        required_skill_id: parseInt(roleForm.required_skill_id),
       };
 
       if (editingRole) {
@@ -518,49 +505,6 @@ export default function VolunteerRoleManager({
               </div>
             )}
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                {language === "ms"
-                  ? "Kemahiran Diperlukan *"
-                  : "Required Skill *"}
-              </label>
-              <select
-                value={roleForm.required_skill_id}
-                onChange={(e) => {
-                  setRoleForm({
-                    ...roleForm,
-                    required_skill_id: e.target.value,
-                  });
-                  if (roleErrors.required_skill_id) {
-                    setRoleErrors((prev) => ({
-                      ...prev,
-                      required_skill_id: undefined,
-                    }));
-                  }
-                }}
-                className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-emerald-500 ${
-                  roleErrors.required_skill_id
-                    ? "border-red-500"
-                    : "border-gray-300"
-                }`}
-                disabled={loadingLookups}
-              >
-                <option value="">
-                  {loadingLookups ? "Loading..." : "Select skill..."}
-                </option>
-                {requiredSkills.map((skill) => (
-                  <option key={skill.id} value={skill.id}>
-                    {skill.name_en} / {skill.name_ms}
-                  </option>
-                ))}
-              </select>
-              {roleErrors.required_skill_id && (
-                <p className="text-red-600 text-sm mt-1">
-                  {roleErrors.required_skill_id}
-                </p>
-              )}
-            </div>
-
             <div className="col-span-2">
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Description
@@ -741,11 +685,6 @@ export default function VolunteerRoleManager({
                   roleTypes.find((t) => t.id === role.role_type_id)?.name_en ||
                   "Role"}
               </h4>
-              <p className="text-sm text-gray-600">
-                Skill:{" "}
-                {requiredSkills.find((s) => s.id === role.required_skill_id)
-                  ?.name_en || "N/A"}
-              </p>
 
               {/* Location Display */}
               {role.location && (
@@ -798,7 +737,6 @@ export default function VolunteerRoleManager({
                   setRoleForm({
                     role_type_id: role.role_type_id,
                     custom_role_name: role.custom_role_name || "",
-                    required_skill_id: role.required_skill_id,
                     role_description: role.role_description || "",
                     has_role_location: !!role.location,
                     location: role.location || "",
@@ -913,47 +851,6 @@ export default function VolunteerRoleManager({
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500"
                       placeholder="Optional custom name"
                     />
-                  </div>
-
-                  {/* Required Skill */}
-                  <div className="col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      {language === "ms"
-                        ? "Kemahiran Diperlukan *"
-                        : "Required Skill *"}
-                    </label>
-                    <select
-                      value={roleForm.required_skill_id}
-                      onChange={(e) => {
-                        setRoleForm({
-                          ...roleForm,
-                          required_skill_id: e.target.value,
-                        });
-                        if (roleErrors.required_skill_id) {
-                          setRoleErrors((prev) => ({
-                            ...prev,
-                            required_skill_id: undefined,
-                          }));
-                        }
-                      }}
-                      className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-emerald-500 ${
-                        roleErrors.required_skill_id
-                          ? "border-red-500"
-                          : "border-gray-300"
-                      }`}
-                    >
-                      <option value="">Select...</option>
-                      {requiredSkills.map((skill) => (
-                        <option key={skill.id} value={skill.id}>
-                          {skill.name_en} / {skill.name_ms}
-                        </option>
-                      ))}
-                    </select>
-                    {roleErrors.required_skill_id && (
-                      <p className="text-red-600 text-sm mt-1">
-                        {roleErrors.required_skill_id}
-                      </p>
-                    )}
                   </div>
 
                   {/* Description */}

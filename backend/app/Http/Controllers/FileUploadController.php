@@ -18,7 +18,7 @@ class FileUploadController extends Controller
             // Validate the request
             $request->validate([
                 'file' => 'required|file',
-                'type' => 'required|in:logo,doc'
+                'type' => 'required|in:logo,doc,poster'
             ]);
 
             $file = $request->file('file');
@@ -30,6 +30,11 @@ class FileUploadController extends Controller
                     'file' => 'mimes:png,jpg,jpeg,svg|max:2048' // 2MB max for logos
                 ]);
                 $folder = 'logos';
+            } elseif ($type === 'poster') {
+                $request->validate([
+                    'file' => 'mimes:png,jpg,jpeg,svg,webp|max:5120' // 5MB max for posters
+                ]);
+                $folder = 'posters';
             } else {
                 $request->validate([
                     'file' => 'mimes:pdf,doc,docx,png,jpg,jpeg|max:5120' // 5MB max for documents

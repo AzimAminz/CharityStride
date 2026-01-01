@@ -123,10 +123,9 @@ class EventController extends Controller
                 'ngo',
                 'participantCategories',
                 'volunteerRoles' => function($query) {
-                    $query->with(['shifts', 'roleType', 'requiredSkill']);
+                    $query->with(['shifts', 'roleType']);
                 },
-                'donationConfig',
-                'itemDonationOptions'
+                'donationConfig'
             ])
             ->first();
 

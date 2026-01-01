@@ -4,6 +4,7 @@ namespace App\Mail;
 
 use App\Models\ParticipantRegistration;
 use App\Models\VolunteerRegistration;
+use App\Models\DonationRegistration;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
@@ -24,35 +25,39 @@ class RegistrationConfirmation extends Mailable
     /**
      * Create a new message instance.
      */
-    public function __construct(ParticipantRegistration|VolunteerRegistration $registration)
+    public function __construct(ParticipantRegistration|VolunteerRegistration|DonationRegistration $registration)
     {
         if ($registration instanceof ParticipantRegistration) {
-            $this->registration = $registration->load(['event', 'user', 'participantCategory', 'payments']);
+            $this->registration = $registration->load(['event.ngo', 'user', 'participantCategory', 'payments']);
+        } elseif ($registration instanceof VolunteerRegistration) {
+            $this->registration = $registration->load(['event.ngo', 'user', 'volunteerRole', 'volunteerShift', 'payments']);
         } else {
-            $this->registration = $registration->load(['event', 'user', 'volunteerRole', 'volunteerShift', 'payments']);
+            $this->registration = $registration->load(['event.ngo', 'user', 'payments']);
         }
         
-        // Generate QR Code using GD (not imagick)
-        $this->qrCodePath = storage_path('app/temp/qr_' . $registration->id . '.png');
-        
-        // Ensure temp directory exists
-        if (!file_exists(storage_path('app/temp'))) {
-            mkdir(storage_path('app/temp'), 0755, true);
-        }
-        
-        
-        // Generate QR Code using online API (no imagick required)
-        try {
-            $qrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=' . urlencode($registration->qr_code);
-            $qrImage = file_get_contents($qrUrl);
+        // Skip QR Code and check-in info for donations
+        if (!($registration instanceof DonationRegistration)) {
+            // Generate QR Code using GD (not imagick)
+            $this->qrCodePath = storage_path('app/temp/qr_' . $registration->id . '.png');
             
-            if ($qrImage) {
-                file_put_contents($this->qrCodePath, $qrImage);
-            } else {
-                \Log::error('Failed to generate QR code from API');
+            // Ensure temp directory exists
+            if (!file_exists(storage_path('app/temp'))) {
+                mkdir(storage_path('app/temp'), 0755, true);
             }
-        } catch (\Exception $e) {
-            \Log::error('QR code generation error: ' . $e->getMessage());
+            
+            // Generate QR Code using online API (no imagick required)
+            try {
+                $qrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=' . urlencode($registration->qr_code);
+                $qrImage = file_get_contents($qrUrl);
+                
+                if ($qrImage) {
+                    file_put_contents($this->qrCodePath, $qrImage);
+                } else {
+                    \Log::error('Failed to generate QR code from API');
+                }
+            } catch (\Exception $e) {
+                \Log::error('QR code generation error: ' . $e->getMessage());
+            }
         }
         
         // Generate PDF Receipt if paid
@@ -68,8 +73,12 @@ class RegistrationConfirmation extends Mailable
      */
     public function envelope(): Envelope
     {
+        $subject = ($this->registration instanceof DonationRegistration) 
+            ? 'Donation Confirmed - ' . $this->registration->event->title
+            : 'Registration Confirmed - ' . $this->registration->event->title;
+
         return new Envelope(
-            subject: 'Registration Confirmation - ' . $this->registration->event->title,
+            subject: $subject,
         );
     }
 

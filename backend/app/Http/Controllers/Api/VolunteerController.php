@@ -75,7 +75,6 @@ class VolunteerController extends Controller
                     }
                 },
             ],
-            'required_skill_id' => 'required|exists:required_skills,id',
             'role_description' => 'nullable|string',
             'location' => 'nullable|string|max:255',
             'latitude' => 'nullable|numeric',
@@ -94,7 +93,6 @@ class VolunteerController extends Controller
             ...$request->only([
                 'role_type_id', 
                 'custom_role_name', 
-                'required_skill_id', 
                 'role_description', 
                 'location', 
                 'latitude', 
@@ -166,7 +164,6 @@ class VolunteerController extends Controller
                     }
                 },
             ],
-            'required_skill_id' => 'sometimes|exists:required_skills,id',
             'role_description' => 'nullable|string',
             'location' => 'nullable|string|max:255',
             'latitude' => 'nullable|numeric',
@@ -183,7 +180,6 @@ class VolunteerController extends Controller
         $role->update($request->only([
             'role_type_id',
             'custom_role_name',
-            'required_skill_id',
             'role_description',
             'location',
             'latitude',

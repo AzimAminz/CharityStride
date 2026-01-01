@@ -17,8 +17,6 @@ export async function fetchAllLookupData() {
     console.error("Error fetching lookup data:", error);
     return {
       volunteer_role_types: [],
-      participant_category_types: [],
-      required_skills: [],
       shift_types: [],
     };
   }
@@ -34,34 +32,6 @@ export async function fetchVolunteerRoleTypes() {
     return response.data;
   } catch (error) {
     console.error("Error fetching volunteer role types:", error);
-    return [];
-  }
-}
-
-/**
- * Fetch participant category types
- * @returns {Promise<Array>} Participant category types
- */
-export async function fetchParticipantCategoryTypes() {
-  try {
-    const response = await api.get("/lookups/participant-category-types");
-    return response.data;
-  } catch (error) {
-    console.error("Error fetching participant category types:", error);
-    return [];
-  }
-}
-
-/**
- * Fetch required skills
- * @returns {Promise<Array>} Required skills
- */
-export async function fetchRequiredSkills() {
-  try {
-    const response = await api.get("/lookups/required-skills");
-    return response.data;
-  } catch (error) {
-    console.error("Error fetching required skills:", error);
     return [];
   }
 }

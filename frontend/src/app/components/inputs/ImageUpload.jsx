@@ -127,16 +127,22 @@ export default function ImageUpload({
       <div className="mt-1">
         {currentImage ? (
           // Show uploaded image with proper aspect ratio preview
-          <div className="relative group">
+          <div
+            className="relative group mx-auto"
+            style={{
+              aspectRatio: aspectRatio,
+              maxWidth: aspectRatio < 1 ? "300px" : "100%",
+            }}
+          >
             <img
               src={currentImage}
               alt="Uploaded"
-              className="w-full h-48 object-cover rounded-lg border-2 border-gray-200"
+              className="w-full h-full object-cover rounded-lg border-2 border-gray-200"
               onError={(e) => {
                 console.error("Image failed to load:", currentImage);
               }}
             />
-            <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-40 transition-all rounded-lg flex items-center justify-center">
+            <div className="absolute inset-0 bg-black/50 bg-opacity-0 group-hover:bg-opacity-40 transition-all rounded-lg flex items-center justify-center">
               <button
                 type="button"
                 onClick={handleRemove}
@@ -151,17 +157,33 @@ export default function ImageUpload({
           // Show upload area
           <div
             onClick={() => fileInputRef.current?.click()}
-            className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors cursor-pointer ${
+            className={`border-2 border-dashed rounded-lg p-8 flex flex-col items-center justify-center transition-colors cursor-pointer mx-auto ${
               error
                 ? "border-red-500 bg-red-50"
-                : "border-gray-300 hover:border-emerald-400"
+                : "border-gray-300 hover:border-emerald-400 bg-black/50"
             }`}
+            style={{
+              aspectRatio: aspectRatio,
+              maxWidth: aspectRatio < 1 ? "300px" : "100%",
+            }}
           >
-            <ImageIcon className="h-12 w-12 text-gray-400 mx-auto mb-3" />
-            <p className="text-sm text-gray-600 mb-1">
+            <ImageIcon
+              className={`h-12 w-12 mx-auto mb-3 ${
+                error ? "text-red-400" : "text-gray-200"
+              }`}
+            />
+            <p
+              className={`text-sm mb-1 ${
+                error ? "text-red-600" : "text-gray-300"
+              }`}
+            >
               Click to upload {label.toLowerCase()}
             </p>
-            <p className="text-xs text-gray-500">PNG, JPG, WebP up to 5MB</p>
+            <p
+              className={`text-xs ${error ? "text-red-500" : "text-gray-400"}`}
+            >
+              PNG, JPG, WebP up to 5MB
+            </p>
             <input
               ref={fileInputRef}
               type="file"

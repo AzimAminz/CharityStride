@@ -34,13 +34,15 @@ class UserRegistrationController extends Controller
             ->orderBy('created_at', 'desc')
             ->get();
 
-        // Get payments with full payable relationships
+        // Get payments with full payable relationships (polymorphic)
         $payments = Payment::where('user_id', $userId)
-            ->with([
-                'payable.event.ngo',
-                'payable.participantCategory',
-                'payable.user'
-            ])
+            ->with(['payable' => function ($morphTo) {
+                $morphTo->morphWith([
+                    \App\Models\ParticipantRegistration::class => ['event.ngo', 'participantCategory', 'user'],
+                    \App\Models\VolunteerRegistration::class => ['event.ngo', 'volunteerRole', 'volunteerShift', 'user'],
+                    \App\Models\DonationRegistration::class => ['event.ngo', 'user'],
+                ]);
+            }])
             ->orderBy('created_at', 'desc')
             ->get();
 

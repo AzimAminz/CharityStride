@@ -64,7 +64,7 @@
                     <td>{{ $registration->created_at->format('d M Y, h:i A') }}</td>
                 </tr>
                 <tr>
-                    <th>Participant:</th>
+                    <th>{{ ($registration instanceof \App\Models\DonationRegistration) ? 'Donor:' : 'Participant:' }}</th>
                     <td>{{ $registration->user->name }}</td>
                 </tr>
                 <tr>
@@ -79,6 +79,7 @@
                     <th>Event:</th>
                     <td>{{ $registration->event->title }}</td>
                 </tr>
+                @if(!($registration instanceof \App\Models\DonationRegistration))
                 <tr>
                     <th>Category:</th>
                     <td>{{ $registration->participantCategory->category_name }}</td>
@@ -87,6 +88,7 @@
                     <th>BIB Number:</th>
                     <td>{{ $registration->bib_number }}</td>
                 </tr>
+                @endif
                 <tr>
                     <th>Event Date:</th>
                     <td>{{ $registration->event->start_date->format('d M Y') }}</td>
@@ -103,7 +105,13 @@
                 </thead>
                 <tbody>
                     <tr>
-                        <td>Registration Fee - {{ $registration->participantCategory->category_name }}</td>
+                        <td>
+                            @if($registration instanceof \App\Models\DonationRegistration)
+                                Donation Support - {{ $registration->event->title }}
+                            @else
+                                Registration Fee - {{ $registration->participantCategory->category_name }}
+                            @endif
+                        </td>
                         <td style="text-align: right;">{{ number_format($registration->amount_paid / 100, 2) }}</td>
                     </tr>
                 </tbody>

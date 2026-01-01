@@ -1272,99 +1272,84 @@ function DetailsTab({ event, selectedModule: propSelectedModule }) {
 
           {/* Donation Specific Content */}
           {selectedModule === "donation" && (
-            <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-6">
-              {event.donation_config &&
-              (event.donation_config.accepts_money ||
-                event.donation_config.accepts_items) ? (
-                <>
-                  {/* Money Donations */}
-                  {event.donation_config.accepts_money &&
-                    event.money_donation_options?.length > 0 && (
-                      <div>
-                        <h4 className="font-semibold text-gray-900 mb-4 flex items-center">
-                          <span className="text-2xl mr-2">💰</span>
-                          Money Donation Options
-                        </h4>
-                        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-                          {event.money_donation_options.map((option, idx) => (
-                            <div
-                              key={idx}
-                              className="border border-gray-200 rounded-lg p-5 hover:border-emerald-300 transition-colors bg-gradient-to-br from-emerald-50 to-white"
-                            >
-                              <div className="text-3xl font-bold text-emerald-700 mb-2">
-                                RM{" "}
-                                {(
-                                  (parseInt(option.suggested_amount) || 0) / 100
-                                ).toFixed(2)}
-                              </div>
-                              {option.description && (
-                                <p className="text-sm text-gray-600 mt-2">
-                                  {option.description}
-                                </p>
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                  {/* Item Donations */}
-                  {event.donation_config.accepts_items &&
-                    event.item_donation_options?.length > 0 && (
-                      <div className="mt-6">
-                        <h4 className="font-semibold text-gray-900 mb-4 flex items-center">
-                          <span className="text-2xl mr-2">📦</span>
-                          Item Donation Options
-                        </h4>
-                        <div className="space-y-3">
-                          {event.item_donation_options.map((option, idx) => (
-                            <div
-                              key={idx}
-                              className="border border-gray-200 rounded-lg p-4 hover:border-blue-300 transition-colors bg-gradient-to-r from-blue-50 to-white"
-                            >
-                              <div className="flex justify-between items-start">
-                                <div className="flex-1">
-                                  <div className="flex items-center gap-2 mb-1">
-                                    {option.item_category && (
-                                      <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs rounded-full font-medium">
-                                        {option.item_category}
-                                      </span>
-                                    )}
-                                    <h5 className="font-semibold text-gray-900">
-                                      {option.item_name}
-                                    </h5>
-                                  </div>
-                                  {option.item_description && (
-                                    <p className="text-sm text-gray-600 mt-1">
-                                      {option.item_description}
-                                    </p>
-                                  )}
-                                </div>
-                                {option.target_quantity && (
-                                  <div className="text-right ml-4">
-                                    <div className="text-sm text-gray-500">
-                                      Target
-                                    </div>
-                                    <div className="font-semibold text-gray-900">
-                                      {option.target_quantity}{" "}
-                                      {option.unit || "units"}
-                                    </div>
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                </>
-              ) : (
-                <div className="text-center py-8 bg-gray-50 rounded">
-                  <p className="text-gray-500">
-                    No donation options configured yet.
-                  </p>
+            <div className="space-y-6">
+              {/* Donation Poster */}
+              {event.donation_config?.poster_url && (
+                <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
+                  <div className="relative aspect-[1/1.4] w-full max-w-sm mx-auto">
+                    <Image
+                      src={event.donation_config.poster_url}
+                      alt="Donation Poster"
+                      fill
+                      className="object-contain"
+                    />
+                  </div>
                 </div>
               )}
+
+              {/* Progress & Info */}
+              <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-6 shadow-sm">
+                <div className="text-center space-y-3">
+                  <h4 className="text-gray-500 font-medium uppercase tracking-wider text-xs">
+                    Total Funds Raised
+                  </h4>
+                  <div className="text-3xl font-black text-gray-900">
+                    RM {((event.stats?.total_raised || 0) / 100).toFixed(2)}
+                  </div>
+
+                  {event.donation_config?.has_target && (
+                    <div className="space-y-3 max-w-sm mx-auto pt-1">
+                      <div className="flex justify-between items-end">
+                        <span className="text-gray-600 font-medium text-sm">
+                          Progress
+                        </span>
+                        <span className="text-emerald-600 font-bold text-base">
+                          {Math.min(
+                            100,
+                            Math.round(
+                              ((event.stats?.total_raised || 0) /
+                                (event.donation_config.target_amount || 1)) *
+                                100
+                            )
+                          )}
+                          %
+                        </span>
+                      </div>
+                      <div className="h-3 bg-gray-100 rounded-full overflow-hidden shadow-inner border border-gray-200">
+                        <motion.div
+                          initial={{ width: 0 }}
+                          animate={{
+                            width: `${Math.min(
+                              100,
+                              ((event.stats?.total_raised || 0) /
+                                (event.donation_config.target_amount || 1)) *
+                                100
+                            )}%`,
+                          }}
+                          transition={{ duration: 1.5, ease: "easeOut" }}
+                          className="h-full bg-gradient-to-r from-emerald-500 via-teal-500 to-emerald-600"
+                        />
+                      </div>
+                      <p className="text-gray-500 text-xs text-right">
+                        Target: RM{" "}
+                        {(
+                          (event.donation_config.target_amount || 0) / 100
+                        ).toFixed(2)}
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                <div className="pt-4 border-t border-gray-100 flex flex-col items-center">
+                  <div className="flex items-center gap-2 text-gray-600 text-sm">
+                    <Users className="h-4 w-4 text-emerald-500" />
+                    <span className="font-semibold text-gray-900">
+                      {event.stats?.donations_count || 0}
+                    </span>{" "}
+                    donors have contributed
+                  </div>
+                </div>
+              </div>
             </div>
           )}
 

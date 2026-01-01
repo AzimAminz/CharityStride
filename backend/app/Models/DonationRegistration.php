@@ -13,15 +13,11 @@ class DonationRegistration extends Model
     protected $fillable = [
         'event_id',
         'user_id',
-        'donation_type',
-        'amount_paid', // In CENTS for money
-        'item_name',
-        'quantity',
+        'amount_paid', // In CENTS
     ];
 
     protected $casts = [
         'amount_paid' => 'integer', // Integer cents
-        'quantity' => 'integer',
         'deleted_at' => 'datetime',
     ];
 

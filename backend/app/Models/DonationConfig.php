@@ -11,15 +11,15 @@ class DonationConfig extends Model
 
     protected $fillable = [
         'event_id',
-        'accepts_money',
-        'accepts_items',
+        'accepts_money', // Removed
+        'accepts_items', // Removed
+        'has_target',
         'poster_url',
         'target_amount',
     ];
 
     protected $casts = [
-        'accepts_money' => 'boolean',
-        'accepts_items' => 'boolean',
+        'has_target' => 'boolean',
     ];
 
     // Relationships

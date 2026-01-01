@@ -7,7 +7,6 @@ export default function FeeInput({
   className = "",
   error,
   language = "en",
-  showHelper = true,
   ...props
 }) {
   // Format cents to RM display (2 → "0.02", 200 → "2.00")
@@ -38,13 +37,6 @@ export default function FeeInput({
 
   const displayValue = centsToRMDisplay(value);
 
-  const helperText =
-    showHelper && value && value !== "0"
-      ? language === "ms"
-        ? `${value} = RM ${displayValue}`
-        : `${value} = RM ${displayValue}`
-      : "";
-
   return (
     <div className="w-full">
       <div className="relative">
@@ -68,10 +60,6 @@ export default function FeeInput({
       </div>
 
       {error && <p className="mt-1 text-sm text-red-600">{error}</p>}
-
-      {helperText && !error && (
-        <p className="mt-1 text-xs text-gray-500">{helperText}</p>
-      )}
     </div>
   );
 }

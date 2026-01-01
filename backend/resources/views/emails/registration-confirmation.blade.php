@@ -68,17 +68,17 @@
 </head>
 <body>
     <div class="header">
-        <h1>Registration Confirmed!</h1>
+        <h1>{{ ($registration instanceof \App\Models\DonationRegistration) ? 'Donation Confirmed!' : 'Registration Confirmed!' }}</h1>
         <p>{{ $registration->event->title }}</p>
     </div>
 
     <div class="content">
         <p>Dear {{ $registration->user->name }},</p>
         
-        <p>Thank you for registering! Your registration has been confirmed.</p>
+        <p>Thank you for {{ ($registration instanceof \App\Models\DonationRegistration) ? 'your donation' : 'registering' }}! Your {{ ($registration instanceof \App\Models\DonationRegistration) ? 'contribution' : 'registration' }} has been confirmed.</p>
 
         <div class="info-box">
-            <h3 style="margin-top: 0; color: #10b981;">Registration Details</h3>
+            <h3 style="margin-top: 0; color: #10b981;">{{ ($registration instanceof \App\Models\DonationRegistration) ? 'Donation Details' : 'Registration Details' }}</h3>
             
             @if(isset($registration->bib_number))
             <div class="info-row">
@@ -128,9 +128,11 @@
             @endif
         </div>
 
+        @if(!($registration instanceof \App\Models\DonationRegistration))
         <div style="background: #fef3c7; padding: 15px; border-radius: 8px; margin: 20px 0;">
             <strong>📱 Important:</strong> Please bring your QR code (attached) on event day for check-in.
         </div>
+        @endif
 
         @if($registration->amount_paid > 0)
         <p><strong>Receipt:</strong> Your payment receipt is attached to this email.</p>

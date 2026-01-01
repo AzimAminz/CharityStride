@@ -171,10 +171,9 @@ class PublicEventController extends Controller
                 'sections',
                 'participantCategories.feeTiers',
                 'volunteerRoles' => function($query) {
-                    $query->with(['shifts', 'roleType', 'requiredSkill']);
+                    $query->with(['shifts', 'roleType']);
                 },
-                'donationConfig',
-                'itemDonationOptions'
+                'donationConfig'
             ])
             ->published()
             ->find($id);

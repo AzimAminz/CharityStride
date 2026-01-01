@@ -68,6 +68,7 @@ export default function EditEventPage() {
     message: "",
     type: "info",
   });
+  const [unsavedDonationConfig, setUnsavedDonationConfig] = useState(null);
 
   // Module hooks (initialized with event ID)
   const volunteerModule = useVolunteerModule(id);
@@ -785,7 +786,7 @@ export default function EditEventPage() {
 
                 <ModuleToggle
                   label="Donation Module"
-                  description="Accept money or item donations for your event"
+                  description="Accept monetary donations for your event"
                   checked={formData.has_donation}
                   onChange={(checked) =>
                     handleModuleToggle("has_donation", checked)
@@ -940,7 +941,7 @@ export default function EditEventPage() {
           <div className="space-y-6">
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
               <p className="text-sm text-blue-800">
-                Configure donation options for your event (money and/or items).
+                Configure donation options for your event.
               </p>
             </div>
 
@@ -948,6 +949,7 @@ export default function EditEventPage() {
               <DonationConfigManager
                 config={donationModule.config}
                 onUpdateConfig={donationModule.updateConfig}
+                onConfigChange={setUnsavedDonationConfig}
               />
             </div>
 
@@ -965,14 +967,35 @@ export default function EditEventPage() {
               </button>
               <button
                 type="button"
-                onClick={() => {
-                  if (formData.has_participant)
-                    setActiveTab("participant_config");
-                  else setActiveTab("content");
+                onClick={async () => {
+                  try {
+                    if (unsavedDonationConfig) {
+                      setLoading(true);
+                      await donationModule.updateConfig(unsavedDonationConfig);
+                      setUnsavedDonationConfig(null);
+                    }
+                    if (formData.has_participant)
+                      setActiveTab("participant_config");
+                    else setActiveTab("content");
+                  } catch (err) {
+                    setAlertModal({
+                      isOpen: true,
+                      title: "Error Saving Donation",
+                      message:
+                        err.response?.data?.message ||
+                        "Failed to save donation config",
+                      type: "error",
+                      onClose: () =>
+                        setAlertModal((prev) => ({ ...prev, isOpen: false })),
+                    });
+                  } finally {
+                    setLoading(false);
+                  }
                 }}
-                className="px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-semibold transition-colors"
+                className="px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-semibold transition-colors disabled:opacity-50"
+                disabled={loading}
               >
-                Next →
+                {loading ? "Saving..." : "Next →"}
               </button>
             </div>
           </div>
@@ -1022,7 +1045,7 @@ export default function EditEventPage() {
                 onClick={() => setActiveTab("content")}
                 className="px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-semibold transition-colors"
               >
-                Next: Content →
+                Next →
               </button>
             </div>
           </div>
@@ -1079,6 +1102,12 @@ export default function EditEventPage() {
                     // Save changes first
                     setLoading(true);
                     try {
+                      // Save donation config if there are unsaved changes
+                      if (unsavedDonationConfig) {
+                        await donationModule.updateConfig(
+                          unsavedDonationConfig
+                        );
+                      }
                       await updateEvent(id, formData);
                       router.push("/ngo/events");
                     } catch (err) {

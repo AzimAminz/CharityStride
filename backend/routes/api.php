@@ -20,8 +20,6 @@ use App\Http\Controllers\Api\RegistrationStatusController;
 Route::prefix('lookups')->group(function() {
     Route::get('/all', [LookupDataController::class, 'all']);
     Route::get('/volunteer-role-types', [LookupDataController::class, 'volunteerRoleTypes']);
-    Route::get('/participant-category-types', [LookupDataController::class, 'participantCategoryTypes']);
-    Route::get('/required-skills', [LookupDataController::class, 'requiredSkills']);
     Route::get('/shift-types', [LookupDataController::class, 'shiftTypes']);
 });
 

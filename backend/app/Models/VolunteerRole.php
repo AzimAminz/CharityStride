@@ -13,7 +13,6 @@ class VolunteerRole extends Model
         'event_id',
         'role_type_id',
         'custom_role_name',
-        'required_skill_id',
         'role_description',
         'location',
         'latitude',
@@ -38,11 +37,6 @@ class VolunteerRole extends Model
     public function roleType()
     {
         return $this->belongsTo(VolunteerRoleType::class, 'role_type_id');
-    }
-
-    public function requiredSkill()
-    {
-        return $this->belongsTo(RequiredSkill::class);
     }
 
     public function shifts()
