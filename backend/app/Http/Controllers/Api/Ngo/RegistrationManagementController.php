@@ -135,15 +135,23 @@ class RegistrationManagementController extends Controller
     /**
      * Check-in by QR code
      */
-    public function checkInByQr(Request $request, $eventId)
+        public function checkInByQr(Request $request, $eventId)
     {
         $request->validate([
             'qr_code' => 'required|string',
             'type' => 'required|in:participant,volunteer',
         ]);
 
+        // Get NGO ID
+        $user = Auth::user();
+        $ngoId = $user->ngo_id ?? \App\Models\Ngo::where('user_id', $user->id)->value('id');
+        
+        if (!$ngoId) {
+            return response()->json(['message' => 'User is not associated with an NGO'], 403);
+        }
+
         // Verify event belongs to NGO
-        Event::where('ngo_id', Auth::user()->ngo_id)->findOrFail($eventId);
+        Event::where('ngo_id', $ngoId)->findOrFail($eventId);
 
         if ($request->type === 'participant') {
             $registration = ParticipantRegistration::where('qr_code', $request->qr_code)

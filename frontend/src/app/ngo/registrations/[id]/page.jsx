@@ -547,12 +547,9 @@ const EventRegistrationsPage = () => {
                             <div>
                               <p className="text-gray-500 text-xs mb-1">Role</p>
                               <p className="font-medium text-gray-900">
-                                {volunteer.volunteer_role?.role_type
-                                  ?.name_en === "Other"
-                                  ? volunteer.volunteer_role
-                                      ?.custom_role_name || "N/A"
-                                  : volunteer.volunteer_role?.role_type
-                                      ?.name_en || "N/A"}
+                                {volunteer.volunteer_role?.role_type?.name_en === "Other"
+                                  ? volunteer.volunteer_role?.custom_role_name || "N/A"
+                                  : volunteer.volunteer_role?.role_type?.name_en || "N/A"}
                               </p>
                             </div>
                             <div>
@@ -587,7 +584,17 @@ const EventRegistrationsPage = () => {
                         </div>
 
                         {/* Details Button */}
-                        <button className="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition-colors flex items-center gap-2 whitespace-nowrap">
+                        <button
+                          onClick={() => {
+                            setScannedData({
+                              type: "volunteer",
+                              registration: volunteer,
+                              event: event
+                            });
+                            setShowConfirmModal(true);
+                          }}
+                          className="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition-colors flex items-center gap-2 whitespace-nowrap"
+                        >
                           <QrCode className="h-4 w-4" />
                           Details
                         </button>
