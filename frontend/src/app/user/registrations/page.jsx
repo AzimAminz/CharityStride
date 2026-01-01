@@ -291,6 +291,135 @@ const RegistrationsPage = () => {
                 </>
               )}
 
+              {/* Volunteer Tab */}
+              {activeTab === "volunteer" && (
+                <>
+                  {data.volunteer_registrations?.length === 0 ? (
+                    <div className="bg-white rounded-xl p-12 text-center border border-gray-200">
+                      <UserCheck className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+                      <h3 className="text-xl font-semibold text-gray-900 mb-2">
+                        No Volunteer Registrations
+                      </h3>
+                      <p className="text-gray-600">
+                        You haven't registered as a volunteer yet.
+                      </p>
+                    </div>
+                  ) : (
+                    data.volunteer_registrations?.map((reg) => (
+                      <div
+                        key={reg.id}
+                        className="bg-white rounded-xl p-6 shadow-sm border border-gray-200 hover:shadow-md transition-shadow"
+                      >
+                        <div className="flex items-start justify-between mb-4">
+                          <div>
+                            <h3 className="text-xl font-bold text-gray-900 mb-1">
+                              {reg.event?.title || "Event"}
+                            </h3>
+                            <p className="text-sm text-gray-600">
+                              {reg.volunteer_role?.custom_role_name ||
+                                "Volunteer"}
+                            </p>
+                          </div>
+                          <span
+                            className={`px-3 py-1 rounded-full text-xs font-medium ${
+                              reg.attendance_status === "checked_in"
+                                ? "bg-green-100 text-green-700"
+                                : reg.status === "approved"
+                                ? "bg-blue-100 text-blue-700"
+                                : reg.status === "pending"
+                                ? "bg-yellow-100 text-yellow-700"
+                                : "bg-gray-100 text-gray-700"
+                            }`}
+                          >
+                            {reg.status === "approved" ? (
+                              <CheckCircle2 className="inline h-3 w-3 mr-1" />
+                            ) : (
+                              <Clock className="inline h-3 w-3 mr-1" />
+                            )}
+                            {reg.status?.toUpperCase()}
+                          </span>
+                        </div>
+
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+                          <div>
+                            <p className="text-xs text-gray-500 mb-1">
+                              Shift Date
+                            </p>
+                            <p className="font-semibold text-gray-900">
+                              {reg.volunteer_shift?.shift_date
+                                ? new Date(
+                                    reg.volunteer_shift.shift_date
+                                  ).toLocaleDateString("en-GB", {
+                                    day: "numeric",
+                                    month: "long",
+                                    year: "numeric",
+                                  })
+                                : "TBA"}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-xs text-gray-500 mb-1">
+                              Shift Time
+                            </p>
+                            <p className="font-semibold text-gray-900">
+                              {reg.volunteer_shift?.start_time && reg.volunteer_shift?.end_time ? `${new Date("2000-01-01 " + reg.volunteer_shift.start_time).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true })} - ${new Date("2000-01-01 " + reg.volunteer_shift.end_time).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true })}` : "TBA"}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-xs text-gray-500 mb-1">
+                              Event Date
+                            </p>
+                            <p className="font-semibold text-gray-900">
+                              {new Date(reg.event?.start_date).toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "2-digit" })}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-xs text-gray-500 mb-1">
+                              Attendance
+                            </p>
+                            <p className="font-semibold text-gray-900">
+                              {reg.attendance_status === "checked_in" ? (
+                                <span className="text-green-600">
+                                  ✓ Checked In
+                                </span>
+                              ) : (
+                                <span className="text-gray-600">Pending</span>
+                              )}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="flex flex-wrap gap-3">
+                          <button
+                            onClick={() =>
+                              reg.qr_code &&
+                              setSelectedQR({
+                                qr_code: reg.qr_code,
+                                event_title: reg.event?.title,
+                                role: reg.volunteer_role?.custom_role_name,
+                                shift: `${reg.volunteer_shift?.shift_date} ${reg.volunteer_shift?.start_time}`,
+                              })
+                            }
+                            disabled={!reg.qr_code || reg.status !== "approved"}
+                            className="px-4 py-2 bg-emerald-50 text-emerald-700 rounded-lg hover:bg-emerald-100 transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            <QrCode className="h-4 w-4" />
+                            View QR Code
+                          </button>
+                          <a
+                            href={`/events/${reg.event_id}`}
+                            className="px-4 py-2 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition-colors flex items-center gap-2"
+                          >
+                            <Calendar className="h-4 w-4" />
+                            Event Details
+                          </a>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </>
+              )}
+
               {/* Payments Tab */}
               {activeTab === "payments" && (
                 <>
@@ -406,7 +535,11 @@ const RegistrationsPage = () => {
                 {selectedQR.event_title}
               </h3>
               <p className="text-gray-600 mb-6">
-                {selectedQR.category} • BIB: {selectedQR.bib_number}
+                {selectedQR.bib_number
+                  ? `${selectedQR.category} • BIB: ${selectedQR.bib_number}`
+                  : selectedQR.role
+                  ? `${selectedQR.role} • ${selectedQR.shift}`
+                  : selectedQR.category || "Registration"}
               </p>
 
               <div className="bg-white p-6 rounded-xl border-4 border-emerald-500 inline-block mb-6">

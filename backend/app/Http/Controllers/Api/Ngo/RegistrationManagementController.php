@@ -70,6 +70,67 @@ class RegistrationManagementController extends Controller
             return response()->json(['message' => 'Error fetching registrations: ' . $e->getMessage()], 500);
         }
     }
+    /**
+     * Verify QR code and return registration details without checking in
+     * QR codes are unique, so we search across all NGO events
+     */
+    public function verifyQR(Request $request)
+    {
+        $request->validate([
+            'qr_code' => 'required|string',
+        ]);
+
+        try {
+            // Get NGO ID
+            $user = Auth::user();
+            $ngoId = $user->ngo_id ?? \App\Models\Ngo::where('user_id', $user->id)->value('id');
+            
+            if (!$ngoId) {
+                return response()->json(['message' => 'User is not associated with an NGO'], 403);
+            }
+
+            // Search in participant registrations across all NGO events
+            $participant = ParticipantRegistration::where('qr_code', $request->qr_code)
+                ->whereHas('event', function($query) use ($ngoId) {
+                    $query->where('ngo_id', $ngoId);
+                })
+                ->with(['user', 'participantCategory', 'payments', 'event'])
+                ->first();
+
+            if ($participant) {
+                return response()->json([
+                    'type' => 'participant',
+                    'registration' => $participant,
+                    'event' => $participant->event,
+                    'message' => 'Participant found'
+                ]);
+            }
+
+            // Search in volunteer registrations across all NGO events
+            $volunteer = VolunteerRegistration::where('qr_code', $request->qr_code)
+                ->whereHas('event', function($query) use ($ngoId) {
+                    $query->where('ngo_id', $ngoId);
+                })
+                ->with(['user', 'volunteerRole', 'volunteerShift', 'payments', 'event'])
+                ->first();
+
+            if ($volunteer) {
+                return response()->json([
+                    'type' => 'volunteer',
+                    'registration' => $volunteer,
+                    'event' => $volunteer->event,
+                    'message' => 'Volunteer found'
+                ]);
+            }
+
+            return response()->json(['message' => 'QR code not found or does not belong to your NGO'], 404);
+
+        } catch (\Exception $e) {
+            \Log::error('QR verification error: ' . $e->getMessage());
+            return response()->json(['message' => 'Verification failed'], 500);
+        }
+    }
+
 
     /**
      * Check-in by QR code

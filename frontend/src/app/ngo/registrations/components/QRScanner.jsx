@@ -17,20 +17,35 @@ export default function QRScanner({
   const fileInputRef = useRef(null);
 
   useEffect(() => {
+    let timer;
     if (isOpen && activeTab === "camera") {
-      // Small delay to ensure DOM is ready
-      setTimeout(() => {
+      // Reset processing state when opening
+      setProcessing(false);
+
+      // Increased delay to ensure DOM is ready when reopening modal
+      timer = setTimeout(() => {
         startCameraScanner();
-      }, 100);
+      }, 500);
+    } else {
+      // Reset processing when closing
+      setProcessing(false);
     }
 
     return () => {
+      if (timer) clearTimeout(timer);
       stopCameraScanner();
     };
   }, [isOpen, activeTab]);
 
   const startCameraScanner = async () => {
     if (scannerRef.current) return;
+
+    // Check if DOM element exists
+    const element = document.getElementById("qr-reader");
+    if (!element) {
+      console.error("QR reader element not found in DOM");
+      return;
+    }
 
     try {
       // Request camera permission first
@@ -74,6 +89,7 @@ export default function QRScanner({
       scannerRef.current.clear();
       scannerRef.current = null;
       setScanning(false);
+      setProcessing(false);
     }
   };
 

@@ -92,6 +92,16 @@ export default function CheckInConfirmationModal({
               </div>
             )}
 
+            {user?.ic_number && (
+              <div className="flex items-center gap-3">
+                <User className="h-5 w-5 text-gray-400" />
+                <div>
+                  <p className="text-sm text-gray-500">IC Number</p>
+                  <p className="font-medium text-gray-900">{user?.ic_number}</p>
+                </div>
+              </div>
+            )}
+
             {/* Type-specific details */}
             {type === "participant" && data.participantCategory && (
               <div className="flex items-center gap-3">
@@ -136,6 +146,28 @@ export default function CheckInConfirmationModal({
                 <div>
                   <p className="text-sm text-gray-500">BIB Number</p>
                   <p className="font-medium text-gray-900">{data.bib_number}</p>
+                </div>
+              </div>
+            )}
+
+            {data.tshirt_size && (
+              <div className="flex items-center gap-3">
+                <User className="h-5 w-5 text-gray-400" />
+                <div>
+                  <p className="text-sm text-gray-500">T-Shirt Size</p>
+                  <p className="font-medium text-gray-900">
+                    {data.tshirt_size}
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {data.message && (
+              <div className="flex items-start gap-3">
+                <Mail className="h-5 w-5 text-gray-400 mt-1" />
+                <div className="flex-1">
+                  <p className="text-sm text-gray-500">Message</p>
+                  <p className="font-medium text-gray-900">{data.message}</p>
                 </div>
               </div>
             )}

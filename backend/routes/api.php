@@ -130,6 +130,7 @@ Route::middleware(['auth:sanctum', 'role:user,ngo'])->prefix('ngo')->group(funct
         Route::delete('events/{eventId}/participant/tiers/{tierId}', [ParticipantController::class, 'deleteTier']);
         
         // Registration Management Routes
+        Route::post('verify-qr', [\App\Http\Controllers\Api\Ngo\RegistrationManagementController::class, 'verifyQR']);
         Route::post('events/{eventId}/check-in', [\App\Http\Controllers\Api\Ngo\RegistrationManagementController::class, 'checkInByQr']);
         Route::post('events/{eventId}/collect-tshirt', [\App\Http\Controllers\Api\Ngo\RegistrationManagementController::class, 'collectTshirt']);
         Route::post('events/{eventId}/registrations/{registrationId}/verify', [\App\Http\Controllers\Api\Ngo\RegistrationManagementController::class, 'manualVerify']);

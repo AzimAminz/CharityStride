@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import Echo from "../../lib/echo";
 import Layout from "@/app/components/Layout";
 import QRScanner from "./components/QRScanner";
+import CheckInConfirmationModal from "./components/CheckInConfirmationModal";
 import { api } from "../../lib/api";
 import {
   Calendar,
@@ -30,6 +31,8 @@ const NGORegistrationsPage = () => {
   // QR Scanner state
   const [showScanner, setShowScanner] = useState(false);
   const [toast, setToast] = useState(null);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [scannedData, setScannedData] = useState(null);
 
   useEffect(() => {
     const fetchEvents = async () => {
@@ -108,16 +111,49 @@ const NGORegistrationsPage = () => {
   // QR Scanner handlers
   const handleScanSuccess = async (qrCode) => {
     try {
-      const response = await api.post("/ngo/registrations/check-in", {
+      // Call verifyQR to get registration details (auto-detects event)
+      const response = await api.post("/ngo/verify-qr", {
         qr_code: qrCode,
       });
 
+      // Store scanned data and show confirmation modal
+      setScannedData({
+        qr_code: qrCode,
+        type: response.data.type,
+        registration: response.data.registration,
+        event: response.data.event,
+      });
+      setShowConfirmModal(true);
+      setShowScanner(false);
+    } catch (error) {
+      setToast({
+        type: "error",
+        message:
+          error.response?.data?.message ||
+          "Failed to verify QR code. Please try again.",
+      });
+    }
+  };
+
+  const handleConfirmCheckIn = async () => {
+    if (!scannedData) return;
+
+    try {
+      const response = await api.post(
+        `/ngo/events/${scannedData.event.id}/check-in`,
+        {
+          qr_code: scannedData.qr_code,
+          type: scannedData.type,
+        }
+      );
+
       setToast({
         type: "success",
-        message: `Successfully checked in: ${response.data.registration.user.name}`,
+        message: `Successfully checked in: ${scannedData.registration.user.name}`,
       });
 
-      setShowScanner(false);
+      setShowConfirmModal(false);
+      setScannedData(null);
 
       // Refresh events to update stats
       const eventsResponse = await getEvents({ user_id: "me" });
@@ -486,6 +522,23 @@ const NGORegistrationsPage = () => {
               </button>
             </div>
           </div>
+        )}
+
+        {/* Check-in Confirmation Modal */}
+        {showConfirmModal && scannedData && (
+          <CheckInConfirmationModal
+            isOpen={showConfirmModal}
+            onClose={() => {
+              setShowConfirmModal(false);
+              setScannedData(null);
+            }}
+            onConfirm={handleConfirmCheckIn}
+            registration={{
+              type: scannedData.type,
+              data: scannedData.registration,
+              event: scannedData.event,
+            }}
+          />
         )}
       </div>
     </Layout>
