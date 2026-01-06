@@ -1,12 +1,14 @@
-import React from 'react';
-import Layout from '../components/Layout';
+"use client";
 
-const page = () => {
-    return (
-        <Layout>
-            
-        </Layout>
-    );
-};
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 
-export default page;
+export default function UserRootPage() {
+  const router = useRouter();
+
+  useEffect(() => {
+    router.replace("/user/dashboard");
+  }, [router]);
+
+  return null;
+}

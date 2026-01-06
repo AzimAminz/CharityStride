@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import Echo from "../../lib/echo";
 import Layout from "@/app/components/Layout";
 import QRScanner from "./components/QRScanner";
@@ -21,9 +22,12 @@ import {
 import { getEvents } from "../../lib/events";
 
 const NGORegistrationsPage = () => {
+  const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [sortBy, setSortBy] = useState("date-desc");
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 6;
 
   const [loading, setLoading] = useState(true);
   const [publishedEvents, setPublishedEvents] = useState([]);
@@ -43,7 +47,7 @@ const NGORegistrationsPage = () => {
         console.log("Fetched events for NGO:", events);
         if (Array.isArray(events)) {
           const published = events.filter(
-            (e) => e.is_published || e.status === "open" || e.is_published === 1
+            (e) => e.is_published === true || e.is_published === 1
           );
           console.log("Filtered published events:", published);
           setPublishedEvents(published);
@@ -181,6 +185,11 @@ const NGORegistrationsPage = () => {
     });
   };
 
+  // Reset to page 1 when search or sort changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, sortBy]);
+
   // Filter events by search
   const filteredEvents = publishedEvents.filter(
     (event) =>
@@ -211,11 +220,26 @@ const NGORegistrationsPage = () => {
     }
   });
 
-  const totalRegistrations = publishedEvents.reduce(
-    (sum, event) =>
-      sum + (event.stats?.participants || 0) + (event.stats?.volunteers || 0),
-    0
-  );
+  // Calculate pagination
+  const totalPages = Math.ceil(sortedEvents.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedEvents = sortedEvents.slice(startIndex, endIndex);
+
+  if (loading) {
+    return (
+      <Layout>
+        <div className="min-h-[60vh] flex items-center justify-center">
+          <div className="flex flex-col items-center gap-4">
+            <div className="w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+            <p className="text-gray-500 animate-pulse">
+              Loading registrations...
+            </p>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
 
   return (
     <Layout>
@@ -309,7 +333,8 @@ const NGORegistrationsPage = () => {
 
         {/* Results Count */}
         <div className="mb-4 text-sm text-gray-600">
-          Showing {sortedEvents.length} event
+          Showing {startIndex + 1}-{Math.min(endIndex, sortedEvents.length)} of{" "}
+          {sortedEvents.length} event
           {sortedEvents.length !== 1 ? "s" : ""}
         </div>
 
@@ -341,7 +366,7 @@ const NGORegistrationsPage = () => {
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 p-6">
-              {sortedEvents.map((event) => {
+              {paginatedEvents.map((event) => {
                 return (
                   <a
                     key={event.id}
@@ -462,6 +487,47 @@ const NGORegistrationsPage = () => {
             </div>
           )}
         </div>
+
+        {/* Pagination Controls */}
+        {sortedEvents.length > itemsPerPage && (
+          <div className="mt-6 flex items-center justify-center gap-2">
+            <button
+              onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+              disabled={currentPage === 1}
+              className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              Previous
+            </button>
+
+            <div className="flex items-center gap-1">
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map(
+                (page) => (
+                  <button
+                    key={page}
+                    onClick={() => setCurrentPage(page)}
+                    className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                      currentPage === page
+                        ? "bg-emerald-600 text-white"
+                        : "text-gray-700 hover:bg-gray-100"
+                    }`}
+                  >
+                    {page}
+                  </button>
+                )
+              )}
+            </div>
+
+            <button
+              onClick={() =>
+                setCurrentPage((prev) => Math.min(totalPages, prev + 1))
+              }
+              disabled={currentPage === totalPages}
+              className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              Next
+            </button>
+          </div>
+        )}
 
         {/* Info Card */}
         <div className="mt-6 bg-blue-50 border border-blue-200 rounded-lg p-4">

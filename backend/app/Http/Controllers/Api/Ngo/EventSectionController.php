@@ -19,6 +19,10 @@ class EventSectionController extends Controller
             return response()->json(['message' => 'Event not found'], 404);
         }
 
+        if (!$event->isEditable()) {
+            return response()->json(['message' => 'Published events cannot be edited.'], 403);
+        }
+
         $validator = Validator::make($request->all(), [
             'title' => 'required|string|max:255',
             'content' => [

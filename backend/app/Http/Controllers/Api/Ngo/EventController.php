@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\Ngo;
 
 use App\Http\Controllers\Controller;
 use App\Models\Event;
+use App\Models\EventUnpublishRequest;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 
@@ -23,19 +24,47 @@ class EventController extends Controller
         }
 
         $query = Event::where('ngo_id', $ngo->id)
-            ->with(['sections']);
+            ->with(['sections', 'unpublishRequests' => function($q) {
+                $q->where('status', 'pending');
+            }]);
 
-        // Filter by published status
-        if ($request->has('is_published')) {
-            $query->where('is_published', $request->is_published);
+        // Search
+        if ($request->has('search') && !empty($request->search)) {
+            $search = $request->search;
+            $query->where(function($q) use ($search) {
+                $q->where('title', 'like', "%{$search}%")
+                  ->orWhere('description', 'like', "%{$search}%");
+            });
         }
 
-        // Filter by status
-        if ($request->has('status')) {
-            $query->where('status', $request->status);
+        // Filter by trashed status (Soft Delete)
+        if ($request->has('trashed') && $request->trashed == 1) {
+            $query->onlyTrashed();
+        } else {
+            // Filter by published status
+            if ($request->has('is_published')) {
+                $query->where('is_published', $request->is_published);
+            }
+
+            // Filter by status
+            if ($request->has('status')) {
+                $query->where('status', $request->status);
+            }
         }
 
-        $events = $query->orderBy('created_at', 'desc')->paginate(10);
+        // Sorting
+        $sortBy = $request->get('sort_by', 'created_at');
+        $sortOrder = $request->get('sort_order', 'desc');
+        
+        $allowedSortFields = ['created_at', 'updated_at', 'start_date', 'title', 'status'];
+        if (in_array($sortBy, $allowedSortFields)) {
+            $query->orderBy($sortBy, $sortOrder);
+        } else {
+            $query->orderBy('created_at', 'desc');
+        }
+
+        $perPage = $request->get('per_page', 10);
+        $events = $query->paginate($perPage);
 
         return response()->json($events);
     }
@@ -165,6 +194,12 @@ class EventController extends Controller
             return response()->json([
                 'message' => 'Event not found'
             ], 404);
+        }
+
+        if ($event->is_published) {
+            return response()->json([
+                'message' => 'Published events cannot be edited directly. Please request unpublish if changes are needed.'
+            ], 403);
         }
 
         $validator = Validator::make($request->all(), [
@@ -307,7 +342,7 @@ class EventController extends Controller
     }
 
     /**
-     * Unpublish event
+     * Unpublish event (Request to Admin)
      */
     public function unpublish(Request $request, $id)
     {
@@ -335,12 +370,75 @@ class EventController extends Controller
             ], 400);
         }
 
-        $event->is_published = false;
-        $event->save();
+        $validator = Validator::make($request->all(), [
+            'reason' => 'required|string|min:10',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'message' => 'Validation failed',
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        // Check if there is already a pending request
+        $existingRequest = EventUnpublishRequest::where('event_id', $event->id)
+            ->where('status', 'pending')
+            ->first();
+
+        if ($existingRequest) {
+            return response()->json([
+                'message' => 'A request to unpublish this event is already pending admin approval.'
+            ], 400);
+        }
+
+        EventUnpublishRequest::create([
+            'event_id' => $event->id,
+            'reason' => $request->reason,
+            'status' => 'pending',
+        ]);
 
         return response()->json([
-            'message' => 'Event unpublished successfully',
-            'event' => $event
+            'message' => 'Unpublish request submitted. Admin will review your request.',
         ]);
+    }
+    /**
+     * Restore trashed event
+     */
+    public function restore(Request $request, $id)
+    {
+        $ngo = $request->user()->ngo;
+        if (!$ngo) return response()->json(['message' => 'NGO profile not found'], 404);
+
+        $event = Event::onlyTrashed()
+            ->where('id', $id)
+            ->where('ngo_id', $ngo->id)
+            ->first();
+
+        if (!$event) return response()->json(['message' => 'Event not found in trash'], 404);
+
+        $event->restore();
+
+        return response()->json(['message' => 'Event restored successfully']);
+    }
+
+    /**
+     * Permanently delete event
+     */
+    public function forceDelete(Request $request, $id)
+    {
+        $ngo = $request->user()->ngo;
+        if (!$ngo) return response()->json(['message' => 'NGO profile not found'], 404);
+
+        $event = Event::withTrashed()
+            ->where('id', $id)
+            ->where('ngo_id', $ngo->id)
+            ->first();
+
+        if (!$event) return response()->json(['message' => 'Event not found'], 404);
+
+        $event->forceDelete();
+
+        return response()->json(['message' => 'Event permanently deleted']);
     }
 }

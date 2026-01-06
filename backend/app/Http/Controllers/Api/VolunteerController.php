@@ -210,7 +210,7 @@ class VolunteerController extends Controller
             'shift_date' => 'required|date',
             'shift_type_id' => 'required|exists:shift_types,id',
             'start_time' => 'required|date_format:H:i',
-            'end_time' => 'required|date_format:H:i|after:start_time',
+            'end_time' => 'required|date_format:H:i',
             'capacity' => 'required|integer|min:1',
         ]);
 

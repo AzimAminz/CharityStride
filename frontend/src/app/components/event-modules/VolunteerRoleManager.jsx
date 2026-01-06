@@ -25,14 +25,15 @@ import ConfirmModal from "../ConfirmModal";
 import FormModal from "../FormModal";
 
 /**
- * Format date from YYYY-MM-DD or ISO datetime to DD/MM/YYYY
+ * Format date from YYYY-MM-DD or ISO datetime to dd/mm/yy
  */
 const formatDate = (dateString) => {
   if (!dateString) return "";
   // Extract date portion if it's a datetime string (e.g., "2025-12-18T00:00:00.000000Z")
   const datePart = dateString.split("T")[0];
   const [year, month, day] = datePart.split("-");
-  return `${day}/${month}/${year}`;
+  const shortYear = year.slice(-2); // Get last 2 digits of year
+  return `${day}/${month}/${shortYear}`;
 };
 
 /**
@@ -45,6 +46,23 @@ const formatTime = (timeString) => {
   const ampm = hour >= 12 ? "PM" : "AM";
   const hour12 = hour % 12 || 12;
   return `${hour12}:${minutes} ${ampm}`;
+};
+
+/**
+ * Calculate end time based on start time and duration hours
+ */
+const calculateEndTime = (startTime, durationHours) => {
+  if (!startTime || !durationHours) return "";
+
+  const [hours, minutes] = startTime.split(":").map(Number);
+  const totalMinutes = hours * 60 + minutes + durationHours * 60;
+  const endHours = Math.floor(totalMinutes / 60) % 24;
+  const endMinutes = totalMinutes % 60;
+
+  return `${String(endHours).padStart(2, "0")}:${String(endMinutes).padStart(
+    2,
+    "0"
+  )}`;
 };
 
 /**
@@ -328,17 +346,6 @@ export default function VolunteerRoleManager({
     if (!shiftForm.end_time) {
       errors.end_time =
         language === "ms" ? "Masa tamat diperlukan" : "End time is required";
-    }
-
-    if (
-      shiftForm.start_time &&
-      shiftForm.end_time &&
-      shiftForm.start_time >= shiftForm.end_time
-    ) {
-      errors.end_time =
-        language === "ms"
-          ? "Masa tamat mesti selepas masa mula"
-          : "End time must be after start time";
     }
 
     if (!shiftForm.capacity || shiftForm.capacity < 1) {
@@ -1068,10 +1075,29 @@ export default function VolunteerRoleManager({
                     <select
                       value={shiftForm.shift_type_id}
                       onChange={(e) => {
+                        const selectedTypeId = e.target.value;
+                        const selectedType = shiftTypes.find(
+                          (t) => t.id == selectedTypeId
+                        );
+
+                        // Auto-calculate end time if Full Day or Half Day
+                        let newEndTime = shiftForm.end_time;
+                        if (
+                          selectedType?.duration_hours &&
+                          shiftForm.start_time
+                        ) {
+                          newEndTime = calculateEndTime(
+                            shiftForm.start_time,
+                            parseFloat(selectedType.duration_hours)
+                          );
+                        }
+
                         setShiftForm({
                           ...shiftForm,
-                          shift_type_id: e.target.value,
+                          shift_type_id: selectedTypeId,
+                          end_time: newEndTime,
                         });
+
                         if (shiftErrors.shift_type_id) {
                           setShiftErrors((prev) => ({
                             ...prev,
@@ -1114,9 +1140,24 @@ export default function VolunteerRoleManager({
                       type="time"
                       value={shiftForm.start_time}
                       onChange={(e) => {
+                        const newStartTime = e.target.value;
+                        const selectedType = shiftTypes.find(
+                          (t) => t.id == shiftForm.shift_type_id
+                        );
+
+                        // Auto-calculate end time if Full Day or Half Day
+                        let newEndTime = shiftForm.end_time;
+                        if (selectedType?.duration_hours) {
+                          newEndTime = calculateEndTime(
+                            newStartTime,
+                            parseFloat(selectedType.duration_hours)
+                          );
+                        }
+
                         setShiftForm({
                           ...shiftForm,
-                          start_time: e.target.value,
+                          start_time: newStartTime,
+                          end_time: newEndTime,
                         });
                         if (shiftErrors.start_time) {
                           setShiftErrors((prev) => ({
@@ -1157,7 +1198,11 @@ export default function VolunteerRoleManager({
                           }));
                         }
                       }}
-                      className={`w-full px-2 py-1 text-sm border rounded focus:ring-2 focus:ring-emerald-500 ${
+                      disabled={
+                        shiftTypes.find((t) => t.id == shiftForm.shift_type_id)
+                          ?.duration_hours
+                      }
+                      className={`w-full px-2 py-1 text-sm border rounded focus:ring-2 focus:ring-emerald-500 disabled:bg-gray-100 disabled:cursor-not-allowed ${
                         shiftErrors.end_time
                           ? "border-red-500"
                           : "border-gray-300"
@@ -1261,9 +1306,27 @@ export default function VolunteerRoleManager({
                         <select
                           value={shiftForm.shift_type_id}
                           onChange={(e) => {
+                            const selectedTypeId = e.target.value;
+                            const selectedType = shiftTypes.find(
+                              (t) => t.id == selectedTypeId
+                            );
+
+                            // Auto-calculate end time if Full Day or Half Day
+                            let newEndTime = shiftForm.end_time;
+                            if (
+                              selectedType?.duration_hours &&
+                              shiftForm.start_time
+                            ) {
+                              newEndTime = calculateEndTime(
+                                shiftForm.start_time,
+                                parseFloat(selectedType.duration_hours)
+                              );
+                            }
+
                             setShiftForm({
                               ...shiftForm,
-                              shift_type_id: e.target.value,
+                              shift_type_id: selectedTypeId,
+                              end_time: newEndTime,
                             });
                             if (shiftErrors.shift_type_id) {
                               setShiftErrors((prev) => ({
@@ -1304,9 +1367,24 @@ export default function VolunteerRoleManager({
                           type="time"
                           value={shiftForm.start_time}
                           onChange={(e) => {
+                            const newStartTime = e.target.value;
+                            const selectedType = shiftTypes.find(
+                              (t) => t.id == shiftForm.shift_type_id
+                            );
+
+                            // Auto-calculate end time if Full Day or Half Day
+                            let newEndTime = shiftForm.end_time;
+                            if (selectedType?.duration_hours) {
+                              newEndTime = calculateEndTime(
+                                newStartTime,
+                                parseFloat(selectedType.duration_hours)
+                              );
+                            }
+
                             setShiftForm({
                               ...shiftForm,
-                              start_time: e.target.value,
+                              start_time: newStartTime,
+                              end_time: newEndTime,
                             });
                             if (shiftErrors.start_time) {
                               setShiftErrors((prev) => ({
@@ -1347,7 +1425,12 @@ export default function VolunteerRoleManager({
                               }));
                             }
                           }}
-                          className={`w-full px-2 py-1 text-sm border rounded focus:ring-2 focus:ring-emerald-500 ${
+                          disabled={
+                            shiftTypes.find(
+                              (t) => t.id == shiftForm.shift_type_id
+                            )?.duration_hours
+                          }
+                          className={`w-full px-2 py-1 text-sm border rounded focus:ring-2 focus:ring-emerald-500 disabled:bg-gray-100 disabled:cursor-not-allowed ${
                             shiftErrors.end_time
                               ? "border-red-500"
                               : "border-gray-300"
@@ -1434,7 +1517,9 @@ export default function VolunteerRoleManager({
                         onClick={() => {
                           setEditingShift(shift);
                           setShiftForm({
-                            shift_date: shift.shift_date,
+                            shift_date:
+                              shift.shift_date?.split("T")[0] ||
+                              shift.shift_date,
                             shift_type_id: shift.shift_type_id,
                             start_time: shift.start_time,
                             end_time: shift.end_time,

@@ -50,14 +50,26 @@ export const publishEvent = async (id) => {
 };
 
 // Unpublish event
-export const unpublishEvent = async (id) => {
-  const res = await api.post(`/ngo/events/${id}/unpublish`);
+export const unpublishEvent = async (id, data) => {
+  const res = await api.post(`/ngo/events/${id}/unpublish`, data);
   return res.data;
 };
 
 // Duplicate event
 export const duplicateEvent = async (id) => {
   const res = await api.post(`/ngo/events/${id}/duplicate`);
+  return res.data;
+};
+
+// Restore event
+export const restoreEvent = async (id) => {
+  const res = await api.post(`/ngo/events/${id}/restore`);
+  return res.data;
+};
+
+// Permanently delete event
+export const forceDeleteEvent = async (id) => {
+  const res = await api.delete(`/ngo/events/${id}/force-delete`);
   return res.data;
 };
 

@@ -30,6 +30,7 @@ class Event extends Model
         'has_volunteer',
         'has_donation',
         'has_participant',
+        'status',
     ];
 
     protected $appends = ['stats', 'location'];
@@ -148,6 +149,11 @@ class Event extends Model
         return $this->hasMany(Review::class);
     }
 
+    public function unpublishRequests()
+    {
+        return $this->hasMany(EventUnpublishRequest::class);
+    }
+
     // Query Scopes for Public Event Discovery
     
     /**
@@ -197,5 +203,13 @@ class Event extends Model
             "MATCH(title, description, address) AGAINST(? IN NATURAL LANGUAGE MODE)",
             [$searchTerm]
         );
+    }
+
+    /**
+     * Check if event is editable
+     */
+    public function isEditable()
+    {
+        return !$this->is_published;
     }
 }

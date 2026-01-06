@@ -23,80 +23,122 @@ class AnalyticsController extends Controller
             return response()->json(['message' => 'NGO not found'], 404);
         }
 
-        $eventIds = Event::where('ngo_id', $ngo->id)->pluck('id');
-
-        // 1. Overall Stats
-        $totalParticipants = ParticipantRegistration::whereIn('event_id', $eventIds)
-            ->whereIn('status', ['confirmed', 'checked_in'])
-            ->count();
+        $eventIds = Event::where('ngo_id', $ngo->id)->where('is_published', true)->pluck('id');
+        $range = $request->query('range', '6m'); // default to 6 months
         
-        $totalVolunteers = VolunteerRegistration::whereIn('event_id', $eventIds)
-            ->whereIn('status', ['approved', 'checked_in'])
-            ->count();
+        $startDate = match ($range) {
+            '7d' => Carbon::now()->subDays(7),
+            '30d' => Carbon::now()->subDays(30),
+            '3m' => Carbon::now()->subMonths(3),
+            '6m' => Carbon::now()->subMonths(6),
+            '1y' => Carbon::now()->subYear(),
+            'all' => Carbon::parse('2020-01-01'), // Long enough back
+            default => Carbon::now()->subMonths(6),
+        };
 
-        $totalDonationsCents = DonationRegistration::whereIn('event_id', $eventIds)
-            ->sum('amount_paid');
-        
-        $totalVolunteerHours = VolunteerRegistration::whereIn('event_id', $eventIds)
-            ->sum('total_hours') ?: 0;
+        // Determine grouping for trends based on range
+        // If range <= 30 days, we group by date. Otherwise by month.
+        $groupBy = (in_array($range, ['7d', '30d'])) ? 'date' : 'month';
+        $format = ($groupBy === 'date') ? '%Y-%m-%d' : '%Y-%m';
 
-        // 2. Registration Trend (Last 6 months)
+        // 1. Overall Stats (Filtered by range if not 'all')
+        $pQuery = ParticipantRegistration::whereIn('event_id', $eventIds)
+            ->whereIn('status', ['confirmed', 'checked_in']);
+        $vQuery = VolunteerRegistration::whereIn('event_id', $eventIds)
+            ->whereIn('status', ['approved', 'checked_in']);
+        $dQuery = DonationRegistration::whereIn('event_id', $eventIds);
+
+        if ($range !== 'all') {
+            $pQuery->where('created_at', '>=', $startDate);
+            $vQuery->where('created_at', '>=', $startDate);
+            $dQuery->where('created_at', '>=', $startDate);
+        }
+
+        $totalParticipants = $pQuery->count();
+        $totalVolunteers = $vQuery->count();
+        $totalDonationsCents = $dQuery->sum('amount_paid');
+        $totalVolunteerHours = $vQuery->sum('total_hours') ?: 0;
+
+        // 2. Registration Trend
         $registrationTrend = DB::table('participant_registrations')
-            ->select(DB::raw('DATE_FORMAT(created_at, "%Y-%m") as month'), DB::raw('count(*) as count'))
+            ->select(DB::raw("DATE_FORMAT(created_at, '{$format}') as label"), DB::raw('count(*) as count'))
             ->whereIn('event_id', $eventIds)
             ->whereIn('status', ['confirmed', 'checked_in'])
-            ->where('created_at', '>=', Carbon::now()->subMonths(6))
-            ->groupBy('month')
-            ->orderBy('month', 'asc')
+            ->where('created_at', '>=', $startDate)
+            ->groupBy('label')
+            ->orderBy('label', 'asc')
             ->get();
 
         $volunteerTrend = DB::table('volunteer_registrations')
-            ->select(DB::raw('DATE_FORMAT(created_at, "%Y-%m") as month'), DB::raw('count(*) as count'))
+            ->select(DB::raw("DATE_FORMAT(created_at, '{$format}') as label"), DB::raw('count(*) as count'))
             ->whereIn('event_id', $eventIds)
             ->whereIn('status', ['approved', 'checked_in'])
-            ->where('created_at', '>=', Carbon::now()->subMonths(6))
-            ->groupBy('month')
-            ->orderBy('month', 'asc')
+            ->where('created_at', '>=', $startDate)
+            ->groupBy('label')
+            ->orderBy('label', 'asc')
             ->get();
 
-        // 3. Donation Growth (Last 6 months)
+        // 3. Donation Growth
         $donationTrend = DB::table('donation_registrations')
-            ->select(DB::raw('DATE_FORMAT(created_at, "%Y-%m") as month'), DB::raw('sum(amount_paid) as amount'))
+            ->select(DB::raw("DATE_FORMAT(created_at, '{$format}') as label"), DB::raw('sum(amount_paid) as amount'))
             ->whereIn('event_id', $eventIds)
-            ->where('created_at', '>=', Carbon::now()->subMonths(6))
-            ->groupBy('month')
-            ->orderBy('month', 'asc')
+            ->where('created_at', '>=', $startDate)
+            ->groupBy('label')
+            ->orderBy('label', 'asc')
             ->get()
             ->map(function($item) {
                 return [
-                    'month' => $item->month,
+                    'label' => $item->label,
                     'amount' => $item->amount / 100
                 ];
             });
 
-        // 4. Event Comparison (Top 5 events by total impact)
-        $eventPerformance = Event::where('ngo_id', $ngo->id)
-            ->withCount(['participantRegistrations' => function($q) {
+        // 4. Event Comparison (All published events by total impact)
+        $eventPerformance = Event::where('ngo_id', $ngo->id)->where('is_published', true)
+            ->withCount(['participantRegistrations' => function($q) use ($startDate, $range) {
                 $q->whereIn('status', ['confirmed', 'checked_in']);
+                if ($range !== 'all') $q->where('created_at', '>=', $startDate);
             }])
-            ->withCount(['volunteerRegistrations' => function($q) {
+            ->withCount(['volunteerRegistrations' => function($q) use ($startDate, $range) {
                 $q->whereIn('status', ['approved', 'checked_in']);
+                if ($range !== 'all') $q->where('created_at', '>=', $startDate);
             }])
+            ->with(['donationConfig'])
             ->get()
-            ->map(function($event) {
-                $donations = DonationRegistration::where('event_id', $event->id)->sum('amount_paid') / 100;
+            ->map(function($event) use ($startDate, $range) {
+                $dQuery = DonationRegistration::where('event_id', $event->id);
+                $pQuery = ParticipantRegistration::where('event_id', $event->id)
+                    ->whereIn('status', ['confirmed', 'checked_in']);
+
+                if ($range !== 'all') {
+                    $dQuery->where('created_at', '>=', $startDate);
+                    $pQuery->where('created_at', '>=', $startDate);
+                }
+
+                $donations = $dQuery->sum('amount_paid') / 100;
+                $regFees = $pQuery->sum('amount_paid') / 100;
+                $targetAmount = ($event->donationConfig?->target_amount ?? 0) / 100;
+
                 return [
+                    'id' => $event->id,
+                    'is_published' => (bool)$event->is_published,
                     'name' => strlen($event->title) > 20 ? substr($event->title, 0, 17) . '...' : $event->title,
                     'full_name' => $event->title,
                     'participants' => $event->participant_registrations_count,
                     'volunteers' => $event->volunteer_registrations_count,
                     'donations' => $donations,
+                    'registration_fees' => $regFees,
+                    'total_raised' => $donations + $regFees,
+                    'has_donation_target' => $event->donationConfig?->has_target ?? false,
+                    'donation_target_amount' => $targetAmount,
+                    'achievement_percent' => ($event->donationConfig?->has_target && $targetAmount > 0)
+                        ? min(100, round(($donations / $targetAmount) * 100, 1))
+                        : null,
                 ];
             })
             ->sortByDesc(function($item) {
-                return $item['participants'] + $item['volunteers'];
+                return $item['participants'] + $item['volunteers'] + ($item['total_raised'] > 0 ? 100 : 0);
             })
-            ->take(5)
             ->values();
 
         return response()->json([

@@ -75,6 +75,12 @@ Route::middleware(['auth:sanctum'])->group(function() {
     
     // Receipt Download
     Route::get('/user/registrations/{id}/receipt', [\App\Http\Controllers\Api\ReceiptController::class, 'downloadReceipt']);
+
+    // User Profile
+    Route::put('/user/profile', [\App\Http\Controllers\Api\User\ProfileController::class, 'updateProfile']);
+    Route::put('/user/password', [\App\Http\Controllers\Api\User\ProfileController::class, 'updatePassword']);
+    Route::post('/user/tac-request', [\App\Http\Controllers\Api\User\ProfileController::class, 'requestTac']);
+    Route::put('/user/password-with-tac', [\App\Http\Controllers\Api\User\ProfileController::class, 'updatePasswordWithTac']);
 });
 
 // NGO Routes (Protected - User/NGO role)
@@ -90,6 +96,8 @@ Route::middleware(['auth:sanctum', 'role:user,ngo'])->prefix('ngo')->group(funct
         Route::apiResource('events', EventController::class);
         Route::post('events/{id}/publish', [EventController::class, 'publish']);
         Route::post('events/{id}/unpublish', [EventController::class, 'unpublish']);
+        Route::post('events/{id}/restore', [EventController::class, 'restore']);
+        Route::delete('events/{id}/force-delete', [EventController::class, 'forceDelete']);
         Route::post('events/{id}/duplicate', [EventDuplicateController::class, 'duplicate']);
         
         // Event Components
@@ -132,6 +140,10 @@ Route::middleware(['auth:sanctum', 'role:user,ngo'])->prefix('ngo')->group(funct
         // Registration Management Routes
         Route::post('verify-qr', [\App\Http\Controllers\Api\Ngo\RegistrationManagementController::class, 'verifyQR']);
         Route::post('events/{eventId}/check-in', [\App\Http\Controllers\Api\Ngo\RegistrationManagementController::class, 'checkInByQr']);
+
+        // Settings
+        Route::put('/profile', [\App\Http\Controllers\Api\Ngo\NgoProfileController::class, 'updateProfile']);
+        Route::put('/bank', [\App\Http\Controllers\Api\Ngo\NgoProfileController::class, 'updateBank']);
         Route::post('events/{eventId}/collect-tshirt', [\App\Http\Controllers\Api\Ngo\RegistrationManagementController::class, 'collectTshirt']);
         Route::post('events/{eventId}/registrations/{registrationId}/verify', [\App\Http\Controllers\Api\Ngo\RegistrationManagementController::class, 'manualVerify']);
         
