@@ -23,7 +23,8 @@ class NgoManagementController extends Controller
         $search = $request->query('search');
         $perPage = $request->query('per_page', 10);
 
-        $query = Ngo::with('user:id,name,email');
+        $query = Ngo::with('user:id,name,email')
+            ->withSum('donationRegistrations as total_funds_raised', 'amount_paid');
 
         // Filter by status
         if ($status && in_array($status, ['pending', 'approved', 'rejected', 'blocked'])) {

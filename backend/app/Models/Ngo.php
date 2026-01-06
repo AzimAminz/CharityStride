@@ -61,4 +61,9 @@ class Ngo extends Model
     {
         return $this->hasMany(CertTemplate::class);
     }
+
+    public function donationRegistrations()
+    {
+        return $this->hasManyThrough(DonationRegistration::class, Event::class);
+    }
 }

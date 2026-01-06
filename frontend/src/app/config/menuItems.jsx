@@ -34,6 +34,8 @@ export const MENU_BY_ROLE = {
   admin: [
     { icon: LayoutDashboard, label: "Dashboard", href: "/admin/dashboard" },
     { icon: Building2, label: "NGO Management", href: "/admin/ngos" },
+    { icon: CalendarDays, label: "Event Management", href: "/admin/events" },
+    { icon: BarChart3, label: "Reports", href: "/admin/reports" },
   ],
 };
 

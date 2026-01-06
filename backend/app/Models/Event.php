@@ -31,6 +31,8 @@ class Event extends Model
         'has_donation',
         'has_participant',
         'status',
+        'taken_down_at',
+        'take_down_reason',
     ];
 
     protected $appends = ['stats', 'location'];
@@ -93,6 +95,7 @@ class Event extends Model
         'has_donation' => 'boolean',
         'has_participant' => 'boolean',
         'deleted_at' => 'datetime',
+        'taken_down_at' => 'datetime',
     ];
 
     // Relationships

@@ -5,6 +5,7 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\FileUploadController;
 use App\Http\Controllers\NgoController;
 use App\Http\Controllers\Admin\NgoManagementController;
+use App\Http\Controllers\Admin\EventManagementController;
 use App\Http\Controllers\Api\Ngo\EventController;
 use App\Http\Controllers\Api\Ngo\EventSectionController;
 use App\Http\Controllers\Api\Ngo\EventDuplicateController;
@@ -155,7 +156,26 @@ Route::middleware(['auth:sanctum', 'role:user,ngo'])->prefix('ngo')->group(funct
 
 // Admin Routes (Protected - Admin role only)
 Route::middleware(['auth:sanctum', 'role:admin'])->prefix('admin')->group(function(){
+    Route::get('/dashboard', [\App\Http\Controllers\Admin\DashboardController::class, 'index']);
     Route::get('/ngos', [NgoManagementController::class, 'index']);
     Route::get('/ngos/{id}', [NgoManagementController::class, 'show']);
     Route::patch('/ngos/{id}/status', [NgoManagementController::class, 'updateStatus']);
+
+    // Event Management
+    Route::get('/events', [EventManagementController::class, 'index']);
+    Route::get('/events/unpublish-requests', [EventManagementController::class, 'unpublishRequests']);
+    Route::patch('/events/{id}/unpublish', [EventManagementController::class, 'unpublish']);
+    Route::patch('/unpublish-requests/{id}/process', [EventManagementController::class, 'processUnpublishRequest']);
+
+    // Report Generation
+    Route::get('/reports/platform-overview', [\App\Http\Controllers\Admin\ReportController::class, 'platformOverview']);
+    Route::get('/reports/revenue', [\App\Http\Controllers\Admin\ReportController::class, 'revenueReport']);
+    Route::get('/reports/ngo-performance', [\App\Http\Controllers\Admin\ReportController::class, 'ngoPerformanceReport']);
+    Route::get('/reports/event-analytics', [\App\Http\Controllers\Admin\ReportController::class, 'eventAnalyticsReport']);
+    Route::get('/reports/user-activity', [\App\Http\Controllers\Admin\ReportController::class, 'userActivityReport']);
+    
+    // Graph Data Endpoints
+    Route::get('/reports/revenue/graph', [\App\Http\Controllers\Admin\ReportController::class, 'revenueGraphData']);
+    Route::get('/reports/ngo-performance/graph', [\App\Http\Controllers\Admin\ReportController::class, 'ngoPerformanceGraphData']);
+    Route::get('/reports/event-analytics/graph', [\App\Http\Controllers\Admin\ReportController::class, 'eventAnalyticsGraphData']);
 });
