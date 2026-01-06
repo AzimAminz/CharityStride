@@ -127,8 +127,19 @@ export default function EventsListPage() {
         try {
           await deleteEvent(id);
           refetch();
+          setFeedback({
+            isOpen: true,
+            type: "success",
+            title: "Event Deleted",
+            message: "The event has been moved to trash successfully.",
+          });
         } catch (err) {
-          alert(err.response?.data?.message || "Failed to delete event");
+          setFeedback({
+            isOpen: true,
+            type: "error",
+            title: "Delete Failed",
+            message: err.response?.data?.message || "Failed to delete event.",
+          });
         } finally {
           setDeleting(null);
         }
@@ -141,8 +152,19 @@ export default function EventsListPage() {
     try {
       await restoreEvent(id);
       refetch();
+      setFeedback({
+        isOpen: true,
+        type: "success",
+        title: "Event Restored",
+        message: "The event has been restored to drafts.",
+      });
     } catch (err) {
-      alert(err.response?.data?.message || "Failed to restore event");
+      setFeedback({
+        isOpen: true,
+        type: "error",
+        title: "Restore Failed",
+        message: err.response?.data?.message || "Failed to restore event.",
+      });
     } finally {
       setRestoring(null);
     }
@@ -161,8 +183,19 @@ export default function EventsListPage() {
         try {
           await forceDeleteEvent(id);
           refetch();
+          setFeedback({
+            isOpen: true,
+            type: "success",
+            title: "Event Purged",
+            message: "The event has been permanently deleted.",
+          });
         } catch (err) {
-          alert(err.response?.data?.message || "Failed to delete event");
+          setFeedback({
+            isOpen: true,
+            type: "error",
+            title: "Deletion Failed",
+            message: err.response?.data?.message || "Failed to delete event.",
+          });
         } finally {
           setDeleting(null);
         }
@@ -222,8 +255,22 @@ export default function EventsListPage() {
         await publishEvent(id);
       }
       refetch();
+      setFeedback({
+        isOpen: true,
+        type: "success",
+        title: currentState ? "Unpublished" : "Published",
+        message: `The event has been ${
+          currentState ? "unpublished" : "published"
+        } successfully.`,
+      });
     } catch (err) {
-      alert(err.response?.data?.message || "Failed to update publish status");
+      setFeedback({
+        isOpen: true,
+        type: "error",
+        title: "Action Failed",
+        message:
+          err.response?.data?.message || "Failed to update publish status.",
+      });
     } finally {
       setPublishing(null);
     }
