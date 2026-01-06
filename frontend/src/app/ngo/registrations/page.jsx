@@ -375,10 +375,20 @@ const NGORegistrationsPage = () => {
                   >
                     {/* Event Image */}
                     <div className="h-40 bg-gradient-to-br from-emerald-100 via-blue-100 to-purple-100 flex items-center justify-center relative overflow-hidden">
-                      <div className="absolute inset-0 bg-emerald-600 opacity-0 group-hover:opacity-10 transition-opacity"></div>
-                      <Calendar className="h-16 w-16 text-emerald-600 opacity-30" />
+                      {event.thumbnail ? (
+                        <img
+                          src={event.thumbnail}
+                          alt={event.title}
+                          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                        />
+                      ) : (
+                        <>
+                          <div className="absolute inset-0 bg-emerald-600 opacity-0 group-hover:opacity-10 transition-opacity"></div>
+                          <Calendar className="h-16 w-16 text-emerald-600 opacity-30" />
+                        </>
+                      )}
                       <div className="absolute top-3 right-3">
-                        <span className="px-3 py-1 bg-green-100 text-green-700 text-xs font-medium rounded-full">
+                        <span className="px-3 py-1 bg-green-100 text-green-700 text-xs font-medium rounded-full backdrop-blur-sm bg-opacity-80">
                           {event.is_published ? "Published" : "Draft"}
                         </span>
                       </div>

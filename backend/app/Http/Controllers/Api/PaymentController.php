@@ -75,14 +75,23 @@ class PaymentController extends Controller
                 // Handle VolunteerRegistration
                 elseif ($registration instanceof \App\Models\VolunteerRegistration) {
                     $registration->update([
-                        'status' => 'confirmed',
+                        'status' => 'approved',
                     ]);
+
+                    // Broadcast registration event
+                    if ($registration->event) {
+                        broadcast(new \App\Events\RegistrationCreated($registration->event, 'volunteer'));
+                    }
                 }
                 // Handle Donation
                 elseif ($registration instanceof \App\Models\DonationRegistration) {
-                    $registration->update([
-                        'status' => 'confirmed',
-                    ]);
+                    // DonationRegistration doesn't have a status column yet, 
+                    // the confirmation is handled via the payment record itself.
+                    
+                    // Broadcast registration event
+                    if ($registration->event) {
+                        broadcast(new \App\Events\RegistrationCreated($registration->event, 'donation'));
+                    }
                 }
 
                 // Send confirmation email for all types

@@ -35,31 +35,46 @@ class RegistrationManagementController extends Controller
             $event = Event::where('ngo_id', $ngoId)->findOrFail($eventId);
 
             $participants = ParticipantRegistration::where('event_id', $eventId)
+                ->where('status', 'confirmed')
                 ->with(['user', 'participantCategory', 'payments'])
                 ->get();
 
             $volunteers = VolunteerRegistration::where('event_id', $eventId)
+                ->where('status', 'approved')
                 ->with(['user', 'volunteerRole.roleType', 'volunteerShift'])
                 ->get();
 
-            // Get donations if donation module is enabled
-            $donations = [];
-            if ($event->donationConfig) {
-                $donations = \App\Models\DonationRegistration::where('event_id', $eventId)
-                    ->with(['user', 'payments'])
-                    ->get();
-            }
+            // Get donations (only paid ones)
+            $donations = \App\Models\DonationRegistration::where('event_id', $eventId)
+                ->whereHas('payments', function($q) {
+                    $q->where('payment_status', 'paid');
+                })
+                ->with(['user', 'payments'])
+                ->get();
+
+            // Calculate total revenue (confirmed participants + paid donations)
+            $totalRevenue = $participants->where('status', 'confirmed')->sum('amount_paid') / 100;
+            $totalRevenue += \App\Models\Payment::whereHas('payable', function($q) use ($eventId) {
+                    $q->where('event_id', $eventId);
+                })
+                ->where('payable_type', \App\Models\DonationRegistration::class)
+                ->where('payment_status', 'paid')
+                ->sum('amount') / 100;
 
             return response()->json([
+                'event' => $event,
                 'participants' => $participants,
                 'volunteers' => $volunteers,
                 'donations' => $donations,
                 'stats' => [
-                    'total_registrations' => $participants->count() + $volunteers->count() + count($donations),
+                    'total_registrations' => $participants->count() + $volunteers->count() + $donations->count(),
+                    'participants_count' => $participants->count(),
+                    'volunteers_count' => $volunteers->count(),
+                    'donations_count' => $donations->count(),
                     'participants_checked_in' => $participants->where('attendance_status', 'checked_in')->count(),
                     'volunteers_checked_in' => $volunteers->where('attendance_status', 'checked_in')->count(),
                     'tshirts_collected' => $participants->where('tshirt_collected', true)->count() + $volunteers->where('tshirt_collected', true)->count(),
-                    'total_donations' => count($donations),
+                    'total_revenue' => round($totalRevenue, 2),
                 ]
             ]);
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {

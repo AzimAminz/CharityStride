@@ -80,10 +80,10 @@
         <div class="info-box">
             <h3 style="margin-top: 0; color: #10b981;">{{ ($registration instanceof \App\Models\DonationRegistration) ? 'Donation Details' : 'Registration Details' }}</h3>
             
-            @if(isset($registration->bib_number))
+            @if(isset($registration->participantCategory) && $registration->participantCategory->has_bib)
             <div class="info-row">
                 <span class="label">BIB Number:</span>
-                <span class="value">{{ $registration->bib_number }}</span>
+                <span class="value">{{ $registration->bib_number ?? 'Pending' }}</span>
             </div>
             @endif
             

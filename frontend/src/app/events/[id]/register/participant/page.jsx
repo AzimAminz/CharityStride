@@ -231,9 +231,16 @@ export default function ParticipantRegistrationPage() {
                     />
                     <div className="flex-1">
                       <div className="flex items-center justify-between mb-1">
-                        <span className="font-semibold text-gray-900">
-                          {category.category_name}
-                        </span>
+                        <div className="flex items-center gap-2">
+                          <span className="font-semibold text-gray-900">
+                            {category.category_name}
+                          </span>
+                          {category.has_bib && (
+                            <span className="px-1.5 py-0.5 bg-amber-100 text-amber-700 text-[9px] font-bold rounded uppercase tracking-wider">
+                              BIB
+                            </span>
+                          )}
+                        </div>
                         {category.base_fee > 0 && (
                           <span className="text-teal-600 font-bold">
                             RM {(category.base_fee / 100).toFixed(2)}

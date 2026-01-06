@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import {
   GoogleMap,
   useLoadScript,
@@ -40,6 +40,27 @@ export default function LocationPicker({
 
   const autocompleteRef = useRef(null);
   const mapRef = useRef(null);
+
+  // Auto-center map when value changes (e.g., from "Use My Current Location")
+  useEffect(() => {
+    if (value?.latitude && value?.longitude) {
+      // Ensure coordinates are valid numbers
+      const lat = parseFloat(value.latitude);
+      const lng = parseFloat(value.longitude);
+
+      // Check if coordinates are valid finite numbers
+      if (isFinite(lat) && isFinite(lng)) {
+        const newPosition = { lat, lng };
+        setMarkerPosition(newPosition);
+        setMapCenter(newPosition);
+
+        // Pan map to new location
+        if (mapRef.current) {
+          mapRef.current.panTo(newPosition);
+        }
+      }
+    }
+  }, [value?.latitude, value?.longitude]);
 
   const onMapClick = useCallback(
     (event) => {
@@ -218,8 +239,6 @@ export default function LocationPicker({
           </div>
         </div>
       </div>
-
-      
     </div>
   );
 }

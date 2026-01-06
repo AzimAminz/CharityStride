@@ -28,6 +28,7 @@ import { motion } from "framer-motion";
 import Layout from "@/app/components/Layout";
 import ConfirmModal from "@/app/components/ConfirmModal";
 import FormModal from "@/app/components/FormModal";
+import StatusModal from "@/app/components/StatusModal";
 
 export default function EventsListPage() {
   const router = useRouter();
@@ -57,6 +58,14 @@ export default function EventsListPage() {
     eventId: null,
     reason: "",
     loading: false,
+  });
+
+  // Feedback Modal State (Success/Error)
+  const [feedback, setFeedback] = useState({
+    isOpen: false,
+    type: "success",
+    title: "",
+    message: "",
   });
 
   // Debounce search input
@@ -173,7 +182,16 @@ export default function EventsListPage() {
       await unpublishEvent(unpublishModal.eventId, {
         reason: unpublishModal.reason,
       });
-      alert("Unpublish request submitted successfully.");
+
+      // Show Success Modal
+      setFeedback({
+        isOpen: true,
+        type: "success",
+        title: "Request Submitted",
+        message:
+          "Your unpublish request has been sent for approval. An admin will review it soon.",
+      });
+
       setUnpublishModal({
         isOpen: false,
         eventId: null,
@@ -182,7 +200,14 @@ export default function EventsListPage() {
       });
       refetch();
     } catch (err) {
-      alert(err.response?.data?.message || "Failed to submit request");
+      setFeedback({
+        isOpen: true,
+        type: "error",
+        title: "Submission Failed",
+        message:
+          err.response?.data?.message ||
+          "Something went wrong while submitting your request.",
+      });
     } finally {
       setUnpublishModal((prev) => ({ ...prev, loading: false }));
     }
@@ -520,6 +545,15 @@ export default function EventsListPage() {
           message={confirmConfig.message}
           confirmText={confirmConfig.confirmText}
           type={confirmConfig.type}
+        />
+
+        {/* Status Feedback Modal */}
+        <StatusModal
+          isOpen={feedback.isOpen}
+          onClose={() => setFeedback((prev) => ({ ...prev, isOpen: false }))}
+          type={feedback.type}
+          title={feedback.title}
+          message={feedback.message}
         />
       </div>
     </Layout>

@@ -27,6 +27,7 @@ class ParticipantCategory extends Model
         'description',
         'has_event_tshirt',
         'has_finisher_tshirt',
+        'has_bib',
         'version',
     ];
 
@@ -36,6 +37,7 @@ class ParticipantCategory extends Model
         'base_fee' => 'integer',
         'has_event_tshirt' => 'boolean',
         'has_finisher_tshirt' => 'boolean',
+        'has_bib' => 'boolean',
         'latitude' => 'float',
         'longitude' => 'float',
         'version' => 'integer',

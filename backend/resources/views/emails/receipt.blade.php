@@ -84,10 +84,12 @@
                     <th>Category:</th>
                     <td>{{ $registration->participantCategory->category_name }}</td>
                 </tr>
+                @if($registration->participantCategory->has_bib)
                 <tr>
                     <th>BIB Number:</th>
                     <td>{{ $registration->bib_number }}</td>
                 </tr>
+                @endif
                 @endif
                 <tr>
                     <th>Event Date:</th>

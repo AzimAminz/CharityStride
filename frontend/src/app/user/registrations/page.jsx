@@ -194,14 +194,16 @@ const RegistrationsPage = () => {
                         </div>
 
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
-                          <div>
-                            <p className="text-xs text-gray-500 mb-1">
-                              BIB Number
-                            </p>
-                            <p className="font-semibold text-gray-900">
-                              {reg.bib_number || "Pending"}
-                            </p>
-                          </div>
+                          {reg.participant_category?.has_bib && (
+                            <div>
+                              <p className="text-xs text-gray-500 mb-1">
+                                BIB Number
+                              </p>
+                              <p className="font-semibold text-gray-900">
+                                {reg.bib_number || "Pending"}
+                              </p>
+                            </div>
+                          )}
                           {reg.event && (
                             <div>
                               <p className="text-xs text-gray-500 mb-1">
@@ -256,6 +258,7 @@ const RegistrationsPage = () => {
                                 qr_code: reg.qr_code,
                                 event_title: reg.event?.title,
                                 bib_number: reg.bib_number,
+                                has_bib: reg.participant_category?.has_bib,
                                 category:
                                   reg.participant_category?.category_name,
                               })
@@ -659,7 +662,7 @@ const RegistrationsPage = () => {
                 {selectedQR.event_title}
               </h3>
               <p className="text-gray-600 mb-6">
-                {selectedQR.bib_number
+                {selectedQR.has_bib && selectedQR.bib_number
                   ? `${selectedQR.category} • BIB: ${selectedQR.bib_number}`
                   : selectedQR.role
                   ? `${selectedQR.role} • ${selectedQR.shift}`

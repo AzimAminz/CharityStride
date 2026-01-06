@@ -33,7 +33,8 @@ class ReceiptController extends Controller
         try {
             $pdf = Pdf::loadView('emails.receipt', ['registration' => $registration]);
             
-            return $pdf->download('receipt-' . $registration->bib_number . '.pdf');
+            $filename = $registration->bib_number ? 'receipt-' . $registration->bib_number . '.pdf' : 'receipt-' . $registration->id . '.pdf';
+            return $pdf->download($filename);
         } catch (\Exception $e) {
             \Log::error('Receipt generation failed: ' . $e->getMessage());
             return response()->json(['message' => 'Failed to generate receipt: ' . $e->getMessage()], 500);

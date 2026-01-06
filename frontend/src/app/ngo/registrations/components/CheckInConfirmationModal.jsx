@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { X, User, CheckCircle, Loader2, IdCard, FileText } from "lucide-react";
+import { getStorageUrl } from "@/app/lib/api";
 
 export default function CheckInConfirmationModal({
   isOpen,
@@ -35,7 +36,11 @@ export default function CheckInConfirmationModal({
         {/* Header */}
         <div className="p-4 border-b border-gray-200 flex items-center justify-between flex-shrink-0">
           <h2 className="text-xl font-bold text-gray-900">
-            {alreadyCheckedIn ? "Already Checked In" : "Confirm Check-In"}
+            {type === "donation"
+              ? "Donation Details"
+              : alreadyCheckedIn
+              ? "Already Checked In"
+              : "Confirm Check-In"}
           </h2>
           <button
             onClick={onClose}
@@ -46,7 +51,7 @@ export default function CheckInConfirmationModal({
         </div>
 
         {/* Status Badge */}
-        {alreadyCheckedIn && (
+        {alreadyCheckedIn && type !== "donation" && (
           <div className="mx-4 mt-4 flex items-center gap-2 px-3 py-2 bg-green-50 border border-green-200 rounded-lg flex-shrink-0">
             <CheckCircle className="h-4 w-4 text-green-600" />
             <span className="text-sm text-green-800 font-medium">
@@ -110,9 +115,9 @@ export default function CheckInConfirmationModal({
             {activeTab === "personal" && (
               <div className="space-y-6">
                 <div className="flex items-center gap-4">
-                  {data.user?.profile_picture ? (
+                  {data.user?.photo ? (
                     <img
-                      src={data.user.profile_picture}
+                      src={getStorageUrl(data.user.photo)}
                       alt="Profile"
                       className="flex-shrink-0 w-12 h-12 rounded-xl object-cover"
                     />
@@ -163,7 +168,7 @@ export default function CheckInConfirmationModal({
                   </div>
                 )}
 
-                {data.bib_number && (
+                {data.participant_category?.has_bib && data.bib_number && (
                   <div>
                     <p className="text-gray-500 text-xs mb-1">BIB Number</p>
                     <p className="font-medium text-gray-900">
@@ -248,12 +253,25 @@ export default function CheckInConfirmationModal({
                     </p>
                   </div>
                 )}
-
-                {data.tshirt_size && (
+                {type === "donation" && (
+                  <div className="col-span-2">
+                    <p className="text-gray-500 text-xs mb-1">Amount Donated</p>
+                    <p className="text-xl font-bold text-emerald-600">
+                      RM {(data.amount_paid / 100).toFixed(2)}
+                    </p>
+                  </div>
+                )}
+                {type !== "donation" && (
                   <div>
                     <p className="text-gray-500 text-xs mb-1">T-Shirt Size</p>
-                    <p className="font-medium text-gray-900">
-                      {data.tshirt_size}
+                    <p
+                      className={`font-medium ${
+                        data.tshirt_size
+                          ? "text-gray-900"
+                          : "text-gray-400 italic"
+                      }`}
+                    >
+                      {data.tshirt_size || "(no shirt)"}
                     </p>
                   </div>
                 )}

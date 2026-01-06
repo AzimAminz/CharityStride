@@ -49,14 +49,18 @@ class ParticipantRegistration extends Model
                 $registration->qr_code = 'PAR-' . strtoupper(uniqid());
             }
             if (empty($registration->bib_number)) {
-                // Generate sequential bib number per event
-                $lastBib = static::where('event_id', $registration->event_id)
-                    ->whereNotNull('bib_number')
-                    ->orderByDesc('id')
-                    ->value('bib_number');
-                
-                $nextNumber = $lastBib ? ((int) filter_var($lastBib, FILTER_SANITIZE_NUMBER_INT)) + 1 : 1;
-                $registration->bib_number = 'BIB-' . str_pad($nextNumber, 4, '0', STR_PAD_LEFT);
+                // Check if category requires BIB
+                $category = ParticipantCategory::find($registration->participant_category_id);
+                if ($category && $category->has_bib) {
+                    // Generate sequential bib number per event
+                    $lastBib = static::where('event_id', $registration->event_id)
+                        ->whereNotNull('bib_number')
+                        ->orderByDesc('id')
+                        ->value('bib_number');
+                    
+                    $nextNumber = $lastBib ? ((int) filter_var($lastBib, FILTER_SANITIZE_NUMBER_INT)) + 1 : 1;
+                    $registration->bib_number = 'BIB-' . str_pad($nextNumber, 4, '0', STR_PAD_LEFT);
+                }
             }
         });
     }

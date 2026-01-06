@@ -79,6 +79,7 @@ export default function ParticipantCategoryManager({
     description: "",
     has_event_tshirt: false,
     has_finisher_tshirt: false,
+    has_bib: true,
   });
 
   const [showTierForm, setShowTierForm] = useState(null); // categoryId
@@ -113,6 +114,7 @@ export default function ParticipantCategoryManager({
       description: "",
       has_event_tshirt: false,
       has_finisher_tshirt: false,
+      has_bib: true,
     });
     setEditingCategory(null);
     setShowCategoryForm(false);
@@ -694,12 +696,29 @@ export default function ParticipantCategoryManager({
               </div>
             )}
 
-            {/* T-shirt Options */}
+            {/* Other Options Section */}
             <div className="col-span-2 pt-3 border-t">
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                T-shirt Options
+                Registration Options
               </label>
-              <div className="space-y-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={categoryForm.has_bib}
+                    onChange={(e) =>
+                      setCategoryForm({
+                        ...categoryForm,
+                        has_bib: e.target.checked,
+                      })
+                    }
+                    className="w-4 h-4 text-emerald-600 border-gray-300 rounded focus:ring-emerald-500"
+                  />
+                  <span className="text-sm text-gray-700">
+                    Use BIB Numbers for this category
+                  </span>
+                </label>
+
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input
                     type="checkbox"
@@ -713,7 +732,7 @@ export default function ParticipantCategoryManager({
                     className="w-4 h-4 text-emerald-600 border-gray-300 rounded focus:ring-emerald-500"
                   />
                   <span className="text-sm text-gray-700">
-                    Provide Event T-shirt for this category
+                    Provide Event T-shirt
                   </span>
                 </label>
 
@@ -730,7 +749,7 @@ export default function ParticipantCategoryManager({
                     className="w-4 h-4 text-emerald-600 border-gray-300 rounded focus:ring-emerald-500"
                   />
                   <span className="text-sm text-gray-700">
-                    Provide Finisher T-shirt for this category
+                    Provide Finisher T-shirt
                   </span>
                 </label>
               </div>
@@ -838,9 +857,29 @@ export default function ParticipantCategoryManager({
                 </div>
               )}
 
-              {/* T-shirt Badges */}
-              {(category.has_event_tshirt || category.has_finisher_tshirt) && (
-                <div className="mt-2 flex gap-2">
+              {/* Registration Options Badges */}
+              {(category.has_event_tshirt ||
+                category.has_finisher_tshirt ||
+                category.has_bib) && (
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {category.has_bib && (
+                    <span className="inline-flex items-center gap-1 px-2 py-1 bg-amber-100 text-amber-700 text-xs font-medium rounded">
+                      <svg
+                        className="h-3 w-3"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M7 7h10M7 12h10m-10 5h10"
+                        />
+                      </svg>
+                      Uses BIB
+                    </span>
+                  )}
                   {category.has_event_tshirt && (
                     <span className="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-700 text-xs font-medium rounded">
                       <svg
@@ -905,6 +944,7 @@ export default function ParticipantCategoryManager({
                     description: category.description || "",
                     has_event_tshirt: category.has_event_tshirt || false,
                     has_finisher_tshirt: category.has_finisher_tshirt || false,
+                    has_bib: category.has_bib ?? true,
                   });
                   // Inline edit form will show below
                 }}
@@ -1350,12 +1390,29 @@ export default function ParticipantCategoryManager({
                     </div>
                   )}
 
-                  {/* T-shirt Options */}
+                  {/* Registration Options Section */}
                   <div className="col-span-2 pt-3 border-t">
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      T-shirt Options
+                      Registration Options
                     </label>
-                    <div className="space-y-2">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={categoryForm.has_bib}
+                          onChange={(e) =>
+                            setCategoryForm({
+                              ...categoryForm,
+                              has_bib: e.target.checked,
+                            })
+                          }
+                          className="w-4 h-4 text-emerald-600 border-gray-300 rounded focus:ring-emerald-500"
+                        />
+                        <span className="text-sm text-gray-700">
+                          Use BIB Numbers
+                        </span>
+                      </label>
+
                       <label className="flex items-center gap-2 cursor-pointer">
                         <input
                           type="checkbox"

@@ -1344,7 +1344,7 @@ function DetailsTab({ event, selectedModule: propSelectedModule }) {
                   <div className="flex items-center gap-2 text-gray-600 text-sm">
                     <Users className="h-4 w-4 text-emerald-500" />
                     <span className="font-semibold text-gray-900">
-                      {event.stats?.donations_count || 0}
+                      {event.stats?.donations || 0}
                     </span>{" "}
                     donors have contributed
                   </div>
@@ -1392,9 +1392,16 @@ function DetailsTab({ event, selectedModule: propSelectedModule }) {
                         >
                           <div className="flex justify-between items-start mb-3">
                             <div>
-                              <h5 className="font-semibold text-gray-900 text-lg">
-                                {category.category_name}
-                              </h5>
+                              <div className="flex items-center gap-2">
+                                <h5 className="font-semibold text-gray-900 text-lg">
+                                  {category.category_name}
+                                </h5>
+                                {category.has_bib && (
+                                  <span className="px-2 py-0.5 bg-amber-100 text-amber-700 text-[10px] font-bold rounded uppercase tracking-wider">
+                                    BIB Included
+                                  </span>
+                                )}
+                              </div>
                               <p className="text-sm text-gray-600 mt-1">
                                 Fee:{" "}
                                 {Number(category.base_fee) === 0 ||

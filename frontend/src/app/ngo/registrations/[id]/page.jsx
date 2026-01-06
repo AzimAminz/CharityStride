@@ -1,114 +1,85 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import Layout from "@/app/components/Layout";
+import React, { useState, useEffect, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
-import Echo from "../../../lib/echo";
-import QRScanner from "../components/QRScanner";
-import CheckInConfirmationModal from "../components/CheckInConfirmationModal";
+import Layout from "@/app/components/Layout";
 import {
   Users,
-  UserCheck,
   Heart,
+  UserPlus,
+  Download,
+  Search,
+  Filter,
+  ChevronLeft,
+  ChevronRight,
   Calendar,
-  MapPin,
-  QrCode,
   CheckCircle2,
   Clock,
+  ArrowRight,
+  ClipboardList,
+  Shirt,
+  MoreVertical,
+  CheckIcon,
+  XIcon,
+  RefreshCcw,
+  BadgeDollarSign,
+  QrCode,
+  CheckCircle,
   XCircle,
-  Search,
-  Download,
-  ChevronLeft,
-  ArrowLeft,
-  Check,
-  X,
-  Wifi,
+  MoreHorizontal,
+  Eye,
 } from "lucide-react";
-import { useEventDetail } from "../../../hooks/useEventDetail";
-import { getEventRegistrations } from "../../../lib/events";
-import { api } from "../../../lib/api";
+import { getEventRegistrations } from "@/app/lib/events";
+import Loading from "@/app/loading";
+import QRScanner from "../components/QRScanner";
+import CheckInConfirmationModal from "../components/CheckInConfirmationModal";
+import { api, getStorageUrl } from "@/app/lib/api";
 
-const EventRegistrationsPage = () => {
-  const params = useParams();
+export default function EventRegistrationsDetailPage() {
+  const { id } = useParams();
   const router = useRouter();
-  const eventId = params.id;
-
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("participants");
   const [searchQuery, setSearchQuery] = useState("");
-  const [toast, setToast] = useState(null);
-  const [isRealtime, setIsRealtime] = useState(false);
-
-  // QR Scanner state
+  const [statusFilter, setStatusFilter] = useState("all");
   const [showScanner, setShowScanner] = useState(false);
-  const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [scannedData, setScannedData] = useState(null);
-  const [isViewOnly, setIsViewOnly] = useState(false);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [isCheckingIn, setIsCheckingIn] = useState(false);
+  const [toast, setToast] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
 
-  const { event, loading: eventLoading } = useEventDetail(eventId);
-  const [data, setData] = useState({
-    participants: [],
-    volunteers: [],
-    donations: [],
-  });
-  const [loading, setLoading] = useState(true);
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      const res = await getEventRegistrations(id);
+      setData(res);
+    } catch (error) {
+      console.error("Error fetching registrations:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const res = await getEventRegistrations(eventId);
-        console.log("Fetched event registrations:", res);
-        if (res.volunteers?.length > 0) {
-          console.log(
-            "Sample volunteer role:",
-            res.volunteers[0].volunteer_role
-          );
-          console.log(
-            "Sample role type:",
-            res.volunteers[0].volunteer_role?.role_type
-          );
-        }
-        setData(res);
-      } catch (err) {
-        console.error("Error fetching registrations:", err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchData();
-  }, [eventId]);
+  }, [id]);
 
-  // Real-time WebSocket updates
+  // Set initial active tab based on enabled modules
   useEffect(() => {
-    if (!eventId || !Echo) return;
-
-    const channel = Echo.channel(`event.${eventId}`);
-
-    channel.listen("RegistrationCreated", (data) => {
-      console.log("New registration:", data);
-      setIsRealtime(true);
-
-      // Refresh data
-      getEventRegistrations(eventId).then((res) => {
-        setData(res);
-        setToast({
-          type: "success",
-          message: `New ${data.type} registration received!`,
-        });
-      });
-
-      setTimeout(() => setIsRealtime(false), 2000);
-    });
-
-    return () => {
-      if (Echo) {
-        channel.stopListening("RegistrationCreated");
-        Echo.leave(`event.${eventId}`);
+    if (data?.event) {
+      if (data.event.has_participant) {
+        setActiveTab("participants");
+      } else if (data.event.has_volunteer) {
+        setActiveTab("volunteers");
+      } else if (data.event.has_donation) {
+        setActiveTab("donations");
       }
-    };
-  }, [eventId]);
+    }
+  }, [data]);
 
-  // Toast auto-hide
   useEffect(() => {
     if (toast) {
       const timer = setTimeout(() => setToast(null), 5000);
@@ -116,660 +87,734 @@ const EventRegistrationsPage = () => {
     }
   }, [toast]);
 
-  // Dynamic tabs based on event configuration
-  const tabs = [];
-
-  // QR Scanner handlers
   const handleScanSuccess = async (qrCode) => {
     try {
-      // Call verifyQR to get registration details (auto-detects event)
       const response = await api.post("/ngo/verify-qr", {
         qr_code: qrCode,
       });
 
-      console.log("Scanned data:", response.data);
+      if (response.data.event.id !== parseInt(id)) {
+        setToast({
+          type: "error",
+          message: "This registration is for a different event.",
+        });
+        return;
+      }
 
-      // Store scanned data and show confirmation modal
       setScannedData({
         qr_code: qrCode,
         type: response.data.type,
         registration: response.data.registration,
         event: response.data.event,
       });
-      setIsViewOnly(false); // Show confirm button for QR scans
       setShowConfirmModal(true);
       setShowScanner(false);
     } catch (error) {
       setToast({
         type: "error",
-        message:
-          error.response?.data?.message ||
-          "Failed to verify QR code. Please try again.",
+        message: error.response?.data?.message || "Verification failed.",
       });
     }
   };
 
   const handleConfirmCheckIn = async () => {
     if (!scannedData) return;
-
+    setIsCheckingIn(true);
     try {
-      await api.post(`/ngo/events/${scannedData.event.id}/check-in`, {
+      await api.post(`/ngo/events/${id}/check-in`, {
         qr_code: scannedData.qr_code,
         type: scannedData.type,
       });
-
-      setToast({
-        type: "success",
-        message: `Successfully checked in: ${scannedData.registration.user.name}`,
-      });
-
+      setToast({ type: "success", message: "Checked in successfully!" });
       setShowConfirmModal(false);
-      setScannedData(null);
-
-      // Refresh data
-      const res = await getEventRegistrations(eventId);
-      setData(res);
+      fetchData(); // Refresh data
     } catch (error) {
       setToast({
         type: "error",
-        message:
-          error.response?.data?.message ||
-          "Failed to check in. Please try again.",
+        message: error.response?.data?.message || "Check-in failed.",
+      });
+    } finally {
+      setIsCheckingIn(false);
+    }
+  };
+
+  const filteredData = useMemo(() => {
+    if (!data) return [];
+
+    let currentList = [];
+    if (activeTab === "participants") currentList = data.participants;
+    else if (activeTab === "volunteers") currentList = data.volunteers;
+    else currentList = data.donations;
+
+    // Filter by name/email/IC
+    let filtered = currentList.filter((item) => {
+      const q = searchQuery.toLowerCase();
+      const name = item.user?.name?.toLowerCase() || "";
+      const email = item.user?.email?.toLowerCase() || "";
+      const ic = item.user?.ic_number?.toLowerCase() || "";
+
+      return name.includes(q) || email.includes(q) || ic.includes(q);
+    });
+
+    // Sort by attendance (Checked-in first)
+    if (activeTab !== "donations") {
+      filtered.sort((a, b) => {
+        if (
+          a.attendance_status === "checked_in" &&
+          b.attendance_status !== "checked_in"
+        )
+          return -1;
+        if (
+          a.attendance_status !== "checked_in" &&
+          b.attendance_status === "checked_in"
+        )
+          return 1;
+        return 0;
       });
     }
-  };
 
-  const handleScanError = (error) => {
-    setToast({
-      type: "error",
-      message: error,
-    });
-  };
+    return filtered;
+  }, [data, activeTab, searchQuery, statusFilter]);
 
-  if (event?.participantConfig || event?.has_participant) {
-    tabs.push({
-      id: "participants",
-      label: "Participants",
-      icon: Users,
-      count: data.participants.length,
-    });
-  }
-
-  if (event?.volunteerConfig || event?.has_volunteer) {
-    tabs.push({
-      id: "volunteers",
-      label: "Volunteers",
-      icon: UserCheck,
-      count: data.volunteers.length,
-    });
-  }
-
-  if (event?.donationConfig || event?.has_donation) {
-    tabs.push({
-      id: "donations",
-      label: "Donations",
-      icon: Heart,
-      count: data.donations?.length || 0,
-    });
-  }
-
-  // Set first available tab as active if current tab not available
+  // Reset page when tab or search changes
   useEffect(() => {
-    if (tabs.length > 0 && !tabs.find((t) => t.id === activeTab)) {
-      setActiveTab(tabs[0].id);
-    }
-  }, [event]);
+    setCurrentPage(1);
+  }, [activeTab, searchQuery]);
 
-  if (loading || eventLoading) {
+  // Pagination calculations
+  const totalPages = Math.ceil(filteredData.length / itemsPerPage);
+  const paginatedData = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    return filteredData.slice(startIndex, startIndex + itemsPerPage);
+  }, [filteredData, currentPage]);
+
+  const format12Hour = (time24) => {
+    if (!time24) return "N/A";
+    const [hours, minutes] = time24.split(":");
+    const hour = parseInt(hours);
+    const ampm = hour >= 12 ? "PM" : "AM";
+    const hour12 = hour % 12 || 12;
+    return `${hour12}:${minutes} ${ampm}`;
+  };
+
+  const exportToCSV = () => {
+    // Export ALL filtered data, not just current page
+    if (!filteredData.length) return;
+
+    let headers = [];
+    let rows = [];
+
+    if (activeTab === "participants") {
+      headers = [
+        "Name",
+        "Email",
+        "IC Number",
+        "Category",
+        "BIB",
+        "T-Shirt",
+        "Date",
+      ];
+      rows = filteredData.map((p) => [
+        p.user?.name,
+        p.user?.email,
+        p.user?.ic_number || "N/A",
+        p.participant_category?.name_en || "N/A",
+        p.bib_number || "N/A",
+        p.tshirt_size || "(no shirt)",
+        new Date(p.created_at).toLocaleDateString(),
+      ]);
+    } else if (activeTab === "volunteers") {
+      headers = [
+        "Name",
+        "Email",
+        "IC Number",
+        "Role",
+        "Shift",
+        "T-Shirt",
+        "Date",
+      ];
+      rows = filteredData.map((v) => [
+        v.user?.name,
+        v.user?.email,
+        v.user?.ic_number || "N/A",
+        v.volunteer_role?.custom_role_name ||
+          v.volunteer_role?.role_type?.name_en ||
+          "N/A",
+        v.volunteer_shift?.shift_date
+          ? `${v.volunteer_shift.shift_date} (${format12Hour(
+              v.volunteer_shift.start_time
+            )} - ${format12Hour(v.volunteer_shift.end_time)})`
+          : "N/A",
+        v.tshirt_size || "(no shirt)",
+        new Date(v.created_at).toLocaleDateString(),
+      ]);
+    } else {
+      headers = ["Name", "Email", "Amount (RM)", "Payment Status", "Date"];
+      rows = filteredData.map((d) => [
+        d.user?.name || "Anonymous",
+        d.user?.email || "N/A",
+        (d.amount_paid / 100).toFixed(2),
+        d.payments?.[0]?.payment_status || "N/A",
+        new Date(d.created_at).toLocaleDateString(),
+      ]);
+    }
+
+    const csvContent = [
+      headers.join(","),
+      ...rows.map((row) => row.map((val) => `"${val || ""}"`).join(",")),
+    ].join("\n");
+
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.setAttribute(
+      "download",
+      `${data.event.title.replace(/\s+/g, "_")}_${activeTab}_registrations.csv`
+    );
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  if (loading) return <Loading />;
+  if (!data)
     return (
       <Layout>
-        <div className="min-h-[60vh] flex items-center justify-center">
-          <div className="flex flex-col items-center gap-4">
-            <div className="w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin" />
-            <p className="text-gray-500 animate-pulse">
-              Loading registrations...
-            </p>
-          </div>
+        <div className="p-8 text-center text-gray-500">
+          Event not found or unauthorized.
         </div>
       </Layout>
     );
-  }
-
-  const currentData =
-    activeTab === "participants"
-      ? data.participants
-      : activeTab === "volunteers"
-      ? data.volunteers
-      : data.donations || [];
-
-  const filteredData = currentData.filter((item) => {
-    const searchLower = searchQuery.toLowerCase();
-    const name = item.user?.name || item.name || "";
-    const email = item.user?.email || item.email || "";
-    return (
-      searchQuery === "" ||
-      name.toLowerCase().includes(searchLower) ||
-      email.toLowerCase().includes(searchLower)
-    );
-  });
-
-  const getStatusBadge = (status) => {
-    const badges = {
-      confirmed: {
-        bg: "bg-green-100",
-        text: "text-green-700",
-        icon: CheckCircle2,
-      },
-      pending: { bg: "bg-yellow-100", text: "text-yellow-700", icon: Clock },
-      approved: {
-        bg: "bg-blue-100",
-        text: "text-blue-700",
-        icon: CheckCircle2,
-      },
-      paid: { bg: "bg-green-100", text: "text-green-700", icon: CheckCircle2 },
-      delivered: {
-        bg: "bg-purple-100",
-        text: "text-purple-700",
-        icon: CheckCircle2,
-      },
-    };
-    return badges[status] || badges.pending;
-  };
 
   return (
     <Layout>
-      <div className="max-w-7xl mx-auto">
-        {/* Back Button */}
-        <button
-          onClick={() => router.back()}
-          className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-6 transition-colors"
-        >
-          <ArrowLeft className="h-5 w-5" />
-          <span className="font-medium">Back to Events</span>
-        </button>
-
-        {/* Event Header */}
-        <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
-          <div className="flex items-start justify-between">
-            <div className="flex-1">
-              <div className="flex items-center gap-3 mb-2">
-                <h1 className="text-3xl font-bold text-gray-900">
-                  {event.name}
-                </h1>
-                {isRealtime && (
-                  <span className="flex items-center gap-2 px-3 py-1 bg-emerald-100 text-emerald-700 rounded-full text-sm font-medium animate-pulse">
-                    <Wifi className="h-4 w-4" />
-                    Live
-                  </span>
-                )}
-              </div>
-              <div className="flex flex-wrap gap-4 text-sm text-gray-600">
-                <div className="flex items-center gap-2">
-                  <Calendar className="h-4 w-4" />
-                  {event.start_date
-                    ? new Date(event.start_date).toLocaleDateString()
-                    : "Date TBA"}
-                </div>
-                {event.location && (
-                  <div className="flex items-center gap-2">
-                    <MapPin className="h-4 w-4" />
-                    {event.location}
-                  </div>
-                )}
-              </div>
-            </div>
-            <button className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-medium transition-colors">
-              <Download className="h-4 w-4" />
-              Export All
-            </button>
-          </div>
-        </div>
-
-        {/* Search Bar */}
-        <div className="bg-white rounded-xl shadow-sm p-4 mb-6">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Search by name or email..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-            />
-          </div>
-        </div>
-
-        {/* Tabs */}
-        <div className="bg-white rounded-lg shadow-sm p-1 mb-6 flex gap-1">
-          {tabs.map((tab) => (
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Header */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+          <div>
             <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-md font-medium transition-all ${
-                activeTab === tab.id
-                  ? "bg-emerald-50 text-emerald-700"
-                  : "text-gray-600 hover:bg-gray-50"
-              }`}
+              onClick={() => router.back()}
+              className="group flex items-center text-sm text-gray-500 hover:text-emerald-600 transition-colors mb-2"
             >
-              <tab.icon className="h-4 w-4" />
-              {tab.label}
-              <span
-                className={`px-2 py-0.5 text-xs rounded-full ${
-                  activeTab === tab.id
-                    ? "bg-emerald-100 text-emerald-700"
-                    : "bg-gray-100 text-gray-600"
-                }`}
-              >
-                {tab.count}
-              </span>
+              <ChevronLeft className="h-4 w-4 mr-1 group-hover:-translate-x-1 transition-transform" />
+              Back to Registrations
             </button>
+            <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">
+              {data.event.title}
+            </h1>
+            <p className="text-gray-500 mt-1 flex items-center">
+              <Calendar className="h-4 w-4 mr-2" />
+              Registration details and management
+            </p>
+          </div>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={exportToCSV}
+              disabled={!filteredData.length}
+              className="flex items-center px-4 py-2.5 bg-white border border-gray-200 text-gray-700 font-semibold rounded-xl hover:bg-gray-50 transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <Download className="h-5 w-5 mr-2 text-emerald-600" />
+              Export CSV
+            </button>
+          </div>
+        </div>
+
+        {/* Stats Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+          {[
+            {
+              label: "Total Registrations",
+              value: data.stats.total_registrations,
+              icon: ClipboardList,
+              color: "blue",
+            },
+            {
+              label: "Participants",
+              value: data.stats.participants_count,
+              icon: Users,
+              color: "emerald",
+            },
+            {
+              label: "Volunteers",
+              value: data.stats.volunteers_count,
+              icon: UserPlus,
+              color: "purple",
+            },
+            {
+              label: "Total Revenue",
+              value: `RM ${data.stats.total_revenue}`,
+              icon: BadgeDollarSign,
+              color: "amber",
+            },
+          ].map((stat, i) => (
+            <div
+              key={i}
+              className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 relative overflow-hidden group hover:shadow-md transition-shadow"
+            >
+              <div
+                className={`absolute top-0 right-0 p-3 opacity-20 group-hover:opacity-30 group-hover:scale-110 transition-all`}
+              >
+                <stat.icon className={`h-16 w-16 text-${stat.color}-600`} />
+              </div>
+              <p className="text-sm font-medium text-gray-500 mb-1">
+                {stat.label}
+              </p>
+              <h3 className="text-2xl font-bold text-gray-900">{stat.value}</h3>
+            </div>
           ))}
         </div>
 
-        {/* Results Count */}
-        <div className="mb-4 text-sm text-gray-600">
-          Showing {filteredData.length} of {currentData.length} {activeTab}
-        </div>
+        {/* Main Content Card */}
+        <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden min-h-[500px] flex flex-col">
+          {/* Tabs & Filters */}
+          <div className="border-b border-gray-100">
+            <div className="px-6 pt-4 flex flex-col gap-4">
+              {/* Tab Navigation */}
+              <div className="flex border-b border-gray-100">
+                {[
+                  {
+                    id: "participants",
+                    label: "Participants",
+                    icon: Users,
+                    count: data.stats.participants_count,
+                    enabled: data.event.has_participant,
+                  },
+                  {
+                    id: "volunteers",
+                    label: "Volunteers",
+                    icon: UserPlus,
+                    count: data.stats.volunteers_count,
+                    enabled: data.event.has_volunteer,
+                  },
+                  {
+                    id: "donations",
+                    label: "Donations",
+                    icon: Heart,
+                    count: data.stats.donations_count,
+                    enabled: data.event.has_donation,
+                  },
+                ]
+                  .filter((tab) => tab.enabled)
+                  .map((tab) => (
+                    <button
+                      key={tab.id}
+                      onClick={() => {
+                        setActiveTab(tab.id);
+                        setStatusFilter("all");
+                        setCurrentPage(1);
+                      }}
+                      className={`flex items-center px-4 py-4 text-sm font-semibold transition-all border-b-2 relative ${
+                        activeTab === tab.id
+                          ? "text-emerald-600 border-emerald-600"
+                          : "text-gray-500 border-transparent hover:text-gray-700 hover:border-gray-200"
+                      }`}
+                    >
+                      <tab.icon className="h-4 w-4 mr-2" />
+                      {tab.label}
+                      <span
+                        className={`ml-2 px-2 py-0.5 rounded-full text-[10px] ${
+                          activeTab === tab.id
+                            ? "bg-emerald-100 text-emerald-700"
+                            : "bg-gray-100 text-gray-500"
+                        }`}
+                      >
+                        {tab.count}
+                      </span>
+                    </button>
+                  ))}
+              </div>
 
-        {/* Header */}
-        <div className="mb-8 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <button
-              onClick={() => router.push("/ngo/registrations")}
-              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-            >
-              <ArrowLeft className="h-5 w-5 text-gray-600" />
-            </button>
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">
-                {event?.title}
-              </h1>
-              <p className="text-gray-600">Event Registrations</p>
+              {/* Filter Bar */}
+              <div className="flex flex-col sm:flex-row items-center gap-4 pb-6">
+                <div className="relative flex-1 w-full">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <input
+                    type="text"
+                    placeholder={`Search ${activeTab}...`}
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all"
+                  />
+                </div>
+              </div>
             </div>
           </div>
-          <button
-            onClick={() => setShowScanner(true)}
-            className="bg-emerald-600 text-white px-4 py-2 rounded-lg hover:bg-emerald-700 transition-colors flex items-center gap-2"
-          >
-            <QrCode className="h-5 w-5" />
-            Scan QR Code
-          </button>
-        </div>
-        {/* Content */}
-        <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-          {filteredData.length === 0 ? (
-            <div className="text-center py-16">
-              <Users className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-              <h3 className="text-xl font-semibold text-gray-900 mb-2">
-                No {activeTab} Found
-              </h3>
-              <p className="text-gray-600">
-                {searchQuery
-                  ? "Try adjusting your search"
-                  : `No ${activeTab} for this event yet`}
-              </p>
-            </div>
-          ) : (
-            <div className="divide-y divide-gray-200">
-              {activeTab === "participants" &&
-                filteredData.map((participant) => {
-                  const badge = getStatusBadge(participant.status);
-                  const BadgeIcon = badge.icon;
-                  const hasAttended =
-                    participant.attendance_status === "checked_in";
 
-                  return (
-                    <div
-                      key={participant.id}
-                      className="p-6 hover:bg-gray-50 transition-colors border-l-4"
-                      style={{
-                        borderLeftColor: hasAttended ? "#10b981" : "#d1d5db",
-                      }}
+          {/* Table Container */}
+          <div className="flex-1 overflow-x-auto">
+            {filteredData.length > 0 ? (
+              <table className="w-full text-left">
+                <thead>
+                  <tr className="bg-gray-50/50 text-gray-500 text-[11px] uppercase tracking-wider font-bold">
+                    <th className="px-6 py-4">
+                      {activeTab === "donations" ? "Donor" : "Applicant"} Info
+                    </th>
+                    {activeTab === "participants" && (
+                      <th className="px-6 py-4">
+                        {filteredData.some(
+                          (p) => p.participant_category?.has_bib
+                        )
+                          ? "Category & BIB"
+                          : "Category"}
+                      </th>
+                    )}
+                    {activeTab === "volunteers" && (
+                      <th className="px-6 py-4">Role & Shift</th>
+                    )}
+                    {activeTab === "donations" && (
+                      <th className="px-6 py-4">Amount</th>
+                    )}
+                    {activeTab !== "donations" && (
+                      <>
+                        <th className="px-6 py-4">T-Shirt</th>
+                        <th className="px-6 py-4">Attendance</th>
+                      </>
+                    )}
+                    <th className="px-6 py-4 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {paginatedData.map((item, idx) => (
+                    <tr
+                      key={item.id}
+                      className="hover:bg-gray-50/50 transition-colors group"
                     >
-                      <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-3 mb-3">
-                            <h3 className="text-lg font-semibold text-gray-900">
-                              {participant.user?.name}
-                            </h3>
-                            <span
-                              className={`px-3 py-1 rounded-full text-xs font-medium flex items-center gap-1 ${badge.bg} ${badge.text}`}
-                            >
-                              <BadgeIcon className="h-3 w-3" />
-                              {participant.status
-                                ?.replace("_", " ")
-                                .toUpperCase()}
-                            </span>
-                            <span
-                              className={`px-3 py-1 rounded-full text-xs font-medium flex items-center gap-1 ${
-                                hasAttended
-                                  ? "bg-emerald-100 text-emerald-700"
-                                  : "bg-gray-100 text-gray-600"
+                      <td className="px-6 py-4">
+                        <div className="flex items-center">
+                          {item.user?.photo ? (
+                            <img
+                              src={getStorageUrl(item.user.photo)}
+                              alt={item.user.name}
+                              className="h-10 w-10 rounded-full object-cover mr-3 shadow-sm border border-gray-100"
+                            />
+                          ) : (
+                            <div
+                              className={`h-10 w-10 rounded-full flex items-center justify-center font-bold text-lg mr-3 shadow-inner ${
+                                activeTab === "donations"
+                                  ? "bg-purple-100 text-purple-600"
+                                  : activeTab === "volunteers"
+                                  ? "bg-emerald-100 text-emerald-600"
+                                  : "bg-blue-100 text-blue-600"
                               }`}
                             >
-                              {hasAttended ? (
-                                <CheckCircle2 className="h-3 w-3" />
-                              ) : (
-                                <Clock className="h-3 w-3" />
-                              )}
-                              {hasAttended ? "ATTENDED" : "NOT ATTENDED"}
-                            </span>
-                          </div>
-
-                          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm mt-3">
-                            <div>
-                              <p className="text-gray-500 text-xs mb-1">
-                                IC Number
-                              </p>
-                              <p className="font-medium text-gray-900">
-                                {participant.user?.ic_number || "N/A"}
-                              </p>
+                              {item.user?.name?.[0]?.toUpperCase() || "?"}
                             </div>
-                            <div>
-                              <p className="text-gray-500 text-xs mb-1">
-                                Contact
+                          )}
+                          <div>
+                            <p className="text-sm font-bold text-gray-900 leading-none mb-1">
+                              {item.user?.name || "Anonymous"}
+                            </p>
+                            <p className="text-xs text-gray-500 mb-0.5">
+                              {item.user?.email || "No email"}
+                            </p>
+                            {activeTab !== "donations" && (
+                              <p className="text-[10px] text-gray-400 font-mono">
+                                IC: {item.user?.ic_number || "N/A"}
                               </p>
-                              <p className="font-medium text-gray-900">
-                                {participant.user?.phone || "-"}
-                              </p>
-                            </div>
-                            <div>
-                              <p className="text-gray-500 text-xs mb-1">
-                                Category
-                              </p>
-                              <p className="font-medium text-gray-900">
-                                {
-                                  participant.participant_category
-                                    ?.category_name
-                                }
-                              </p>
-                            </div>
-                            <div>
-                              <p className="text-gray-500 text-xs mb-1">
-                                BIB Number
-                              </p>
-                              <p className="font-semibold text-emerald-600">
-                                {participant.bib_number || "Pending"}
-                              </p>
-                            </div>
+                            )}
                           </div>
                         </div>
+                      </td>
 
-                        <div className="flex gap-2">
-                          <button
-                            onClick={() => {
-                              setScannedData({
-                                type: "participant",
-                                registration: participant,
-                                event: event,
-                              });
-                              setIsViewOnly(true); // Hide confirm button when viewing details
-                              setShowConfirmModal(true);
-                            }}
-                            className="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition-colors flex items-center gap-2 whitespace-nowrap"
-                          >
-                            <QrCode className="h-4 w-4" />
-                            Details
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              {activeTab === "volunteers" &&
-                filteredData.map((volunteer) => {
-                  const hasAttended =
-                    volunteer.attendance_status === "checked_in";
-                  const shiftDate = volunteer.volunteer_shift?.shift_date;
-                  const startTime = volunteer.volunteer_shift?.start_time;
-                  const endTime = volunteer.volunteer_shift?.end_time;
-
-                  // Check if shift is today
-                  const isToday =
-                    shiftDate &&
-                    new Date(shiftDate).toDateString() ===
-                      new Date().toDateString();
-
-                  // Format date
-                  const formattedDate = shiftDate
-                    ? new Date(shiftDate).toLocaleDateString("en-GB", {
-                        day: "numeric",
-                        month: "long",
-                        year: "numeric",
-                      })
-                    : "N/A";
-
-                  // Format time to 12-hour
-                  const format12Hour = (time24) => {
-                    if (!time24) return "N/A";
-                    const [hours, minutes] = time24.split(":");
-                    const hour = parseInt(hours);
-                    const ampm = hour >= 12 ? "PM" : "AM";
-                    const hour12 = hour % 12 || 12;
-                    return `${hour12}:${minutes} ${ampm}`;
-                  };
-
-                  return (
-                    <div
-                      key={volunteer.id}
-                      className="p-6 hover:bg-gray-50 transition-colors border-l-4"
-                      style={{
-                        borderLeftColor: hasAttended ? "#10b981" : "#d1d5db",
-                      }}
-                    >
-                      <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
-                        <div className="flex-1">
-                          {/* Name & Attendance Status */}
-                          <div className="flex items-center gap-3 mb-3">
-                            <h3 className="text-lg font-semibold text-gray-900">
-                              {volunteer.user?.name}
-                            </h3>
-                            <span
-                              className={`px-3 py-1 rounded-full text-xs font-medium flex items-center gap-1 ${
-                                hasAttended
-                                  ? "bg-emerald-100 text-emerald-700"
-                                  : "bg-gray-100 text-gray-600"
-                              }`}
-                            >
-                              {hasAttended ? (
-                                <CheckCircle2 className="h-3 w-3" />
-                              ) : (
-                                <Clock className="h-3 w-3" />
+                      {activeTab === "participants" && (
+                        <td className="px-6 py-4">
+                          <div>
+                            <p className="text-sm font-medium text-gray-700">
+                              {item.participant_category?.category_name}
+                            </p>
+                            {item.participant_category?.has_bib &&
+                              item.bib_number && (
+                                <p className="text-[10px] font-mono text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded inline-block mt-1">
+                                  BIB: {item.bib_number}
+                                </p>
                               )}
-                              {hasAttended ? "Attended" : "Not Attended"}
-                            </span>
                           </div>
+                        </td>
+                      )}
 
-                          {/* Info Grid */}
-                          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                            <div>
-                              <p className="text-gray-500 text-xs mb-1">
-                                IC Number
-                              </p>
-                              <p className="font-medium text-gray-900">
-                                {volunteer.user?.ic_number || "N/A"}
-                              </p>
-                            </div>
-                            <div>
-                              <p className="text-gray-500 text-xs mb-1">Role</p>
-                              <p className="font-medium text-gray-900">
-                                {volunteer.volunteer_role?.custom_role_name ||
-                                  volunteer.volunteer_role?.role_type
-                                    ?.name_en ||
-                                  "N/A"}
-                              </p>
-                            </div>
-                            <div>
-                              <p className="text-gray-500 text-xs mb-1">
-                                Shift Date
-                              </p>
-                              <p
-                                className={`font-medium ${
-                                  isToday
-                                    ? "text-emerald-700 font-bold"
-                                    : "text-gray-900"
-                                }`}
-                              >
-                                {formattedDate}
-                                {isToday && (
-                                  <span className="ml-2 text-xs bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded">
-                                    Today
+                      {activeTab === "volunteers" && (
+                        <td className="px-6 py-4">
+                          <div className="max-w-[200px]">
+                            <p className="text-sm font-medium text-gray-700 truncate">
+                              {item.volunteer_role?.custom_role_name ||
+                                item.volunteer_role?.role_type?.name_en}
+                            </p>
+                            <div className="flex items-center gap-2 mt-1">
+                              <Clock className="h-3 w-3 text-gray-400" />
+                              <p className="text-[10px] text-gray-500">
+                                {format12Hour(item.volunteer_shift?.start_time)}{" "}
+                                - {format12Hour(item.volunteer_shift?.end_time)}
+                                {item.total_hours > 0 && (
+                                  <span className="ml-2 font-bold text-emerald-600">
+                                    ({item.total_hours}h)
                                   </span>
                                 )}
                               </p>
                             </div>
-                            <div>
-                              <p className="text-gray-500 text-xs mb-1">
-                                Shift Time
-                              </p>
-                              <p className="font-medium text-gray-900">
-                                {format12Hour(startTime)} -{" "}
-                                {format12Hour(endTime)}
-                              </p>
-                            </div>
                           </div>
-                        </div>
+                        </td>
+                      )}
 
-                        {/* Details Button */}
+                      {activeTab === "donations" && (
+                        <td className="px-6 py-4">
+                          <div>
+                            <p className="text-sm font-bold text-emerald-600">
+                              RM {(item.amount_paid / 100).toFixed(2)}
+                            </p>
+                            <p
+                              className={`text-[10px] mt-1 ${
+                                item.payments?.[0]?.payment_status === "paid"
+                                  ? "text-green-500"
+                                  : "text-amber-500"
+                              }`}
+                            >
+                              {item.payments?.[0]?.payment_status?.toUpperCase() ||
+                                "PENDING"}
+                            </p>
+                          </div>
+                        </td>
+                      )}
+
+                      {activeTab !== "donations" && (
+                        <>
+                          <td className="px-6 py-4 text-xs">
+                            <div className="flex flex-col gap-2 font-medium">
+                              {item.tshirt_size ? (
+                                <div className="flex items-center gap-1.5 text-gray-500">
+                                  <Shirt className="h-3 w-3" />
+                                  <span>{item.tshirt_size}</span>
+                                  {item.tshirt_collected ? (
+                                    <CheckCircle2 className="h-3 w-3 text-green-500" />
+                                  ) : (
+                                    <Clock className="h-3 w-3 text-amber-500" />
+                                  )}
+                                </div>
+                              ) : (
+                                <span className="text-gray-400 italic">
+                                  (no shirt)
+                                </span>
+                              )}
+                            </div>
+                          </td>
+
+                          <td className="px-6 py-4">
+                            <div className="flex flex-col gap-1 text-xs">
+                              <span
+                                className={`px-2 py-1 rounded-full text-[10px] font-bold w-fit ${
+                                  item.attendance_status === "checked_in"
+                                    ? "bg-green-100 text-green-700"
+                                    : "bg-gray-100 text-gray-500"
+                                }`}
+                              >
+                                {item.attendance_status === "checked_in"
+                                  ? "Present"
+                                  : "Absent"}
+                              </span>
+                              {item.check_in_time && (
+                                <span className="text-[10px] text-gray-400 font-mono">
+                                  {format12Hour(
+                                    item.check_in_time.split(" ")[1]
+                                  )}
+                                </span>
+                              )}
+                            </div>
+                          </td>
+                        </>
+                      )}
+
+                      <td className="px-6 py-4 text-right">
                         <button
                           onClick={() => {
                             setScannedData({
-                              type: "volunteer",
-                              registration: volunteer,
-                              event: event,
+                              qr_code: item.qr_code,
+                              type:
+                                activeTab === "participants"
+                                  ? "participant"
+                                  : activeTab === "volunteers"
+                                  ? "volunteer"
+                                  : "donation",
+                              registration: item,
+                              event: data.event,
+                              isViewOnly: true,
                             });
-                            setIsViewOnly(true); // Hide confirm button when viewing details
                             setShowConfirmModal(true);
                           }}
-                          className="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition-colors flex items-center gap-2 whitespace-nowrap"
+                          className="p-2 hover:bg-emerald-50 rounded-full text-emerald-600 group-hover:bg-emerald-100 transition-all"
+                          title="View & Check-in"
                         >
-                          <QrCode className="h-4 w-4" />
-                          Details
+                          <Eye className="h-4 w-4" />
                         </button>
-                      </div>
-                    </div>
-                  );
-                })}
-              {activeTab === "donations" &&
-                filteredData.map((donation) => {
-                  const amount = (donation.amount_paid || 0) / 100;
-                  const payment = donation.payments?.[0];
-                  const badge = getStatusBadge(
-                    payment?.payment_status || "pending"
-                  );
-                  const BadgeIcon = badge.icon;
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            ) : (
+              <div className="flex flex-col items-center justify-center p-20 text-center">
+                <div className="h-16 w-16 bg-gray-50 rounded-full flex items-center justify-center mb-4">
+                  <Search className="h-8 w-8 text-gray-200" />
+                </div>
+                <h3 className="text-lg font-bold text-gray-900">
+                  No results found
+                </h3>
+                <p className="text-gray-500 max-w-xs mt-1">
+                  We couldn't find any {activeTab} matching your current
+                  filters.
+                </p>
+              </div>
+            )}
+          </div>
 
-                  return (
-                    <div
-                      key={donation.id}
-                      className="p-6 hover:bg-gray-50 transition-colors"
-                    >
-                      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-3 mb-2">
-                            <h3 className="text-lg font-semibold text-gray-900">
-                              {donation.user?.name || "Unknown"}
-                            </h3>
-                            <span
-                              className={`px-3 py-1 rounded-full text-xs font-medium flex items-center gap-1 ${badge.bg} ${badge.text}`}
-                            >
-                              <BadgeIcon className="h-3 w-3" />
-                              {payment?.payment_status?.toUpperCase() ||
-                                "PENDING"}
-                            </span>
-                          </div>
+          {/* Pagination Controls */}
+          {totalPages > 1 && (
+            <div className="px-6 py-4 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-between gap-4 bg-gray-50/30">
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                  className="p-2 rounded-lg border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </button>
 
-                          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm mt-3">
-                            <div>
-                              <p className="text-gray-500">Email</p>
-                              <p className="font-medium text-gray-900">
-                                {donation.user?.email || "-"}
-                              </p>
-                            </div>
-                            <div>
-                              <p className="text-gray-500">Amount Paid</p>
-                              <p className="font-bold text-emerald-600">
-                                RM {amount.toFixed(2)}
-                              </p>
-                            </div>
-                            <div>
-                              <p className="text-gray-500">Payment Reference</p>
-                              <p className="font-mono text-gray-600">
-                                {payment?.payment_reference || "-"}
-                              </p>
-                            </div>
-                            <div>
-                              <p className="text-gray-500">Date</p>
-                              <p className="font-medium text-gray-900">
-                                {new Date(
-                                  donation.created_at
-                                ).toLocaleDateString()}
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
+                <div className="flex items-center gap-1">
+                  {[...Array(totalPages)].map((_, i) => {
+                    const page = i + 1;
+                    // Show first, last, and pages around current
+                    if (
+                      page === 1 ||
+                      page === totalPages ||
+                      (page >= currentPage - 1 && page <= currentPage + 1)
+                    ) {
+                      return (
+                        <button
+                          key={page}
+                          onClick={() => setCurrentPage(page)}
+                          className={`min-w-[36px] h-9 rounded-lg text-sm font-bold transition-all ${
+                            currentPage === page
+                              ? "bg-emerald-600 text-white shadow-md shadow-emerald-200"
+                              : "bg-white border border-gray-200 text-gray-600 hover:border-emerald-300 hover:text-emerald-600"
+                          }`}
+                        >
+                          {page}
+                        </button>
+                      );
+                    } else if (
+                      page === currentPage - 2 ||
+                      page === currentPage + 2
+                    ) {
+                      return (
+                        <span key={page} className="text-gray-400 px-1">
+                          ...
+                        </span>
+                      );
+                    }
+                    return null;
+                  })}
+                </div>
+
+                <button
+                  onClick={() =>
+                    setCurrentPage((p) => Math.min(totalPages, p + 1))
+                  }
+                  disabled={currentPage === totalPages}
+                  className="p-2 rounded-lg border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </button>
+              </div>
+
+              <div className="text-xs text-gray-500 font-medium">
+                Page <span className="text-gray-900">{currentPage}</span> of{" "}
+                <span className="text-gray-900">{totalPages}</span>
+              </div>
             </div>
           )}
-        </div>
 
-        {/* Toast Notification */}
-        {toast && (
-          <div className="fixed top-4 right-4 z-50 animate-slide-in-right">
-            <div
-              className={`flex items-center gap-3 px-6 py-4 rounded-lg shadow-lg ${
-                toast.type === "success"
-                  ? "bg-emerald-600 text-white"
-                  : "bg-red-600 text-white"
-              }`}
-            >
-              {toast.type === "success" ? (
-                <CheckCircle2 className="h-6 w-6" />
-              ) : (
-                <XCircle className="h-6 w-6" />
-              )}
-              <p className="font-medium">{toast.message}</p>
-              <button
-                onClick={() => setToast(null)}
-                className="ml-4 hover:opacity-80"
-              >
-                <X className="h-5 w-5" />
-              </button>
+          {/* Footer Info */}
+          <div className="bg-gray-50/50 px-6 py-4 border-t border-gray-100 flex items-center justify-between">
+            <p className="text-xs text-gray-500">
+              Showing{" "}
+              <strong>
+                {(currentPage - 1) * itemsPerPage + 1} -{" "}
+                {Math.min(currentPage * itemsPerPage, filteredData.length)}
+              </strong>{" "}
+              of <strong>{filteredData.length}</strong> records
+            </p>
+            <div className="flex items-center gap-1 text-[10px] text-gray-400">
+              <RefreshCcw className="h-3 w-3 animate-spin-slow" />
+              Auto-sync enabled
             </div>
           </div>
-        )}
-
-        {/* QR Scanner */}
-        {showScanner && (
-          <QRScanner
-            isOpen={showScanner}
-            onClose={() => setShowScanner(false)}
-            onScanSuccess={handleScanSuccess}
-            onScanError={handleScanError}
-          />
-        )}
-
-        {/* Check-in Confirmation Modal */}
-        {showConfirmModal && scannedData && (
-          <CheckInConfirmationModal
-            isOpen={showConfirmModal}
-            onClose={() => {
-              setShowConfirmModal(false);
-              setScannedData(null);
-            }}
-            onConfirm={handleConfirmCheckIn}
-            data={scannedData?.registration}
-            type={scannedData?.type}
-            event={scannedData?.event || event}
-            isViewOnly={isViewOnly}
-          />
-        )}
+        </div>
       </div>
+
+      {/* Floating Scan Button */}
+      <button
+        onClick={() => setShowScanner(true)}
+        className="fixed bottom-8 right-8 bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-4 rounded-full shadow-2xl flex items-center gap-2 transition-all hover:scale-110 z-30"
+      >
+        <QrCode className="h-6 w-6" />
+        <span className="font-bold">Scan QR</span>
+      </button>
+
+      {/* Modals & Toasts */}
+      <QRScanner
+        isOpen={showScanner}
+        onClose={() => setShowScanner(false)}
+        onScanSuccess={handleScanSuccess}
+        onScanError={(err) => setToast({ type: "error", message: err })}
+      />
+
+      <CheckInConfirmationModal
+        isOpen={showConfirmModal}
+        onClose={() => setShowConfirmModal(false)}
+        data={scannedData?.registration}
+        type={scannedData?.type}
+        event={scannedData?.event}
+        onConfirm={handleConfirmCheckIn}
+        isConfirming={isCheckingIn}
+        isViewOnly={scannedData?.isViewOnly}
+      />
+
+      {toast && (
+        <div className="fixed top-8 right-8 z-[60] flex items-center gap-3 px-6 py-4 rounded-2xl shadow-2xl bg-white border border-gray-100 animate-slide-up">
+          {toast.type === "success" ? (
+            <CheckCircle className="h-6 w-6 text-emerald-500" />
+          ) : (
+            <XCircle className="h-6 w-6 text-red-500" />
+          )}
+          <p className="font-bold text-gray-900">{toast.message}</p>
+        </div>
+      )}
+
+      <style jsx>{`
+        .animate-spin-slow {
+          animation: spin 3s linear infinite;
+        }
+        @keyframes spin {
+          from {
+            transform: rotate(0deg);
+          }
+          to {
+            transform: rotate(360deg);
+          }
+        }
+        @keyframes slide-up {
+          from {
+            transform: translateY(20px);
+            opacity: 0;
+          }
+          to {
+            transform: translateY(0);
+            opacity: 1;
+          }
+        }
+        .animate-slide-up {
+          animation: slide-up 0.3s ease-out;
+        }
+      `}</style>
     </Layout>
   );
-};
-
-export default EventRegistrationsPage;
+}

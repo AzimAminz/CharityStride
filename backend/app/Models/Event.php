@@ -66,8 +66,14 @@ class Event extends Model
         
         // Only include donations if has_donation is enabled
         if ($this->has_donation) {
-            $stats['donations_count'] = $this->donationRegistrations()->count();
-            $stats['total_raised'] = $this->donationRegistrations()->sum('amount_paid');
+            $stats['donations'] = $this->donationRegistrations()
+                ->whereHas('payments', function($q) {
+                    $q->where('payment_status', 'paid');
+                })->count();
+            $stats['total_raised'] = $this->donationRegistrations()
+                ->whereHas('payments', function($q) {
+                    $q->where('payment_status', 'paid');
+                })->sum('amount_paid');
         }
         
         return $stats;

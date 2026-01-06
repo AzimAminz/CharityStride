@@ -109,6 +109,9 @@ class VolunteerRegistrationController extends Controller
                 // If free, send confirmation email with QR code
                 try {
                     \Mail::to($registration->user->email)->send(new \App\Mail\RegistrationConfirmation($registration));
+                    
+                    // Broadcast registration event
+                    broadcast(new \App\Events\RegistrationCreated($event, 'volunteer'));
                 } catch (\Exception $emailError) {
                     \Log::error('Failed to send volunteer registration email: ' . $emailError->getMessage());
                 }
