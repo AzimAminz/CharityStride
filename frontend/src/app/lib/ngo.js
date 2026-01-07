@@ -1,7 +1,4 @@
-/**
- * NGO Registration API Functions
- */
-
+import axios from "axios";
 import { api } from "./api";
 
 /**
@@ -21,12 +18,26 @@ export async function uploadFile(file, type, oldPath = null) {
     formData.append("old_path", path);
   }
 
-  // Note: For file uploads, we need to override Content-Type
-  const response = await api.post("/upload", formData, {
-    headers: {
-      "Content-Type": "multipart/form-data",
-    },
+  const token = localStorage.getItem("token");
+
+  console.log(`📤 Uploading ${type}...`, {
+    fileName: file.name,
+    fileSize: (file.size / 1024 / 1024).toFixed(2) + "MB",
+    fileType: file.type,
   });
+
+  // Use fresh axios call to avoid any default header interference from the 'api' instance
+  const response = await axios.post(
+    `${process.env.NEXT_PUBLIC_API_URL}/api/upload`,
+    formData,
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Accept: "application/json",
+        // DO NOT set Content-Type here, let the browser handle it with the boundary
+      },
+    }
+  );
 
   return response.data.url;
 }

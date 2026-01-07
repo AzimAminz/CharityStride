@@ -32,7 +32,7 @@ class User extends Authenticatable
     protected $casts = [
         'email_verified_at' => 'datetime',
         'password' => 'hashed',
-        'birthdate' => 'date',
+        'birthdate' => 'date:Y-m-d',
         'status' => 'boolean',
         'deleted_at' => 'datetime',
     ];

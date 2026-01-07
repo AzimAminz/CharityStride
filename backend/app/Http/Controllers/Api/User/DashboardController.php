@@ -29,7 +29,7 @@ class DashboardController extends Controller
         // 2. Volunteer Hours
         // Note: Using SUM on total_hours which is captured during check-out or manual entry
         $totalHours = VolunteerRegistration::where('user_id', $user->id)
-            ->where('status', 'confirmed')
+            ->whereIn('status', ['confirmed', 'approved', 'completed'])
             ->sum('total_hours') ?: 0;
 
         // 3. Total Donated (Money donations)
@@ -44,8 +44,12 @@ class DashboardController extends Controller
         
         $totalDonated = $donationAmount;
 
-        // 4. Certificates (Placeholder)
-        $certificatesCount = 0;
+        // 4. Certificates
+        $certificatesCount = VolunteerRegistration::where('user_id', $user->id)
+            ->where('attendance_status', 'completed')
+            ->whereNotNull('check_in_time')
+            ->whereNotNull('check_out_time')
+            ->count();
 
         // 5. Recent Activities
         $recentParticipants = ParticipantRegistration::with(['event', 'participantCategory'])

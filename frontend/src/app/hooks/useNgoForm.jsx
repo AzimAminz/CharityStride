@@ -40,6 +40,8 @@ export function useNgoForm() {
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [uploadingDoc, setUploadingDoc] = useState(false);
   const [previewLogo, setPreviewLogo] = useState(null);
+  const [croppingImage, setCroppingImage] = useState(null);
+  const [showCropper, setShowCropper] = useState(false);
 
   // Constants
   const malaysianBanks = [
@@ -81,8 +83,8 @@ export function useNgoForm() {
   const handleLocationSelect = (location) => {
     setForm((prev) => ({
       ...prev,
-      latitude: location.lat,
-      longitude: location.lng,
+      latitude: location.latitude,
+      longitude: location.longitude,
       address: location.address || prev.address,
       city: location.city || prev.city,
       state: location.state || prev.state,
@@ -100,17 +102,51 @@ export function useNgoForm() {
   };
 
   // File upload handlers
-  const handleLogoUpload = async (e) => {
+  const handleLogoSelect = (e) => {
     const file = e.target.files[0];
-    if (!file) return;
+    if (file) {
+      if (file.size > 15 * 1024 * 1024) {
+        setAlert({
+          type: "error",
+          message: "File is too large. Max limit is 15MB.",
+        });
+        return;
+      }
+      const reader = new FileReader();
+      reader.addEventListener("load", () => {
+        setCroppingImage(reader.result);
+        setShowCropper(true);
+      });
+      reader.readAsDataURL(file);
+    }
+  };
 
+  const handleCropComplete = async (croppedBlob) => {
+    setShowCropper(false);
     setUploadingLogo(true);
     try {
+      const file = new File([croppedBlob], "logo.jpg", { type: "image/jpeg" });
       const url = await uploadFile(file, "logo", form.logo_url);
       setForm((prev) => ({ ...prev, logo_url: url }));
-      setPreviewLogo(URL.createObjectURL(file));
+      setPreviewLogo(URL.createObjectURL(croppedBlob));
     } catch (error) {
-      setAlert({ type: "error", message: error.message });
+      console.error("Logo upload full error response:", error.response?.data);
+      let message =
+        error.response?.data?.error ||
+        error.response?.data?.message ||
+        error.message;
+
+      const serverErrors =
+        error.response?.data?.errors || error.response?.data?.details;
+      if (serverErrors) {
+        const details =
+          typeof serverErrors === "object"
+            ? Object.values(serverErrors).flat().join(", ")
+            : serverErrors;
+        message = `${message}: ${details}`;
+      }
+
+      setAlert({ type: "error", message });
     } finally {
       setUploadingLogo(false);
     }
@@ -126,7 +162,26 @@ export function useNgoForm() {
       setForm((prev) => ({ ...prev, registration_doc_url: url }));
       setAlert({ type: "success", message: "Document uploaded successfully!" });
     } catch (error) {
-      setAlert({ type: "error", message: error.message });
+      console.error(
+        "Document upload full error response:",
+        error.response?.data
+      );
+      let message =
+        error.response?.data?.error ||
+        error.response?.data?.message ||
+        error.message;
+
+      const serverErrors =
+        error.response?.data?.errors || error.response?.data?.details;
+      if (serverErrors) {
+        const details =
+          typeof serverErrors === "object"
+            ? Object.values(serverErrors).flat().join(", ")
+            : serverErrors;
+        message = `${message}: ${details}`;
+      }
+
+      setAlert({ type: "error", message });
     } finally {
       setUploadingDoc(false);
     }
@@ -178,16 +233,27 @@ export function useNgoForm() {
           : null,
       };
 
+      console.log("🚀 Submitting NGO Registration:", submissionData);
       await submitNgoRegistration(submissionData);
       setAlert({
         type: "success",
-        message: "Registration submitted successfully!",
+        title: "Registration Submitted!",
+        message:
+          "Your NGO registration has been received and is currently under review. We will notify you via email once approved (usually within 24-48 hours).",
+        redirect: "/user/dashboard",
       });
-      setTimeout(() => {
-        router.push("/ngo/register/success");
-      }, 1500);
     } catch (error) {
-      setAlert({ type: "error", message: error.message });
+      let message = error.response?.data?.message || error.message;
+
+      // Handle Laravel validation errors specifically
+      if (error.response?.data?.errors) {
+        const details = Object.values(error.response.data.errors)
+          .flat()
+          .join(", ");
+        message = `${message}: ${details}`;
+      }
+
+      setAlert({ type: "error", message });
     } finally {
       setLoading(false);
     }
@@ -202,13 +268,17 @@ export function useNgoForm() {
     uploadingLogo,
     uploadingDoc,
     previewLogo,
+    croppingImage,
+    showCropper,
+    setShowCropper,
     malaysianBanks,
 
     // Form handlers
     handleChange,
     handleDateChange,
     handleLocationSelect,
-    handleLogoUpload,
+    handleLogoSelect,
+    handleCropComplete,
     handleDocUpload,
     handleDeleteLogo,
     handleSubmit,

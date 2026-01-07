@@ -58,6 +58,15 @@ export function validateNgoRegistration(form) {
     errors.postcode = "Invalid postcode format (5 digits required)";
   }
 
+  if (!form.latitude || !form.longitude) {
+    errors.latitude = "Please pin your location on the map";
+  }
+
+  // Files
+  if (!form.registration_doc_url) {
+    errors.registration_doc_url = "Registration document is required";
+  }
+
   // Contact
   if (!form.contact_email?.trim()) {
     errors.contact_email = "Contact email is required";

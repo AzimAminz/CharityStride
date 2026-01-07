@@ -26,6 +26,7 @@ import {
 } from "lucide-react";
 import { format, parseISO, isAfter } from "date-fns";
 import Link from "next/link";
+import { getStorageUrl } from "../../../../lib/api";
 
 export default function EventPreviewPage() {
   const router = useRouter();
@@ -348,7 +349,7 @@ export default function EventPreviewPage() {
                   <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-emerald-100 bg-emerald-50 flex items-center justify-center">
                     {event.ngo?.logo_url ? (
                       <Image
-                        src={event.ngo.logo_url}
+                        src={getStorageUrl(event.ngo.logo_url)}
                         alt={event.ngo.name}
                         width={40}
                         height={40}
@@ -1663,7 +1664,7 @@ function OrganizerTab({ event }) {
             {event.ngo?.logo_url ? (
               <div className="flex-shrink-0">
                 <Image
-                  src={event.ngo.logo_url}
+                  src={getStorageUrl(event.ngo.logo_url)}
                   alt={event.ngo.name}
                   width={64}
                   height={64}
@@ -1688,29 +1689,13 @@ function OrganizerTab({ event }) {
                 </p>
               )}
 
-              {/* Stats Row - Rating and Events */}
-              <div className="flex items-center gap-4 text-sm">
-                {/* Rating Stars */}
-                <div className="flex items-center gap-1.5">
-                  <div className="flex items-center">
-                    {[1, 2, 3, 4].map((star) => (
-                      <Star
-                        key={star}
-                        className="h-4 w-4 fill-amber-400 text-amber-400"
-                      />
-                    ))}
-                    <Star className="h-4 w-4 fill-gray-300 text-gray-300" />
-                  </div>
-                  <span className="font-semibold text-gray-900">4.8</span>
-                  <span className="text-gray-500">(128 reviews)</span>
-                </div>
-
-                {/* Events Count */}
+              {/* Stats Row - Events */}
+              <div className="flex items-center gap-4 text-sm mt-4">
                 <div className="flex items-center gap-1.5 text-gray-600">
                   <Calendar className="h-4 w-4" />
                   <span>
                     <span className="font-semibold text-gray-900">
-                      {event.ngo?.total_events || 0}
+                      {event.ngo?.active_events_count || 0}
                     </span>{" "}
                     events organized
                   </span>
@@ -1807,7 +1792,7 @@ function OrganizerSidebar({ event, setActiveTab }) {
           {event.ngo?.logo_url ? (
             <div className="flex-shrink-0">
               <Image
-                src={event.ngo.logo_url}
+                src={getStorageUrl(event.ngo.logo_url)}
                 alt={event.ngo.name}
                 width={64}
                 height={64}
@@ -1825,7 +1810,7 @@ function OrganizerSidebar({ event, setActiveTab }) {
               {event.ngo?.name || "Organization"}
             </h4>
             <p className="text-sm text-gray-600">
-              {event.ngo?.total_events || 0} events organized
+              {event.ngo?.active_events_count || 0} events organized
             </p>
           </div>
         </div>

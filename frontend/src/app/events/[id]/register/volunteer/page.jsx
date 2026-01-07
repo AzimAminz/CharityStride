@@ -65,6 +65,24 @@ export default function VolunteerRegistrationPage() {
     checkRegistrationStatus();
   }, [id, router]);
 
+  // Get today's date in YYYY-MM-DD format (Local client time)
+  // Must be before early returns to support hooks using it
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = String(today.getMonth() + 1).padStart(2, "0");
+  const day = String(today.getDate()).padStart(2, "0");
+  const todayStr = `${year}-${month}-${day}`;
+
+  // Debug log (Must be before early returns)
+  useEffect(() => {
+    if (event?.volunteer_roles) {
+      console.log("🛠️ Volunteer Filtering Debug:", {
+        todayStr,
+        totalRoles: event.volunteer_roles.length,
+      });
+    }
+  }, [event?.volunteer_roles, todayStr]);
+
   if (checkingStatus || loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-purple-50/30 flex items-center justify-center">
@@ -103,17 +121,20 @@ export default function VolunteerRegistrationPage() {
     );
   }
 
-  // Get today's date in YYYY-MM-DD format (Malaysia time)
-  // Use a reliable method for the client timezone
-  const todayStr = new Date().toLocaleDateString("en-CA"); // YYYY-MM-DD
-
   // Filter roles and their shifts
   const filteredRoles = (event.volunteer_roles || [])
     .map((role) => ({
       ...role,
       upcomingShifts: (role.shifts || []).filter((shift) => {
         if (!shift.shift_date) return true; // Keep shifts without dates
-        return shift.shift_date >= todayStr;
+
+        // Normalize shift_date if it's an ISO string (e.g., from DB cast)
+        const shiftDateStr =
+          typeof shift.shift_date === "string"
+            ? shift.shift_date.split("T")[0]
+            : new Date(shift.shift_date).toISOString().split("T")[0];
+
+        return shiftDateStr >= todayStr;
       }),
     }))
     .filter((role) => role.upcomingShifts.length > 0);
@@ -126,11 +147,19 @@ export default function VolunteerRegistrationPage() {
 
   // Group shifts by date for better UX
   const shiftsByDate = availableShifts.reduce((acc, shift) => {
-    const date = shift.shift_date || "No Date";
-    if (!acc[date]) {
-      acc[date] = [];
+    // Normalize date for grouping (YYYY-MM-DD)
+    let dateKey = "No Date";
+    if (shift.shift_date) {
+      dateKey =
+        typeof shift.shift_date === "string"
+          ? shift.shift_date.split("T")[0]
+          : new Date(shift.shift_date).toISOString().split("T")[0];
     }
-    acc[date].push(shift);
+
+    if (!acc[dateKey]) {
+      acc[dateKey] = [];
+    }
+    acc[dateKey].push(shift);
     return acc;
   }, {});
 

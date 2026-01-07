@@ -82,9 +82,9 @@ class Event extends Model
     }
 
     protected $casts = [
-        'start_date' => 'date',
-        'end_date' => 'date',
-        'event_date' => 'date',
+        'start_date' => 'date:Y-m-d',
+        'end_date' => 'date:Y-m-d',
+        'event_date' => 'date:Y-m-d',
         'has_event_date' => 'boolean',
         'longitude' => 'decimal:7',
         'latitude' => 'decimal:7',

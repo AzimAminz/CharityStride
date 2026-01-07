@@ -167,7 +167,9 @@ class PublicEventController extends Controller
     {
         $event = Event::query()
             ->with([
-                'ngo',
+                'ngo' => function($query) {
+                    $query->withCount('activeEvents');
+                },
                 'sections',
                 'participantCategories.feeTiers',
                 'volunteerRoles' => function($query) {

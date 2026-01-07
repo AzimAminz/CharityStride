@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 class FileUploadController extends Controller
@@ -14,33 +15,39 @@ class FileUploadController extends Controller
      */
     public function upload(Request $request)
     {
-        try {
-            // Validate the request
-            $request->validate([
-                'file' => 'required|file',
-                'type' => 'required|in:logo,doc,poster'
-            ]);
+        Log::info('Upload request received', [
+            'content_length' => $request->header('Content-Length'),
+            'has_file' => $request->hasFile('file'),
+            'type' => $request->input('type'),
+            'files' => array_keys($request->allFiles())
+        ]);
 
-            $file = $request->file('file');
-            $type = $request->input('type');
+        try {
+            // Check if type is present first
+            if (!$request->has('type')) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'The file type (logo/doc/poster) is missing from the request.'
+                ], 422);
+            }
 
             // Define validation rules based on type
+            $type = $request->input('type');
+            $rules = ['type' => 'required|in:logo,doc,poster'];
+
             if ($type === 'logo') {
-                $request->validate([
-                    'file' => 'mimes:png,jpg,jpeg,svg|max:2048' // 2MB max for logos
-                ]);
+                $rules['file'] = 'required|file|mimes:png,jpg,jpeg,svg,webp|max:15360'; // 15MB max for logos
                 $folder = 'logos';
             } elseif ($type === 'poster') {
-                $request->validate([
-                    'file' => 'mimes:png,jpg,jpeg,svg,webp|max:5120' // 5MB max for posters
-                ]);
+                $rules['file'] = 'required|file|mimes:png,jpg,jpeg,svg,webp|max:20480'; // 20MB max for posters
                 $folder = 'posters';
             } else {
-                $request->validate([
-                    'file' => 'mimes:pdf,doc,docx,png,jpg,jpeg|max:5120' // 5MB max for documents
-                ]);
+                $rules['file'] = 'required|file|mimes:pdf,doc,docx,png,jpg,jpeg,webp|max:15360'; 
                 $folder = 'documents';
             }
+
+            $request->validate($rules);
+            $file = $request->file('file');
 
             // Generate unique filename using original name
             $originalName = pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME);
@@ -74,10 +81,14 @@ class FileUploadController extends Controller
             ], 200);
 
         } catch (\Illuminate\Validation\ValidationException $e) {
+            Log::warning('File upload validation failed:', [
+                'type' => $request->input('type'),
+                'errors' => $e->errors()
+            ]);
             return response()->json([
                 'success' => false,
                 'error' => 'Invalid file. Please check file type and size.',
-                'details' => $e->errors()
+                'errors' => $e->errors()
             ], 422);
         } catch (\Exception $e) {
             return response()->json([

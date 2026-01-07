@@ -61,7 +61,7 @@ class UserRegistrationController extends Controller
         // Get only completed volunteer registrations for certificates
         $certificates = VolunteerRegistration::where('user_id', $userId)
             ->where('attendance_status', 'completed')
-            ->with(['event.ngo', 'volunteerRole', 'volunteerShift'])
+            ->with(['event.ngo', 'volunteerRole', 'volunteerShift', 'user'])
             ->orderBy('created_at', 'desc')
             ->get();
 

@@ -35,7 +35,7 @@ class Ngo extends Model
     ];
 
     protected $casts = [
-        'established_date' => 'date',
+        'established_date' => 'date:Y-m-d',
         'latitude' => 'decimal:6',
         'longitude' => 'decimal:6',
         'deleted_at' => 'datetime',
@@ -50,6 +50,13 @@ class Ngo extends Model
     public function events()
     {
         return $this->hasMany(Event::class);
+    }
+
+    public function activeEvents()
+    {
+        return $this->hasMany(Event::class)
+            ->where('is_published', true)
+            ->whereNull('taken_down_at');
     }
 
     public function savedLocations()

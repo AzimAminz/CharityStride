@@ -149,7 +149,9 @@ class EventController extends Controller
             ->where('ngo_id', $ngo->id)
             ->with([
                 'sections',
-                'ngo',
+                'ngo' => function($query) {
+                    $query->withCount('activeEvents');
+                },
                 'participantCategories',
                 'volunteerRoles' => function($query) {
                     $query->with(['shifts', 'roleType']);

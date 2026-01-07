@@ -27,6 +27,8 @@ import "react-datepicker/dist/react-datepicker.css";
 import { useAuth } from "../../../hooks/useAuth";
 import { useNgoForm } from "../../../hooks/useNgoForm";
 import LocationPicker from "../../../components/LocationPicker";
+import StatusModal from "../../../components/StatusModal";
+import ImageCropperModal from "../../../components/ImageCropperModal";
 import { useRouter } from "next/navigation";
 
 export default function SimpleNgoRegisterForm({
@@ -49,11 +51,15 @@ export default function SimpleNgoRegisterForm({
     uploadingLogo,
     uploadingDoc,
     previewLogo,
+    croppingImage,
+    showCropper,
+    setShowCropper,
     malaysianBanks,
     handleChange,
     handleDateChange,
     handleLocationSelect,
-    handleLogoUpload,
+    handleLogoSelect,
+    handleCropComplete,
     handleDocUpload,
     handleDeleteLogo,
     handleSubmit,
@@ -135,6 +141,33 @@ export default function SimpleNgoRegisterForm({
 
   return (
     <div className="min-h-screen bg-gray-50 py-12 px-4">
+      {/* Status Modal for Success/Error */}
+      <StatusModal
+        isOpen={!!alert}
+        onClose={() => {
+          if (alert?.redirect) {
+            router.push(alert.redirect);
+          }
+          setAlert(null);
+        }}
+        type={alert?.type || "info"}
+        title={alert?.title || (alert?.type === "error" ? "Ops!" : "Success")}
+        message={alert?.message}
+        confirmText={
+          alert?.type === "success" ? "Back to Dashboard" : "Try Again"
+        }
+      />
+
+      {showCropper && (
+        <ImageCropperModal
+          image={croppingImage}
+          onCropComplete={handleCropComplete}
+          onClose={() => setShowCropper(false)}
+          aspect={1}
+          circular={true}
+        />
+      )}
+
       <div className="max-w-7xl mx-auto">
         {/* Back Button */}
         <motion.button
@@ -160,38 +193,6 @@ export default function SimpleNgoRegisterForm({
             Join our network of changemakers and make an impact
           </p>
         </motion.div>
-
-        {/* Alert */}
-        {alert && (
-          <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className={`max-w-2xl mx-auto mb-6 p-4 rounded-lg flex items-start gap-3 ${
-              alert.type === "error"
-                ? "bg-red-50 border border-red-200"
-                : "bg-green-50 border border-green-200"
-            }`}
-          >
-            {alert.type === "error" ? (
-              <AlertCircle className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
-            ) : (
-              <CheckCircle className="h-5 w-5 text-green-600 flex-shrink-0 mt-0.5" />
-            )}
-            <p
-              className={`flex-1 ${
-                alert.type === "error" ? "text-red-800" : "text-green-800"
-              }`}
-            >
-              {alert.message}
-            </p>
-            <button
-              onClick={() => setAlert(null)}
-              className="text-gray-400 hover:text-gray-600"
-            >
-              <X className="h-5 w-5" />
-            </button>
-          </motion.div>
-        )}
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* LEFT: Form - 2/3 width */}
@@ -272,7 +273,7 @@ export default function SimpleNgoRegisterForm({
                     <input
                       type="file"
                       accept="image/*"
-                      onChange={handleLogoUpload}
+                      onChange={handleLogoSelect}
                       className="hidden"
                       id="logo-upload"
                       disabled={uploadingLogo}
@@ -314,7 +315,7 @@ export default function SimpleNgoRegisterForm({
                             Click to upload logo
                           </p>
                           <p className="text-xs text-gray-500">
-                            PNG, JPG, SVG • Max 2MB
+                            PNG, JPG, SVG • Max 10MB
                           </p>
                         </div>
                       )}
@@ -398,6 +399,11 @@ export default function SimpleNgoRegisterForm({
                     }
                     address={form.address}
                   />
+                  {errors.latitude && (
+                    <p className="mt-2 text-sm text-red-600 flex items-center gap-1">
+                      <AlertCircle className="h-4 w-4" /> {errors.latitude}
+                    </p>
+                  )}
                 </div>
               </FormSection>
 
@@ -503,16 +509,28 @@ export default function SimpleNgoRegisterForm({
                     </div>
                   ) : (
                     <div className="text-center p-4">
-                      <FileText className="mx-auto h-12 w-12 text-gray-400 mb-2" />
+                      <FileText
+                        className={`mx-auto h-12 w-12 mb-2 ${
+                          errors.registration_doc_url
+                            ? "text-red-400"
+                            : "text-gray-400"
+                        }`}
+                      />
                       <p className="font-medium text-gray-700">
                         Click to upload document
                       </p>
                       <p className="text-sm text-gray-500 mt-1">
-                        PDF, DOC, DOCX, JPG, PNG • Max 5MB
+                        PDF, DOC, DOCX, JPG, PNG • Max 15MB
                       </p>
                     </div>
                   )}
                 </label>
+                {errors.registration_doc_url && (
+                  <p className="mt-2 text-sm text-red-600 flex items-center gap-1">
+                    <AlertCircle className="h-4 w-4" />{" "}
+                    {errors.registration_doc_url}
+                  </p>
+                )}
               </FormSection>
 
               {/* Submit Button */}

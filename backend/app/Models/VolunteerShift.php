@@ -19,7 +19,7 @@ class VolunteerShift extends Model
     ];
 
     protected $casts = [
-        'shift_date' => 'date',
+        'shift_date' => 'date:Y-m-d',
         'capacity' => 'integer',
     ];
 

@@ -22,7 +22,7 @@ const defaultCenter = {
 };
 
 export default function LocationPicker({
-  onChange,
+  onLocationSelect,
   initialLocation = null,
   address = "",
   placeholder,
@@ -74,17 +74,17 @@ export default function LocationPicker({
       geocoder.geocode({ location: { lat, lng } }, (results, status) => {
         if (status === "OK" && results[0]) {
           const addressData = extractAddressComponents(results[0]);
-          onChange({
+          onLocationSelect?.({
             latitude: lat,
             longitude: lng,
             address: addressData.address,
           });
         } else {
-          onChange({ latitude: lat, longitude: lng, address: "" });
+          onLocationSelect?.({ latitude: lat, longitude: lng, address: "" });
         }
       });
     },
-    [onChange]
+    [onLocationSelect]
   );
 
   // Extract city, state, postcode from address components
@@ -131,7 +131,7 @@ export default function LocationPicker({
         setMapCenter({ lat, lng });
 
         const addressData = extractAddressComponents(place);
-        onChange({
+        onLocationSelect?.({
           latitude: lat,
           longitude: lng,
           address: addressData.address,
@@ -151,13 +151,13 @@ export default function LocationPicker({
     geocoder.geocode({ location: { lat, lng } }, (results, status) => {
       if (status === "OK" && results[0]) {
         const addressData = extractAddressComponents(results[0]);
-        onChange({
+        onLocationSelect?.({
           latitude: lat,
           longitude: lng,
           address: addressData.address,
         });
       } else {
-        onChange({ latitude: lat, longitude: lng, address: "" });
+        onLocationSelect?.({ latitude: lat, longitude: lng, address: "" });
       }
     });
   };
