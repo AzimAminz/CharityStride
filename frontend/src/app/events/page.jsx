@@ -1,13 +1,15 @@
-import React from 'react';
-import Layout from '../components/Layout';
-import EventsPage from './EventPage'; // Pastikan import correct
+import React from "react";
+import Layout from "../components/Layout";
+import EventsPageClient from "./EventPage";
 
-const page = () => {
-    return (
-       <Layout>
-        <EventsPage/>
-       </Layout>
-    );
+export const metadata = {
+  title: "Events",
 };
 
-export default page;
+export default function EventsPage() {
+  return (
+    <Layout>
+      <EventsPageClient />
+    </Layout>
+  );
+}

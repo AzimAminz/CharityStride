@@ -1,13 +1,15 @@
-import React from 'react';
-import Layout from '../../components/Layout';
-import SearchPage from './SearchPage'; // Pastikan import correct
+import React from "react";
+import Layout from "../../components/Layout";
+import SearchPageClient from "./SearchPage";
 
-const page = () => {
-    return (
-        <Layout>
-            <SearchPage/>
-        </Layout>
-    );
+export const metadata = {
+  title: "Search Events",
 };
 
-export default page;
+export default function SearchPage() {
+  return (
+    <Layout>
+      <SearchPageClient />
+    </Layout>
+  );
+}

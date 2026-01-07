@@ -1,11 +1,7 @@
-"use client";
-
 import "./globals.css";
-import { LanguageProvider } from "./contexts/LanguageContext";
-import { WebSocketProvider } from "./contexts/WebSocketProvider";
-import { GoogleOAuthProvider } from "@react-oauth/google";
+import { Providers } from "./providers";
 
-const metadata = {
+export const metadata = {
   title: {
     default: "CharityStride",
     template: "%s | CharityStride",
@@ -50,13 +46,7 @@ export default function RootLayout({ children }) {
       </head>
 
       <body>
-        <GoogleOAuthProvider
-          clientId={process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || ""}
-        >
-          <LanguageProvider>
-            <WebSocketProvider>{children}</WebSocketProvider>
-          </LanguageProvider>
-        </GoogleOAuthProvider>
+        <Providers>{children}</Providers>
       </body>
     </html>
   );
