@@ -35,7 +35,40 @@ class Event extends Model
         'take_down_reason',
     ];
 
-    protected $appends = ['stats', 'location'];
+    protected $appends = ['stats', 'location', 'price_range'];
+
+    /**
+     * Get the price range for participant categories
+     */
+    public function getPriceRangeAttribute()
+    {
+        if (!$this->has_participant) {
+            return null;
+        }
+
+        $categories = $this->participantCategories;
+        
+        if ($categories->isEmpty()) {
+            return 'Free';
+        }
+
+        $fees = $categories->map(function($cat) {
+            return $cat->has_fee ? $cat->base_fee : 0;
+        });
+
+        $min = $fees->min();
+        $max = $fees->max();
+
+        if ($min === 0 && $max === 0) {
+            return 'Free';
+        }
+
+        if ($min === $max) {
+            return "RM " . number_format($min / 100, 2);
+        }
+
+        return "RM " . number_format($min / 100, 2) . " - " . number_format($max / 100, 2);
+    }
 
     /**
      * Get location attribute (backward compatibility with address)

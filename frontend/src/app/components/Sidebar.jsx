@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import { logout as logOut } from "@/app/lib/auth";
 import { MENU_BY_ROLE, BOTTOM_MENU_BY_ROLE } from "@/app/config/menuItems";
+import { getStorageUrl } from "@/app/lib/api";
 
 import { X, ChevronLeft, ChevronRight, User, LogOut } from "lucide-react";
 
@@ -165,9 +166,9 @@ export default function Sidebar() {
             <div className="flex items-center space-x-3">
               <div className="w-10 h-10 rounded-full overflow-hidden">
                 <img
-                  src={user.photo}
+                  src={getStorageUrl(user.photo)}
                   alt={user.name}
-                  className="w-full h-full object-cover"
+                  className="w-full h-full object-contain"
                 />
               </div>
               <div>

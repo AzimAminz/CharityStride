@@ -57,6 +57,21 @@ export const getNewestEvents = async () => {
 };
 
 /**
+ * Get donation-only events (top 8)
+ */
+export const getDonationEvents = async () => {
+  try {
+    const response = await axios.get(
+      `${API_BASE_URL}/api/public/events/donations`
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching donation events:", error);
+    throw error;
+  }
+};
+
+/**
  * Get search suggestions for autocomplete
  * @param {string} query - Search query (can be empty)
  * @param {string} state - State filter (default: 'all')

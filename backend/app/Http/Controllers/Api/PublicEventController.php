@@ -15,7 +15,7 @@ class PublicEventController extends Controller
     public function index(Request $request)
     {
         $query = Event::query()
-            ->with(['ngo:id,name,logo_url'])
+            ->with(['ngo:id,name,logo_url', 'participantCategories:id,event_id,base_fee,has_fee'])
             ->published()
             ->openForRegistration();
 
@@ -85,7 +85,7 @@ class PublicEventController extends Controller
     public function popular()
     {
         $events = Event::query()
-            ->with(['ngo:id,name,logo_url'])
+            ->with(['ngo:id,name,logo_url', 'participantCategories:id,event_id,base_fee,has_fee'])
             ->published()
             ->openForRegistration()
             ->orderBy('registration_count', 'desc')
@@ -101,12 +101,38 @@ class PublicEventController extends Controller
     public function newest()
     {
         $events = Event::query()
-            ->with(['ngo:id,name,logo_url'])
+            ->with(['ngo:id,name,logo_url', 'participantCategories:id,event_id,base_fee,has_fee'])
             ->published()
             ->openForRegistration()
+// Filter for "Featured": Mixed events (Volunteer OR Participant)
+            ->where(function($q) {
+                $q->where('has_volunteer', true)
+                  ->orWhere('has_participant', true);
+            })
             ->orderBy('published_at', 'desc')
             ->orderBy('created_at', 'desc')
-            ->limit(4)
+            ->limit(8)
+            ->get();
+
+        return response()->json($events);
+    }
+
+    /**
+     * Get donation-only campaigns (top 8)
+     */
+    public function donations()
+    {
+        $events = Event::query()
+            ->with(['ngo:id,name,logo_url', 'participantCategories:id,event_id,base_fee,has_fee'])
+            ->published()
+            ->openForRegistration()
+            // Strict "Donation Only" filter
+            ->where('has_donation', true)
+            ->where('has_volunteer', false)
+            ->where('has_participant', false)
+            ->orderBy('registration_count', 'desc')
+            ->orderBy('created_at', 'desc')
+            ->limit(8)
             ->get();
 
         return response()->json($events);

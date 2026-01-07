@@ -29,6 +29,7 @@ Route::prefix('public/events')->group(function() {
     Route::get('/', [PublicEventController::class, 'index']);
     Route::get('/popular', [PublicEventController::class, 'popular']);
     Route::get('/newest', [PublicEventController::class, 'newest']);
+    Route::get('/donations', [PublicEventController::class, 'donations']);
     Route::get('/suggestions', [PublicEventController::class, 'suggestions']);
     Route::get('/{id}', [PublicEventController::class, 'show']);
 });
