@@ -73,6 +73,7 @@ Route::middleware(['auth:sanctum'])->group(function() {
     // User Dashboard
     Route::get('/user/dashboard', [\App\Http\Controllers\Api\User\DashboardController::class, 'index']);
     Route::get('/user/my-registrations', [\App\Http\Controllers\Api\User\UserRegistrationController::class, 'index']);
+    Route::get('/user/my-certificates', [\App\Http\Controllers\Api\User\UserRegistrationController::class, 'myCertificates']);
     
     // Receipt Download
     Route::get('/user/registrations/{id}/receipt', [\App\Http\Controllers\Api\ReceiptController::class, 'downloadReceipt']);

@@ -35,6 +35,39 @@ const RegistrationsPage = () => {
   });
   const [selectedQR, setSelectedQR] = useState(null);
 
+  // Helper to format dates to "3 January 2026"
+  const formatDate = (dateStr) => {
+    if (!dateStr) return "TBA";
+    return new Date(dateStr).toLocaleDateString("en-GB", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    });
+  };
+
+  // Helper to format times to "12:00 PM"
+  const format12Hour = (timeStr) => {
+    if (!timeStr) return "(not complete)";
+    try {
+      const date = new Date(timeStr);
+      // If timeStr is just "HH:mm:ss" or similar (not a full ISO string)
+      if (isNaN(date.getTime())) {
+        const [hours, minutes] = timeStr.split(":");
+        const h = parseInt(hours);
+        const ampm = h >= 12 ? "PM" : "AM";
+        const h12 = h % 12 || 12;
+        return `${h12}:${minutes || "00"} ${ampm}`;
+      }
+      return date.toLocaleTimeString("en-US", {
+        hour: "numeric",
+        minute: "2-digit",
+        hour12: true,
+      });
+    } catch (e) {
+      return "(not complete)";
+    }
+  };
+
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -175,7 +208,9 @@ const RegistrationsPage = () => {
                           </div>
                           <span
                             className={`px-3 py-1 rounded-full text-xs font-medium ${
-                              reg.attendance_status === "checked_in"
+                              reg.attendance_status === "completed"
+                                ? "bg-emerald-100 text-emerald-700"
+                                : reg.attendance_status === "checked_in"
                                 ? "bg-green-100 text-green-700"
                                 : reg.status === "confirmed"
                                 ? "bg-blue-100 text-blue-700"
@@ -210,9 +245,7 @@ const RegistrationsPage = () => {
                                 Event Date
                               </p>
                               <p className="font-medium text-gray-900">
-                                {new Date(
-                                  reg.event.start_date
-                                ).toLocaleDateString()}
+                                {formatDate(reg.event.start_date)}
                               </p>
                             </div>
                           )}
@@ -242,6 +275,62 @@ const RegistrationsPage = () => {
                             </div>
                           )}
                         </div>
+
+                        {/* Attendance Stats for Participant */}
+                        {(reg.check_in_time || reg.check_out_time) && (
+                          <div className="mb-4 p-4 bg-gray-50 rounded-xl border border-gray-100">
+                            <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">
+                              Attendance Details
+                            </h4>
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                              <div>
+                                <p className="text-[10px] text-gray-500 mb-0.5">
+                                  Status
+                                </p>
+                                <p
+                                  className={`text-sm font-bold capitalize ${
+                                    reg.attendance_status === "completed"
+                                      ? "text-emerald-600"
+                                      : reg.attendance_status === "checked_in"
+                                      ? "text-blue-600"
+                                      : "text-gray-600"
+                                  }`}
+                                >
+                                  {reg.attendance_status?.replace("_", " ") ||
+                                    "Registered"}
+                                </p>
+                              </div>
+                              <div>
+                                <p className="text-[10px] text-gray-500 mb-0.5">
+                                  Check-in
+                                </p>
+                                <p className="text-sm font-semibold text-gray-900">
+                                  {format12Hour(reg.check_in_time)}
+                                </p>
+                              </div>
+                              <div>
+                                <p className="text-[10px] text-gray-500 mb-0.5">
+                                  Check-out
+                                </p>
+                                <p className="text-sm font-semibold text-gray-900">
+                                  {format12Hour(reg.check_out_time)}
+                                </p>
+                              </div>
+                              <div>
+                                <p className="text-[10px] text-gray-500 mb-0.5">
+                                  Total Hours
+                                </p>
+                                <p className="text-sm font-bold text-emerald-600">
+                                  {reg.total_hours
+                                    ? `${Number(reg.total_hours).toFixed(
+                                        2
+                                      )} hrs`
+                                    : "-"}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        )}
 
                         <div className="flex items-center gap-2 mb-4">
                           <MapPin className="h-4 w-4 text-gray-400" />
@@ -328,7 +417,9 @@ const RegistrationsPage = () => {
                           </div>
                           <span
                             className={`px-3 py-1 rounded-full text-xs font-medium ${
-                              reg.attendance_status === "checked_in"
+                              reg.attendance_status === "completed"
+                                ? "bg-emerald-100 text-emerald-700"
+                                : reg.attendance_status === "checked_in"
                                 ? "bg-green-100 text-green-700"
                                 : reg.status === "approved"
                                 ? "bg-blue-100 text-blue-700"
@@ -352,15 +443,7 @@ const RegistrationsPage = () => {
                               Shift Date
                             </p>
                             <p className="font-semibold text-gray-900">
-                              {reg.volunteer_shift?.shift_date
-                                ? new Date(
-                                    reg.volunteer_shift.shift_date
-                                  ).toLocaleDateString("en-GB", {
-                                    day: "numeric",
-                                    month: "long",
-                                    year: "numeric",
-                                  })
-                                : "TBA"}
+                              {formatDate(reg.volunteer_shift?.shift_date)}
                             </p>
                           </div>
                           <div>
@@ -370,20 +453,11 @@ const RegistrationsPage = () => {
                             <p className="font-semibold text-gray-900">
                               {reg.volunteer_shift?.start_time &&
                               reg.volunteer_shift?.end_time
-                                ? `${new Date(
-                                    "2000-01-01 " +
-                                      reg.volunteer_shift.start_time
-                                  ).toLocaleTimeString("en-US", {
-                                    hour: "numeric",
-                                    minute: "2-digit",
-                                    hour12: true,
-                                  })} - ${new Date(
-                                    "2000-01-01 " + reg.volunteer_shift.end_time
-                                  ).toLocaleTimeString("en-US", {
-                                    hour: "numeric",
-                                    minute: "2-digit",
-                                    hour12: true,
-                                  })}`
+                                ? `${format12Hour(
+                                    reg.volunteer_shift.start_time
+                                  )} - ${format12Hour(
+                                    reg.volunteer_shift.end_time
+                                  )}`
                                 : "TBA"}
                             </p>
                           </div>
@@ -392,30 +466,84 @@ const RegistrationsPage = () => {
                               Event Date
                             </p>
                             <p className="font-semibold text-gray-900">
-                              {new Date(
-                                reg.event?.start_date
-                              ).toLocaleDateString("en-GB", {
-                                day: "2-digit",
-                                month: "2-digit",
-                                year: "2-digit",
-                              })}
+                              {formatDate(reg.event?.start_date)}
                             </p>
                           </div>
                           <div>
                             <p className="text-xs text-gray-500 mb-1">
-                              Attendance
+                              Verification
                             </p>
                             <p className="font-semibold text-gray-900">
-                              {reg.attendance_status === "checked_in" ? (
-                                <span className="text-green-600">
-                                  ✓ Checked In
+                              {reg.status === "approved" ? (
+                                <span className="text-blue-600">
+                                  ✓ Approved
                                 </span>
+                              ) : reg.status === "pending" ? (
+                                <span className="text-yellow-600">Pending</span>
                               ) : (
-                                <span className="text-gray-600">Pending</span>
+                                <span className="text-gray-600">
+                                  {reg.status}
+                                </span>
                               )}
                             </p>
                           </div>
                         </div>
+
+                        {/* Attendance Stats for Volunteer */}
+                        {(reg.check_in_time || reg.check_out_time) && (
+                          <div className="mb-4 p-4 bg-emerald-50/50 rounded-xl border border-emerald-100">
+                            <h4 className="text-xs font-bold text-emerald-600 uppercase tracking-wider mb-3">
+                              Volunteer Attendance Breakdown
+                            </h4>
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                              <div>
+                                <p className="text-[10px] text-gray-500 mb-0.5">
+                                  Status
+                                </p>
+                                <p
+                                  className={`text-sm font-bold capitalize ${
+                                    reg.attendance_status === "completed"
+                                      ? "text-emerald-600"
+                                      : reg.attendance_status === "checked_in"
+                                      ? "text-blue-600"
+                                      : "text-gray-600"
+                                  }`}
+                                >
+                                  {reg.attendance_status?.replace("_", " ") ||
+                                    "Allocated"}
+                                </p>
+                              </div>
+                              <div>
+                                <p className="text-[10px] text-gray-500 mb-0.5">
+                                  Check-in
+                                </p>
+                                <p className="text-sm font-semibold text-gray-900">
+                                  {format12Hour(reg.check_in_time)}
+                                </p>
+                              </div>
+                              <div>
+                                <p className="text-[10px] text-gray-500 mb-0.5">
+                                  Check-out
+                                </p>
+                                <p className="text-sm font-semibold text-gray-900">
+                                  {format12Hour(reg.check_out_time)}
+                                </p>
+                              </div>
+                              <div>
+                                <p className="text-[10px] text-gray-500 mb-0.5">
+                                  Total Hours
+                                </p>
+                                <p className="text-sm font-bold text-emerald-600">
+                                  {reg.total_hours
+                                    ? `${Number(reg.total_hours).toFixed(
+                                        2
+                                      )} hrs`
+                                    : "-"}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        )}
 
                         <div className="flex flex-wrap gap-3">
                           <button
@@ -496,7 +624,7 @@ const RegistrationsPage = () => {
                           <div>
                             <p className="text-xs text-gray-500 mb-1">Date</p>
                             <p className="font-semibold text-gray-900">
-                              {new Date(reg.created_at).toLocaleDateString()}
+                              {formatDate(reg.created_at)}
                             </p>
                           </div>
                           <div>
@@ -596,9 +724,7 @@ const RegistrationsPage = () => {
                           <div>
                             <p className="text-xs text-gray-500 mb-1">Date</p>
                             <p className="font-medium text-gray-900">
-                              {new Date(
-                                payment.created_at
-                              ).toLocaleDateString()}
+                              {formatDate(payment.created_at)}
                             </p>
                           </div>
                           <div>

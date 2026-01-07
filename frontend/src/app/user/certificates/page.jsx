@@ -1,480 +1,292 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Layout from "@/app/components/Layout";
 import {
   Award,
   Download,
-  Eye,
-  Calendar,
-  Trophy,
-  FileCheck,
-  Share2,
-  Grid3x3,
-  List,
-  Search,
-  ChevronLeft,
+  Printer,
   ChevronRight,
+  Calendar,
+  Clock,
+  User,
+  Building2,
+  AlertCircle,
 } from "lucide-react";
+import { api } from "../../lib/api";
+import Loading from "@/app/loading";
 
 const CertificatesPage = () => {
-  const [viewMode, setViewMode] = useState("grid");
-  const [searchQuery, setSearchQuery] = useState("");
-  const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 6;
+  const [certificates, setCertificates] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [selectedCert, setSelectedCert] = useState(null);
 
-  // Mock certificates data
-  const allCertificates = [
-    {
-      id: 1,
-      eventName: "Food Bank Volunteer 2024",
-      eventType: "Volunteer",
-      issueDate: new Date("2024-02-18"),
-      hours: 4,
-      role: "Food Packager",
-      certificateUrl: "/certificates/cert-001.pdf",
-      thumbnail: "/certificates/cert-001-thumb.jpg",
-    },
-    {
-      id: 2,
-      eventName: "Charity Run 2024 - 10KM Marathon",
-      eventType: "Participant",
-      issueDate: new Date("2024-02-16"),
-      position: "Completed",
-      category: "10KM Marathon",
-      certificateUrl: "/certificates/cert-002.pdf",
-      thumbnail: "/certificates/cert-002-thumb.jpg",
-    },
-    {
-      id: 3,
-      eventName: "Community Clean Up Day",
-      eventType: "Participant",
-      issueDate: new Date("2024-02-21"),
-      category: "General Participant",
-      certificateUrl: "/certificates/cert-003.pdf",
-      thumbnail: "/certificates/cert-003-thumb.jpg",
-    },
-    {
-      id: 4,
-      eventName: "Community Kitchen Helper",
-      eventType: "Volunteer",
-      issueDate: new Date("2024-02-19"),
-      hours: 4,
-      role: "Kitchen Assistant",
-      certificateUrl: "/certificates/cert-004.pdf",
-      thumbnail: "/certificates/cert-004-thumb.jpg",
-    },
-    {
-      id: 5,
-      eventName: "Marathon Training Camp",
-      eventType: "Participant",
-      issueDate: new Date("2024-02-08"),
-      category: "Training Program",
-      certificateUrl: "/certificates/cert-005.pdf",
-      thumbnail: "/certificates/cert-005-thumb.jpg",
-    },
-    {
-      id: 6,
-      eventName: "Beach Cleanup Initiative",
-      eventType: "Volunteer",
-      issueDate: new Date("2024-01-13"),
-      hours: 3,
-      role: "Team Leader",
-      certificateUrl: "/certificates/cert-006.pdf",
-      thumbnail: "/certificates/cert-006-thumb.jpg",
-    },
-    {
-      id: 7,
-      eventName: "Charity Concert - Sound Crew",
-      eventType: "Volunteer",
-      issueDate: new Date("2024-02-04"),
-      hours: 6,
-      role: "Sound Technician",
-      certificateUrl: "/certificates/cert-007.pdf",
-      thumbnail: "/certificates/cert-007-thumb.jpg",
-    },
-    {
-      id: 8,
-      eventName: "Education Workshop Facilitator",
-      eventType: "Volunteer",
-      issueDate: new Date("2024-01-20"),
-      hours: 8,
-      role: "Workshop Facilitator",
-      certificateUrl: "/certificates/cert-008.pdf",
-      thumbnail: "/certificates/cert-008-thumb.jpg",
-    },
-  ];
+  useEffect(() => {
+    const fetchCertificates = async () => {
+      try {
+        const response = await api.get("/user/my-certificates");
+        setCertificates(response.data.certificates || []);
+      } catch (err) {
+        console.error("Failed to fetch certificates:", err);
+        setError("Failed to load certificates. Please try again later.");
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  // Search filter
-  const filteredCertificates = allCertificates.filter(
-    (cert) =>
-      searchQuery === "" ||
-      cert.eventName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      cert.eventType.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+    fetchCertificates();
+  }, []);
 
-  // Pagination
-  const totalPages = Math.ceil(filteredCertificates.length / itemsPerPage);
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const paginatedCertificates = filteredCertificates.slice(
-    startIndex,
-    startIndex + itemsPerPage
-  );
-
-  const getTypeColor = (type) => {
-    return type === "Volunteer"
-      ? { bg: "bg-blue-100", text: "text-blue-700" }
-      : { bg: "bg-purple-100", text: "text-purple-700" };
+  const formatDate = (dateStr) => {
+    return new Date(dateStr).toLocaleDateString("en-GB", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    });
   };
+
+  const handlePrint = () => {
+    window.print();
+  };
+
+  if (loading) return <Loading />;
 
   return (
     <Layout>
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">My Certificates</h1>
-          <p className="text-gray-600 mt-2">
-            View and download your participation certificates
-          </p>
-        </div>
-
-        {/* Search Bar */}
-        <div className="bg-white rounded-xl shadow-sm p-4 mb-6">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Search certificates by event name or type..."
-              value={searchQuery}
-              onChange={(e) => {
-                setSearchQuery(e.target.value);
-                setCurrentPage(1);
-              }}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-            />
+      <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-5xl mx-auto">
+          {/* Header */}
+          <div className="mb-10 text-center md:text-left">
+            <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">
+              My Achievement Certificates
+            </h1>
+            <p className="mt-2 text-lg text-gray-600">
+              Download and share your volunteer service certificates.
+            </p>
           </div>
-        </div>
 
-        {/* View Toggle & Stats */}
-        <div className="bg-white rounded-xl shadow-sm p-4 mb-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Trophy className="h-5 w-5 text-emerald-600" />
-              <span className="font-medium text-gray-900">
-                Total Certificates:{" "}
-                <span className="text-emerald-600">
-                  {filteredCertificates.length}
-                </span>
-              </span>
+          {error && (
+            <div className="bg-red-50 border border-red-200 text-red-700 px-6 py-4 rounded-2xl mb-8 flex items-center gap-3">
+              <AlertCircle className="h-5 w-5" />
+              <p className="font-medium">{error}</p>
             </div>
+          )}
 
-            <div className="flex gap-2">
-              <button
-                onClick={() => setViewMode("grid")}
-                className={`p-2 rounded-lg transition-colors ${
-                  viewMode === "grid"
-                    ? "bg-emerald-100 text-emerald-700"
-                    : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                }`}
-              >
-                <Grid3x3 className="h-5 w-5" />
-              </button>
-              <button
-                onClick={() => setViewMode("list")}
-                className={`p-2 rounded-lg transition-colors ${
-                  viewMode === "list"
-                    ? "bg-emerald-100 text-emerald-700"
-                    : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                }`}
-              >
-                <List className="h-5 w-5" />
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* Results Count */}
-        {filteredCertificates.length > 0 && (
-          <div className="mb-4 text-sm text-gray-600">
-            Showing {startIndex + 1}-
-            {Math.min(startIndex + itemsPerPage, filteredCertificates.length)}{" "}
-            of {filteredCertificates.length} certificates
-          </div>
-        )}
-
-        {/* Certificates Grid/List */}
-        <div className="bg-white rounded-xl shadow-sm overflow-hidden mb-6">
-          {paginatedCertificates.length === 0 ? (
-            <div className="text-center py-16">
-              <Award className="h-20 w-20 text-gray-300 mx-auto mb-4" />
-              <h3 className="text-xl font-semibold text-gray-900 mb-2">
-                No Certificates Found
+          {certificates.length === 0 ? (
+            <div className="bg-white rounded-3xl p-16 text-center shadow-sm border border-gray-100">
+              <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-6">
+                <Award className="h-10 w-10 text-gray-300" />
+              </div>
+              <h3 className="text-xl font-bold text-gray-900 mb-2">
+                No certificates yet
               </h3>
-              <p className="text-gray-600 mb-6">
-                {searchQuery
-                  ? "Try adjusting your search"
-                  : "Complete events to earn certificates"}
+              <p className="text-gray-500 max-w-sm mx-auto">
+                Complete your first volunteer shift to receive your digital
+                certificate of appreciation.
               </p>
-              {!searchQuery && (
-                <a
-                  href="/events"
-                  className="inline-block px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-medium transition-colors"
-                >
-                  Browse Events
-                </a>
-              )}
-            </div>
-          ) : viewMode === "grid" ? (
-            // Grid View
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 p-6">
-              {paginatedCertificates.map((cert) => {
-                const typeColor = getTypeColor(cert.eventType);
-
-                return (
-                  <div
-                    key={cert.id}
-                    className="border border-gray-200 rounded-lg overflow-hidden hover:shadow-lg hover:border-emerald-300 transition-all group"
-                  >
-                    {/* Certificate Thumbnail */}
-                    <div className="h-48 bg-gradient-to-br from-emerald-50 to-blue-50 flex items-center justify-center relative overflow-hidden">
-                      <div className="absolute inset-0 bg-emerald-600 opacity-0 group-hover:opacity-10 transition-opacity"></div>
-                      <Award className="h-20 w-20 text-emerald-600 opacity-20" />
-                      <div className="absolute top-3 right-3">
-                        <span
-                          className={`px-3 py-1 rounded-full text-xs font-medium ${typeColor.bg} ${typeColor.text}`}
-                        >
-                          {cert.eventType}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Certificate Info */}
-                    <div className="p-4">
-                      <h3 className="font-semibold text-gray-900 mb-2 line-clamp-2">
-                        {cert.eventName}
-                      </h3>
-
-                      <div className="space-y-1 text-sm text-gray-600 mb-4">
-                        <div className="flex items-center gap-2">
-                          <Calendar className="h-4 w-4" />
-                          <span>
-                            Issued: {cert.issueDate.toLocaleDateString()}
-                          </span>
-                        </div>
-                        {cert.hours && (
-                          <div className="flex items-center gap-2">
-                            <Trophy className="h-4 w-4" />
-                            <span>
-                              {cert.hours} hours • {cert.role}
-                            </span>
-                          </div>
-                        )}
-                        {cert.category && (
-                          <div className="flex items-center gap-2">
-                            <Trophy className="h-4 w-4" />
-                            <span>{cert.category}</span>
-                          </div>
-                        )}
-                      </div>
-
-                      <div className="flex gap-2">
-                        <button className="flex-1 px-3 py-2 bg-emerald-50 text-emerald-700 rounded-lg hover:bg-emerald-100 transition-colors flex items-center justify-center gap-2 text-sm font-medium">
-                          <Download className="h-4 w-4" />
-                          Download
-                        </button>
-                        <button className="px-3 py-2 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition-colors flex items-center justify-center gap-2">
-                          <Eye className="h-4 w-4" />
-                        </button>
-                        <button className="px-3 py-2 bg-purple-50 text-purple-700 rounded-lg hover:bg-purple-100 transition-colors flex items-center justify-center gap-2">
-                          <Share2 className="h-4 w-4" />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
             </div>
           ) : (
-            // List View
-            <div className="divide-y divide-gray-200">
-              {paginatedCertificates.map((cert) => {
-                const typeColor = getTypeColor(cert.eventType);
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {certificates.map((cert) => (
+                <div
+                  key={cert.id}
+                  className="group bg-white rounded-3xl p-6 shadow-sm border border-gray-100 hover:shadow-xl hover:border-emerald-100 transition-all duration-300 cursor-pointer"
+                  onClick={() => setSelectedCert(cert)}
+                >
+                  <div className="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                    <Award className="h-6 w-6" />
+                  </div>
 
-                return (
-                  <div
-                    key={cert.id}
-                    className="p-6 hover:bg-gray-50 transition-colors"
-                  >
-                    <div className="flex items-center gap-6">
-                      <div className="w-24 h-24 bg-gradient-to-br from-emerald-50 to-blue-50 rounded-lg flex items-center justify-center flex-shrink-0">
-                        <Award className="h-12 w-12 text-emerald-600 opacity-40" />
-                      </div>
+                  <h3 className="text-lg font-bold text-gray-900 line-clamp-2 mb-2">
+                    {cert.event?.title}
+                  </h3>
 
-                      <div className="flex-1">
-                        <div className="flex items-start justify-between mb-2">
-                          <div>
-                            <h3 className="text-lg font-semibold text-gray-900 mb-1">
-                              {cert.eventName}
-                            </h3>
-                            <span
-                              className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${typeColor.bg} ${typeColor.text}`}
-                            >
-                              {cert.eventType}
-                            </span>
-                          </div>
-                        </div>
-
-                        <div className="grid grid-cols-3 gap-4 text-sm mb-3">
-                          <div>
-                            <p className="text-gray-500">Issue Date</p>
-                            <p className="font-medium text-gray-900">
-                              {cert.issueDate.toLocaleDateString()}
-                            </p>
-                          </div>
-                          {cert.hours && (
-                            <div>
-                              <p className="text-gray-500">Hours</p>
-                              <p className="font-medium text-gray-900">
-                                {cert.hours} hours
-                              </p>
-                            </div>
-                          )}
-                          {cert.role && (
-                            <div>
-                              <p className="text-gray-500">Role</p>
-                              <p className="font-medium text-gray-900">
-                                {cert.role}
-                              </p>
-                            </div>
-                          )}
-                          {cert.category && (
-                            <div>
-                              <p className="text-gray-500">Category</p>
-                              <p className="font-medium text-gray-900">
-                                {cert.category}
-                              </p>
-                            </div>
-                          )}
-                        </div>
-
-                        <div className="flex gap-2">
-                          <button className="px-4 py-2 bg-emerald-50 text-emerald-700 rounded-lg hover:bg-emerald-100 transition-colors flex items-center gap-2 text-sm font-medium">
-                            <Download className="h-4 w-4" />
-                            Download PDF
-                          </button>
-                          <button className="px-4 py-2 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition-colors flex items-center gap-2 text-sm">
-                            <Eye className="h-4 w-4" />
-                            Preview
-                          </button>
-                          <button className="px-4 py-2 bg-purple-50 text-purple-700 rounded-lg hover:bg-purple-100 transition-colors flex items-center gap-2 text-sm">
-                            <Share2 className="h-4 w-4" />
-                            Share
-                          </button>
-                        </div>
-                      </div>
+                  <div className="space-y-3 mb-8">
+                    <div className="flex items-center gap-2 text-sm text-gray-500">
+                      <Calendar className="h-4 w-4" />
+                      <span>
+                        {cert.volunteer_shift?.shift_date
+                          ? formatDate(cert.volunteer_shift.shift_date)
+                          : "N/A"}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2 text-sm text-gray-500">
+                      <Clock className="h-4 w-4" />
+                      <span>{cert.total_hours} Hours Contributed</span>
                     </div>
                   </div>
-                );
-              })}
+
+                  <button className="w-full py-3 bg-gray-50 text-gray-700 rounded-xl font-semibold flex items-center justify-center gap-2 group-hover:bg-emerald-600 group-hover:text-white transition-colors">
+                    View Certificate
+                    <ChevronRight className="h-4 w-4" />
+                  </button>
+                </div>
+              ))}
             </div>
           )}
         </div>
+      </div>
 
-        {/* Pagination */}
-        {totalPages > 1 && (
-          <div className="flex items-center justify-between bg-white rounded-xl shadow-sm p-4 mb-6">
-            <button
-              onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
-              disabled={currentPage === 1}
-              className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              <ChevronLeft className="h-4 w-4" />
-              Previous
-            </button>
-
-            <div className="flex items-center gap-2">
-              {Array.from({ length: totalPages }, (_, i) => i + 1).map(
-                (page) => (
-                  <button
-                    key={page}
-                    onClick={() => setCurrentPage(page)}
-                    className={`w-10 h-10 rounded-lg font-medium transition-colors ${
-                      currentPage === page
-                        ? "bg-emerald-600 text-white"
-                        : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                    }`}
-                  >
-                    {page}
-                  </button>
-                )
-              )}
+      {/* Certificate Viewer Modal */}
+      {selectedCert && (
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="relative w-full max-w-5xl bg-white rounded-[2rem] shadow-2xl overflow-hidden print:p-0 print:shadow-none print:rounded-none">
+            {/* Modal Actions (Hidden on print) */}
+            <div className="absolute top-6 right-6 flex items-center gap-3 z-10 print:hidden">
+              <button
+                onClick={handlePrint}
+                className="p-3 bg-white/80 backdrop-blur rounded-full text-gray-700 hover:bg-white shadow-lg transition-all border border-gray-200"
+                title="Print Certificate"
+              >
+                <Printer className="h-5 w-5" />
+              </button>
+              <button
+                onClick={() => setSelectedCert(null)}
+                className="p-3 bg-white/80 backdrop-blur rounded-full text-gray-700 hover:bg-white shadow-lg transition-all border border-gray-200"
+                title="Close"
+              >
+                <AlertCircle className="h-5 w-5 rotate-45" />
+              </button>
             </div>
 
-            <button
-              onClick={() =>
-                setCurrentPage((prev) => Math.min(totalPages, prev + 1))
-              }
-              disabled={currentPage === totalPages}
-              className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              Next
-              <ChevronRight className="h-4 w-4" />
-            </button>
-          </div>
-        )}
+            {/* Certificate Template */}
+            <div className="p-1 pb-1">
+              <div className="bg-[#f8fafc] p-6 sm:p-12 md:p-20 relative overflow-hidden border-[16px] border-double border-emerald-600/20 m-4 rounded-[1.5rem]">
+                {/* Decorative background elements */}
+                <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-500/5 rounded-full -translate-y-1/2 translate-x-1/2" />
+                <div className="absolute bottom-0 left-0 w-96 h-96 bg-blue-500/5 rounded-full translate-y-1/2 -translate-x-1/2" />
 
-        {/* Info Section */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="bg-gradient-to-br from-emerald-50 to-teal-50 border border-emerald-200 rounded-lg p-4">
-            <div className="flex items-start gap-3">
-              <div className="p-2 bg-emerald-100 rounded-lg">
-                <FileCheck className="h-5 w-5 text-emerald-600" />
-              </div>
-              <div className="flex-1">
-                <h3 className="font-semibold text-emerald-900 mb-1">
-                  Auto-Generated
-                </h3>
-                <p className="text-sm text-emerald-700">
-                  Certificates are automatically generated after event
-                  completion
-                </p>
-              </div>
-            </div>
-          </div>
+                <div className="relative z-10 text-center">
+                  {/* Branding */}
+                  <div className="flex flex-col items-center gap-4 mb-12">
+                    <div className="flex items-center gap-3">
+                      <div className="w-12 h-12 bg-emerald-500 rounded-2xl flex items-center justify-center shadow-lg shadow-emerald-500/20">
+                        <span className="text-white font-black text-2xl italic">
+                          C
+                        </span>
+                      </div>
+                      <span className="text-gray-900 font-extrabold tracking-tighter text-3xl">
+                        CHARITY<span className="text-emerald-500">STRIDE</span>
+                      </span>
+                    </div>
+                    <div className="h-px w-32 bg-emerald-200" />
+                  </div>
 
-          <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-4">
-            <div className="flex items-start gap-3">
-              <div className="p-2 bg-blue-100 rounded-lg">
-                <Download className="h-5 w-5 text-blue-600" />
-              </div>
-              <div className="flex-1">
-                <h3 className="font-semibold text-blue-900 mb-1">
-                  Download PDF
-                </h3>
-                <p className="text-sm text-blue-700">
-                  Download high-quality PDF certificates for printing
-                </p>
-              </div>
-            </div>
-          </div>
+                  {/* Main Content */}
+                  <h2 className="text-emerald-600 font-serif italic text-2xl mb-8">
+                    Certificate of Appreciation
+                  </h2>
 
-          <div className="bg-gradient-to-br from-purple-50 to-pink-50 border border-purple-200 rounded-lg p-4">
-            <div className="flex items-start gap-3">
-              <div className="p-2 bg-purple-100 rounded-lg">
-                <Share2 className="h-5 w-5 text-purple-600" />
-              </div>
-              <div className="flex-1">
-                <h3 className="font-semibold text-purple-900 mb-1">
-                  Share Achievement
-                </h3>
-                <p className="text-sm text-purple-700">
-                  Share your certificates on social media platforms
-                </p>
+                  <p className="text-gray-500 text-lg mb-4">
+                    THIS CERTIFICATE IS PROUDLY PRESENTED TO
+                  </p>
+
+                  <h3 className="text-4xl md:text-5xl font-black text-gray-900 mb-8 font-serif leading-tight">
+                    {selectedCert.user?.full_name}
+                  </h3>
+
+                  <p className="text-gray-600 text-lg max-w-2xl mx-auto mb-12 leading-relaxed">
+                    In recognition of your exceptional commitment and dedicated
+                    volunteer service for the event{" "}
+                    <span className="font-bold text-gray-900">
+                      "{selectedCert.event?.title}"
+                    </span>{" "}
+                    organized by{" "}
+                    <span className="font-bold text-gray-900">
+                      {selectedCert.event?.ngo?.ngo_name}
+                    </span>
+                    .
+                  </p>
+
+                  {/* Shift Stats Row */}
+                  <div className="grid grid-cols-2 max-w-lg mx-auto gap-8 border-y border-emerald-100 py-8 mb-16">
+                    <div className="text-center">
+                      <p className="text-emerald-600 font-bold uppercase tracking-widest text-[10px] mb-1">
+                        Shift Date
+                      </p>
+                      <p className="text-gray-900 font-bold text-lg">
+                        {selectedCert.volunteer_shift?.shift_date
+                          ? formatDate(selectedCert.volunteer_shift.shift_date)
+                          : "N/A"}
+                      </p>
+                    </div>
+                    <div className="text-center border-l border-emerald-100">
+                      <p className="text-emerald-600 font-bold uppercase tracking-widest text-[10px] mb-1">
+                        Time Contributed
+                      </p>
+                      <p className="text-gray-900 font-bold text-lg">
+                        {selectedCert.total_hours} Full Hours
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Signatures */}
+                  <div className="flex flex-col sm:flex-row items-center justify-center gap-16 sm:gap-32 mt-12 pb-8">
+                    <div className="flex flex-col items-center">
+                      <div className="w-48 h-px bg-gray-300 mb-4" />
+                      <p className="font-bold text-gray-900">
+                        CharityStride Team
+                      </p>
+                      <p className="text-xs text-gray-400">
+                        Official Platform Recognition
+                      </p>
+                    </div>
+                    <div className="flex flex-col items-center">
+                      <div className="w-48 h-px bg-gray-300 mb-4" />
+                      <p className="font-bold text-gray-900">
+                        {selectedCert.event?.ngo?.ngo_name}
+                      </p>
+                      <p className="text-xs text-gray-400">Project Organizer</p>
+                    </div>
+                  </div>
+
+                  {/* Verification ID */}
+                  <div className="mt-16 pt-8 border-t border-gray-100 opacity-50">
+                    <p className="text-[10px] text-gray-400 font-mono tracking-widest uppercase">
+                      Certificate ID: CS-VOL-{selectedCert.id}-
+                      {Math.random().toString(36).substr(2, 9).toUpperCase()}
+                    </p>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
         </div>
-      </div>
+      )}
+
+      {/* Print styles */}
+      <style jsx global>{`
+        @media print {
+          body * {
+            visibility: hidden;
+          }
+          .fixed,
+          .fixed * {
+            visibility: visible;
+          }
+          .fixed {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            padding: 0;
+            background: white !important;
+          }
+          .relative {
+            box-shadow: none !important;
+            border: none !important;
+          }
+          button {
+            display: none !important;
+          }
+          nav,
+          footer {
+            display: none !important;
+          }
+        }
+      `}</style>
     </Layout>
   );
 };

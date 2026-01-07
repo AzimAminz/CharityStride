@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
-import Echo from "../../lib/echo";
+import Echo from "../../../lib/echo";
 import Layout from "@/app/components/Layout";
 import {
   Users,
