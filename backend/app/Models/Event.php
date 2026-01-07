@@ -227,6 +227,7 @@ class Event extends Model
                      * sin(radians(latitude))))";
         
         return $query
+            ->select('*')
             ->selectRaw("{$haversine} AS distance", [$latitude, $longitude, $latitude])
             ->whereRaw("{$haversine} <= ?", [$latitude, $longitude, $latitude, $radius])
             ->orderBy('distance');

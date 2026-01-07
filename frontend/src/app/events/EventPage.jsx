@@ -222,7 +222,7 @@ const EventsPage = () => {
               <div className="flex items-center gap-3">
                 <TrendingUp className="w-6 h-6 text-orange-500" />
                 <h2 className="text-2xl font-bold text-gray-900">
-                  Popular Events
+                  Trending Now
                 </h2>
               </div>
             </div>
@@ -243,7 +243,7 @@ const EventsPage = () => {
         {/* Donation Section (Thumbnail Carousel) */}
         {donationEvents.length > 0 && (
           <ThumbnailCarousel
-            title="Popular Donation Campaigns"
+            title="Donation Campaigns"
             events={donationEvents}
             link="/events/search?category=donation"
           />

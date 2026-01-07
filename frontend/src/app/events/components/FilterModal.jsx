@@ -219,6 +219,7 @@ export default function FilterModal({
                     <EventMap
                       events={events}
                       selectedCategories={filters.categories}
+                      radius={filters.radius}
                       onLocationChange={handleLocationChange}
                     />
                   </div>

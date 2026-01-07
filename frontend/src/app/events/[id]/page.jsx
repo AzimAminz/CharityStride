@@ -183,11 +183,17 @@ export default function EventDetailsPage() {
       <div className="sticky top-0 z-40 bg-white border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
           <button
-            onClick={() => router.push("/events")}
+            onClick={() => {
+              if (window.history.length > 1) {
+                router.back();
+              } else {
+                router.push("/events");
+              }
+            }}
             className="flex items-center gap-2 text-gray-700 hover:text-gray-900 transition-colors group"
           >
             <ArrowLeft className="h-4 w-4 group-hover:-translate-x-0.5 transition-transform" />
-            <span className="text-sm font-medium">Back to Events</span>
+            <span className="text-sm font-medium">Back</span>
           </button>
         </div>
       </div>

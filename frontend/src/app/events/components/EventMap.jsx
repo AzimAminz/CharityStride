@@ -111,6 +111,7 @@ const userLocationIcon = L.divIcon({
 export default function EventMap({
   events,
   selectedCategories,
+  radius = 10,
   onLocationChange,
 }) {
   const [userLocation, setUserLocation] = useState(null);
@@ -186,12 +187,44 @@ export default function EventMap({
     }
   }, [onLocationChange]);
 
-  // Filter events based on selected categories
+  // Calculate distance between two points in km (Haversine formula)
+  const calculateDistance = (lat1, lon1, lat2, lon2) => {
+    const R = 6371; // Radius of the earth in km
+    const dLat = deg2rad(lat2 - lat1);
+    const dLon = deg2rad(lon2 - lon1);
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(deg2rad(lat1)) *
+        Math.cos(deg2rad(lat2)) *
+        Math.sin(dLon / 2) *
+        Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    const d = R * c; // Distance in km
+    return d;
+  };
+
+  const deg2rad = (deg) => {
+    return deg * (Math.PI / 180);
+  };
+
+  // Filter events based on selected categories and radius
   const filteredEvents = events.filter((event) => {
+    // 1. Radius Filter (if user location matches)
+    if (userLocation && event.latitude && event.longitude) {
+      const distance = calculateDistance(
+        userLocation[0],
+        userLocation[1],
+        parseFloat(event.latitude),
+        parseFloat(event.longitude)
+      );
+      if (distance > radius) return false;
+    }
+
+    // 2. Category Filter
     if (selectedCategories.volunteer && event.has_volunteer) return true;
     if (selectedCategories.donation && event.has_donation) return true;
     if (selectedCategories.participant && event.has_participant) return true;
-    // If no categories selected, show all
+    // If no categories selected, show all (that passed radius check)
     if (
       !selectedCategories.volunteer &&
       !selectedCategories.donation &&

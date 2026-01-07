@@ -15,16 +15,37 @@ import { getSearchSuggestions } from "../../lib/api/publicEventsApi";
 import { useDebounce } from "../../hooks/useDebounce";
 import { useSearchHistory } from "../../hooks/useSearchHistory";
 
+// All Malaysian states and federal territories
+const locations = [
+  { value: "all", label: "All Malaysia" },
+  { value: "johor", label: "Johor" },
+  { value: "kedah", label: "Kedah" },
+  { value: "kelantan", label: "Kelantan" },
+  { value: "melaka", label: "Melaka" },
+  { value: "negeri-sembilan", label: "Negeri Sembilan" },
+  { value: "pahang", label: "Pahang" },
+  { value: "penang", label: "Penang" },
+  { value: "perak", label: "Perak" },
+  { value: "perlis", label: "Perlis" },
+  { value: "sabah", label: "Sabah" },
+  { value: "sarawak", label: "Sarawak" },
+  { value: "selangor", label: "Selangor" },
+  { value: "terengganu", label: "Terengganu" },
+  { value: "kuala-lumpur", label: "Kuala Lumpur" },
+  { value: "labuan", label: "Labuan" },
+  { value: "putrajaya", label: "Putrajaya" },
+];
+
 const SearchBar = ({
   initialQuery = "",
+  initialLocation = "all",
   placeholder = "Search Events, Categories, Location...",
   onFilterClick,
 }) => {
   const [query, setQuery] = useState(initialQuery);
-  const [location, setLocation] = useState({
-    value: "all",
-    label: "All Malaysia",
-  });
+  const [location, setLocation] = useState(
+    locations.find((l) => l.value === initialLocation) || locations[0]
+  );
   const [suggestions, setSuggestions] = useState([]);
   const [recommendations, setRecommendations] = useState([]);
   const [showDropdown, setShowDropdown] = useState(false);
@@ -36,27 +57,6 @@ const SearchBar = ({
 
   const { history, addToHistory, removeFromHistory } = useSearchHistory();
   const debouncedQuery = useDebounce(query, 300);
-
-  // All Malaysian states and federal territories
-  const locations = [
-    { value: "all", label: "All Malaysia" },
-    { value: "johor", label: "Johor" },
-    { value: "kedah", label: "Kedah" },
-    { value: "kelantan", label: "Kelantan" },
-    { value: "melaka", label: "Melaka" },
-    { value: "negeri-sembilan", label: "Negeri Sembilan" },
-    { value: "pahang", label: "Pahang" },
-    { value: "penang", label: "Penang" },
-    { value: "perak", label: "Perak" },
-    { value: "perlis", label: "Perlis" },
-    { value: "sabah", label: "Sabah" },
-    { value: "sarawak", label: "Sarawak" },
-    { value: "selangor", label: "Selangor" },
-    { value: "terengganu", label: "Terengganu" },
-    { value: "kuala-lumpur", label: "Kuala Lumpur" },
-    { value: "labuan", label: "Labuan" },
-    { value: "putrajaya", label: "Putrajaya" },
-  ];
 
   // Fetch recommendations on mount
   useEffect(() => {

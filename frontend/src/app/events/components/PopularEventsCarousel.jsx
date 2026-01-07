@@ -57,7 +57,7 @@ const PopularEventsCarousel = ({ events }) => {
       </button>
 
       {/* Carousel Track Container */}
-      <div className="flex items-center justify-center min-h-[400px] overflow-hidden">
+      <div className="flex items-center justify-center min-h-[300px] md:min-h-[400px] overflow-hidden relative w-full">
         {carouselEvents.map((event, index) => {
           // Calculate relative position to handle circular wrap around visual logic
           // But for a simple centered carousel, we can just use position math based on currentIndex
@@ -70,9 +70,11 @@ const PopularEventsCarousel = ({ events }) => {
             index ===
             (currentIndex - 1 + carouselEvents.length) % carouselEvents.length
           ) {
-            position = "-translate-x-[70%] opacity-60 scale-90 z-0 blur-[1px]"; // Previous
+            position =
+              "-translate-x-[65%] md:-translate-x-[70%] opacity-60 scale-90 z-0 blur-[1px]"; // Previous
           } else if (index === (currentIndex + 1) % carouselEvents.length) {
-            position = "translate-x-[70%] opacity-60 scale-90 z-0 blur-[1px]"; // Next
+            position =
+              "translate-x-[65%] md:translate-x-[70%] opacity-60 scale-90 z-0 blur-[1px]"; // Next
           }
 
           // On mobile, we might just show one, but the request implies a specific animation
@@ -82,7 +84,7 @@ const PopularEventsCarousel = ({ events }) => {
             <Link
               href={`/events/${event.id}`}
               key={event.id}
-              className={`absolute transition-all duration-700 ease-in-out w-[280px] md:w-[500px] aspect-[4/3] rounded-2xl shadow-2xl overflow-hidden cursor-pointer ${position}`}
+              className={`absolute transition-all duration-700 ease-in-out w-[70vw] md:w-[500px] aspect-[4/3] rounded-2xl shadow-2xl overflow-hidden cursor-pointer ${position}`}
             >
               {event.thumbnail ? (
                 <Image

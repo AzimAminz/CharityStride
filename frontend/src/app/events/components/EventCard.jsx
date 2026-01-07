@@ -94,14 +94,16 @@ const EventCard = ({ event, distance = null, showDistance = false }) => {
 
               {/* Location & Time */}
               <div className="space-y-1.5 mb-4">
-                <div className="flex items-start gap-2 text-gray-500">
-                  <MapPin size={14} className="mt-0.5 shrink-0" />
-                  <span className="text-xs line-clamp-1">
-                    {event.city
-                      ? `${event.city}, ${event.state}`
-                      : event.address || "Location TBD"}
-                  </span>
-                </div>
+                {(event.city || event.state || event.address) && (
+                  <div className="flex items-start gap-2 text-gray-500">
+                    <MapPin size={14} className="mt-0.5 shrink-0" />
+                    <span className="text-xs line-clamp-1">
+                      {event.city
+                        ? `${event.city}, ${event.state}`
+                        : event.address}
+                    </span>
+                  </div>
+                )}
                 <div className="flex items-center gap-2 text-gray-500">
                   <Clock size={14} className="shrink-0" />
                   <span className="text-xs uppercase tracking-tight">
