@@ -29,57 +29,50 @@ class VolunteerRegistrationController extends Controller
             return response()->json(['errors' => $validator->errors()], 422);
         }
 
-        // 1. Validate Event & Shift
+        // 1. Validate Event
         $event = Event::findOrFail($eventId);
         if (!$event->is_published) {
             return response()->json(['message' => 'Event is not open for registration'], 403);
         }
 
-        $shift = VolunteerShift::findOrFail($request->volunteer_shift_id);
-        $shift = VolunteerShift::findOrFail($request->volunteer_shift_id);
-
-        // 2. Check Capacity
-        if ($shift->capacity) {
-            $currentCount = VolunteerRegistration::where('volunteer_shift_id', $shift->id)
-                ->whereIn('status', ['confirmed', 'pending_payment'])
-                ->count();
-                
-            if ($currentCount >= $shift->capacity) {
-                return response()->json(['message' => 'Shift is fully booked'], 400);
-            }
-        }
-
-        // 3. Check for existing registration
-        $existing = VolunteerRegistration::where('event_id', $eventId)
-            ->where('user_id', Auth::id())
-            ->where('volunteer_shift_id', $shift->id)
-            ->whereIn('status', ['confirmed', 'pending_payment'])
-            ->first();
-
-        if ($existing) {
-            if ($existing->status === 'pending_payment') {
-                $payment = $existing->payments()->where('payment_status', 'pending')->latest()->first();
-                if ($payment) {
-                    return response()->json([
-                        'message' => 'You have a pending registration waiting for payment.',
-                        'payment_id' => $payment->id,
-                        'registration_id' => $existing->id
-                    ]);
-                }
-            }
-            return response()->json(['message' => 'You are already registered for this shift.'], 400);
-        }
-
-        // 4. Calculate Fee
-        $feeAmount = 0;
-        $role = $shift->volunteerRole;
-        
-        if ($role && $role->has_fee) {
-            $feeAmount = $role->fee_amount ?? 0;
-        }
-
         DB::beginTransaction();
         try {
+            // 2. Lock the Shift and check capacity
+            $shift = VolunteerShift::where('id', $request->volunteer_shift_id)
+                ->lockForUpdate()
+                ->findOrFail($request->volunteer_shift_id);
+
+            if ($shift->capacity) {
+                $currentCount = VolunteerRegistration::where('volunteer_shift_id', $shift->id)
+                    ->whereIn('status', ['pending', 'approved', 'completed'])
+                    ->count();
+                    
+                if ($currentCount >= $shift->capacity) {
+                    DB::rollBack();
+                    return response()->json(['message' => 'Shift is fully booked'], 400);
+                }
+            }
+
+            // 3. Check for existing registration
+            $existing = VolunteerRegistration::where('event_id', $eventId)
+                ->where('user_id', Auth::id())
+                ->where('volunteer_shift_id', $shift->id)
+                ->whereIn('status', ['pending', 'approved', 'completed'])
+                ->first();
+
+            if ($existing) {
+                DB::rollBack();
+                return response()->json(['message' => 'You are already registered for this shift.'], 400);
+            }
+
+            // 4. Calculate Fee
+            $feeAmount = 0;
+            $role = $shift->volunteerRole;
+            
+            if ($role && $role->has_fee) {
+                $feeAmount = $role->fee_amount ?? 0;
+            }
+
             // 5. Create Registration
             $registration = VolunteerRegistration::create([
                 'event_id' => $eventId,

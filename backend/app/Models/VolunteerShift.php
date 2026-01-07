@@ -44,6 +44,6 @@ class VolunteerShift extends Model
     // Computed current count
     public function getCurrentRegistrationsAttribute()
     {
-        return $this->registrations()->whereIn('status', ['approved', 'completed'])->count();
+        return $this->registrations()->whereIn('status', ['pending', 'approved', 'completed'])->count();
     }
 }

@@ -479,13 +479,18 @@ export default function VolunteerRegistrationPage() {
                         {shiftsByDate[date].map((shift) => {
                           const isAlreadyRegistered =
                             registeredShiftIds.includes(shift.id);
+                          const isFull =
+                            shift.capacity &&
+                            (shift.current_registrations || 0) >=
+                              shift.capacity;
+                          const isDisabled = isAlreadyRegistered || isFull;
 
                           return (
                             <label
                               key={shift.id}
                               className={`block p-4 rounded-lg border-2 transition-all ${
-                                isAlreadyRegistered
-                                  ? "border-gray-300 bg-gray-50 cursor-not-allowed opacity-60"
+                                isDisabled
+                                  ? "border-gray-200 bg-gray-50/50 cursor-not-allowed grayscale-[0.5]"
                                   : formData.volunteer_shift_id ===
                                     shift.id.toString()
                                   ? "border-purple-500 bg-purple-50 cursor-pointer"
@@ -502,15 +507,15 @@ export default function VolunteerRegistrationPage() {
                                     shift.id.toString()
                                   }
                                   onChange={handleInputChange}
-                                  disabled={isAlreadyRegistered}
+                                  disabled={isDisabled}
                                   className="mt-1"
                                 />
                                 <div className="flex-1">
                                   <div className="flex items-center justify-between mb-2">
-                                    <div className="flex items-center gap-2">
+                                    <div className="flex flex-wrap items-center gap-2">
                                       <span
                                         className={`font-semibold ${
-                                          isAlreadyRegistered
+                                          isDisabled
                                             ? "text-gray-500"
                                             : "text-gray-900"
                                         }`}
@@ -518,9 +523,15 @@ export default function VolunteerRegistrationPage() {
                                         {shift.name}
                                       </span>
                                       {isAlreadyRegistered && (
-                                        <span className="px-2 py-1 bg-red-100 text-red-700 text-xs font-semibold rounded-md flex items-center gap-1">
+                                        <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-[10px] font-bold rounded-md flex items-center gap-1 uppercase tracking-wider">
+                                          <CheckCircle className="h-3 w-3" />
+                                          Registered
+                                        </span>
+                                      )}
+                                      {isFull && !isAlreadyRegistered && (
+                                        <span className="px-2 py-0.5 bg-red-100 text-red-700 text-[10px] font-bold rounded-md flex items-center gap-1 uppercase tracking-wider">
                                           <Ban className="h-3 w-3" />
-                                          Already Registered
+                                          Fully Booked
                                         </span>
                                       )}
                                     </div>
@@ -528,7 +539,7 @@ export default function VolunteerRegistrationPage() {
                                       {shift.start_time && (
                                         <span
                                           className={`font-medium ${
-                                            isAlreadyRegistered
+                                            isDisabled
                                               ? "text-gray-400"
                                               : "text-purple-600"
                                           }`}
