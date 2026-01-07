@@ -11,24 +11,58 @@ export default function CheckInConfirmationModal({
   type,
   event,
   onConfirm,
+  onConfirmCheckOut,
   isConfirming = false,
+  isCheckingOut = false,
   isViewOnly = false,
 }) {
   const [activeTab, setActiveTab] = useState("personal");
 
   if (!isOpen || !data) return null;
 
-  const alreadyCheckedIn = data.attendance_status === "checked_in";
+  const alreadyCheckedIn =
+    data.attendance_status === "checked_in" ||
+    data.attendance_status === "completed" ||
+    data.attendance_status === "checked_out";
 
   // Format time to 12-hour
-  const format12Hour = (time24) => {
-    if (!time24) return "N/A";
-    const [hours, minutes] = time24.split(":");
-    const hour = parseInt(hours);
-    const ampm = hour >= 12 ? "PM" : "AM";
-    const hour12 = hour % 12 || 12;
-    return `${hour12}:${minutes} ${ampm}`;
+  const format12Hour = (dateStr) => {
+    if (!dateStr) return "(not complete)";
+
+    // If it's just a time string (HH:mm:ss or HH:mm), prepend a dummy date
+    // This handles shift times (start_time/end_time) which are usually just times
+    let date;
+    if (dateStr.length <= 8 && dateStr.includes(":")) {
+      date = new Date(`2000-01-01T${dateStr}`);
+    } else {
+      date = new Date(dateStr);
+    }
+
+    if (isNaN(date.getTime())) return "(not complete)";
+
+    return date.toLocaleTimeString("en-US", {
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+    });
   };
+
+  const getCanCheckOut = () => {
+    if (type === "participant") return true;
+    if (type !== "volunteer" || !data.volunteer_shift) return false;
+
+    const shiftDate = new Date(data.volunteer_shift.shift_date);
+    const [hours, minutes] = data.volunteer_shift.end_time.split(":");
+
+    // Create a date object for the shift end time
+    const shiftEnd = new Date(shiftDate);
+    shiftEnd.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+
+    const now = new Date();
+    return now >= shiftEnd;
+  };
+
+  const canCheckOut = getCanCheckOut();
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
@@ -38,6 +72,8 @@ export default function CheckInConfirmationModal({
           <h2 className="text-xl font-bold text-gray-900">
             {type === "donation"
               ? "Donation Details"
+              : alreadyCheckedIn && type === "volunteer"
+              ? "Volunteer Check-Out"
               : alreadyCheckedIn
               ? "Already Checked In"
               : "Confirm Check-In"}
@@ -52,11 +88,34 @@ export default function CheckInConfirmationModal({
 
         {/* Status Badge */}
         {alreadyCheckedIn && type !== "donation" && (
-          <div className="mx-4 mt-4 flex items-center gap-2 px-3 py-2 bg-green-50 border border-green-200 rounded-lg flex-shrink-0">
-            <CheckCircle className="h-4 w-4 text-green-600" />
-            <span className="text-sm text-green-800 font-medium">
-              This {type} has already been checked in
-            </span>
+          <div className="mx-4 mt-4 flex flex-col gap-2 p-3 bg-green-50 border border-green-200 rounded-xl flex-shrink-0">
+            <div className="flex items-center gap-2">
+              <CheckCircle className="h-4 w-4 text-green-600" />
+              <span className="text-sm text-green-800 font-bold">
+                {data.attendance_status === "completed" ||
+                data.attendance_status === "checked_out"
+                  ? "Attendance Completed"
+                  : `Checked in at ${format12Hour(data.check_in_time)}`}
+              </span>
+            </div>
+            {(data.attendance_status === "completed" ||
+              data.attendance_status === "checked_out") &&
+              data.check_out_time && (
+                <div className="flex flex-col gap-1 pl-6 border-l-2 border-green-200">
+                  <p className="text-xs text-green-700 font-medium">
+                    Checked out at:{" "}
+                    <span className="font-bold">
+                      {format12Hour(data.check_out_time)}
+                    </span>
+                  </p>
+                  {data.total_hours && (
+                    <p className="text-xs text-green-700 font-medium">
+                      Total Hours:{" "}
+                      <span className="font-bold">{data.total_hours}h</span>
+                    </p>
+                  )}
+                </div>
+              )}
           </div>
         )}
 
@@ -315,6 +374,27 @@ export default function CheckInConfirmationModal({
               )}
             </button>
           )}
+
+          {alreadyCheckedIn &&
+            !isViewOnly &&
+            data.attendance_status !== "completed" && (
+              <button
+                onClick={onConfirmCheckOut}
+                disabled={isCheckingOut || !canCheckOut}
+                className="flex-1 px-4 py-2 bg-amber-600 text-white rounded-lg font-medium hover:bg-amber-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              >
+                {isCheckingOut ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Checking out...
+                  </>
+                ) : !canCheckOut ? (
+                  "Shift Not Ended"
+                ) : (
+                  "Confirm Check-out"
+                )}
+              </button>
+            )}
         </div>
       </div>
     </div>

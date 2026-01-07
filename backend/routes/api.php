@@ -141,6 +141,7 @@ Route::middleware(['auth:sanctum', 'role:user,ngo'])->prefix('ngo')->group(funct
         // Registration Management Routes
         Route::post('verify-qr', [\App\Http\Controllers\Api\Ngo\RegistrationManagementController::class, 'verifyQR']);
         Route::post('events/{eventId}/check-in', [\App\Http\Controllers\Api\Ngo\RegistrationManagementController::class, 'checkInByQr']);
+        Route::post('events/{eventId}/check-out', [\App\Http\Controllers\Api\Ngo\RegistrationManagementController::class, 'checkOutByQr']);
 
         // Settings
         Route::put('/profile', [\App\Http\Controllers\Api\Ngo\NgoProfileController::class, 'updateProfile']);
@@ -173,9 +174,4 @@ Route::middleware(['auth:sanctum', 'role:admin'])->prefix('admin')->group(functi
     Route::get('/reports/ngo-performance', [\App\Http\Controllers\Admin\ReportController::class, 'ngoPerformanceReport']);
     Route::get('/reports/event-analytics', [\App\Http\Controllers\Admin\ReportController::class, 'eventAnalyticsReport']);
     Route::get('/reports/user-activity', [\App\Http\Controllers\Admin\ReportController::class, 'userActivityReport']);
-    
-    // Graph Data Endpoints
-    Route::get('/reports/revenue/graph', [\App\Http\Controllers\Admin\ReportController::class, 'revenueGraphData']);
-    Route::get('/reports/ngo-performance/graph', [\App\Http\Controllers\Admin\ReportController::class, 'ngoPerformanceGraphData']);
-    Route::get('/reports/event-analytics/graph', [\App\Http\Controllers\Admin\ReportController::class, 'eventAnalyticsGraphData']);
 });

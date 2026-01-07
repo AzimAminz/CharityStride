@@ -48,10 +48,7 @@ export default function QRScanner({
     }
 
     try {
-      // Request camera permission first
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-      stream.getTracks().forEach((track) => track.stop()); // Stop the test stream
-
+      // Initialize scanner
       const scanner = new Html5QrcodeScanner(
         "qr-reader",
         {
@@ -60,14 +57,21 @@ export default function QRScanner({
           aspectRatio: 1.0,
           showTorchButtonIfSupported: true,
         },
-        false
+        /* verbose= */ false
       );
 
       scanner.render(
         (decodedText) => {
           setProcessing(true);
           onScanSuccess(decodedText);
-          stopCameraScanner();
+          // Wait a bit before clearing to avoid race conditions with modal closing
+          setTimeout(() => {
+            if (scannerRef.current) {
+              scannerRef.current.clear().catch(console.error);
+              scannerRef.current = null;
+              setScanning(false);
+            }
+          }, 100);
         },
         (error) => {
           // Ignore continuous scan errors
@@ -79,14 +83,14 @@ export default function QRScanner({
     } catch (error) {
       console.error("Camera access error:", error);
       onScanError(
-        "Camera access denied. Please allow camera permissions in your browser settings."
+        "Camera access denied or error occurred. Please ensure camera permissions are granted."
       );
     }
   };
 
   const stopCameraScanner = () => {
     if (scannerRef.current) {
-      scannerRef.current.clear();
+      scannerRef.current.clear().catch(console.error);
       scannerRef.current = null;
       setScanning(false);
       setProcessing(false);
@@ -108,7 +112,9 @@ export default function QRScanner({
       onClose();
     } catch (error) {
       console.error("QR code scan error:", error);
-      onScanError("Failed to read QR code from image. Please ensure the image contains a clear QR code.");
+      onScanError(
+        "Failed to read QR code from image. Please ensure the image contains a clear QR code."
+      );
     } finally {
       setProcessing(false);
       if (fileInputRef.current) {

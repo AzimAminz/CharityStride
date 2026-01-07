@@ -25,6 +25,8 @@ class ParticipantRegistration extends Model
         'qr_code',
         'attendance_status',
         'check_in_time',
+        'check_out_time',
+        'total_hours',
         'tshirt_size',
         'tshirt_collected',
         'tshirt_collected_at',
@@ -34,6 +36,8 @@ class ParticipantRegistration extends Model
     protected $casts = [
         'amount_paid' => 'integer', // Integer cents
         'check_in_time' => 'datetime',
+        'check_out_time' => 'datetime',
+        'total_hours' => 'decimal:2',
         'tshirt_collected' => 'boolean',
         'tshirt_collected_at' => 'datetime',
         'deleted_at' => 'datetime',

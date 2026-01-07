@@ -71,8 +71,8 @@ class RegistrationManagementController extends Controller
                     'participants_count' => $participants->count(),
                     'volunteers_count' => $volunteers->count(),
                     'donations_count' => $donations->count(),
-                    'participants_checked_in' => $participants->where('attendance_status', 'checked_in')->count(),
-                    'volunteers_checked_in' => $volunteers->where('attendance_status', 'checked_in')->count(),
+                    'participants_checked_in' => $participants->whereIn('attendance_status', ['checked_in', 'completed', 'checked_out'])->count(),
+                    'volunteers_checked_in' => $volunteers->whereIn('attendance_status', ['checked_in', 'completed', 'checked_out'])->count(),
                     'tshirts_collected' => $participants->where('tshirt_collected', true)->count() + $volunteers->where('tshirt_collected', true)->count(),
                     'total_revenue' => round($totalRevenue, 2),
                 ]
@@ -138,7 +138,7 @@ class RegistrationManagementController extends Controller
                 ]);
             }
 
-            return response()->json(['message' => 'QR code not found or does not belong to your NGO'], 404);
+            return response()->json(['message' => 'Invalid or unauthorized QR code'], 404);
 
         } catch (\Exception $e) {
             \Log::error('QR verification error: ' . $e->getMessage());
@@ -204,6 +204,90 @@ class RegistrationManagementController extends Controller
         return response()->json([
             'message' => 'Check-in successful',
             'registration' => $registration->fresh(['user', $request->type === 'participant' ? 'participantCategory' : 'volunteerRole'])
+        ]);
+    }
+
+    /**
+     * Check-out by QR code (volunteers only)
+     */
+    public function checkOutByQr(Request $request, $eventId)
+    {
+        $request->validate([
+            'qr_code' => 'required|string',
+            'type' => 'nullable|in:participant,volunteer',
+        ]);
+
+        // Get NGO ID
+        $user = Auth::user();
+        $ngoId = $user->ngo_id ?? \App\Models\Ngo::where('user_id', $user->id)->value('id');
+        
+        if (!$ngoId) {
+            return response()->json(['message' => 'User is not associated with an NGO'], 403);
+        }
+
+        // Verify event belongs to NGO
+        Event::where('ngo_id', $ngoId)->findOrFail($eventId);
+
+        // Detect type if not provided
+        $type = $request->type;
+        if (!$type) {
+            if (str_starts_with($request->qr_code, 'PAR-')) $type = 'participant';
+            else if (str_starts_with($request->qr_code, 'VOL-')) $type = 'volunteer';
+        }
+
+        if ($type === 'participant') {
+            $registration = ParticipantRegistration::where('qr_code', $request->qr_code)
+                ->where('event_id', $eventId)
+                ->with(['user', 'participantCategory'])
+                ->firstOrFail();
+        } else {
+            $registration = VolunteerRegistration::where('qr_code', $request->qr_code)
+                ->where('event_id', $eventId)
+                ->with(['user', 'volunteerRole', 'volunteerShift'])
+                ->firstOrFail();
+        }
+
+        if ($registration->attendance_status === 'completed' || $registration->attendance_status === 'checked_out') {
+            return response()->json(['message' => 'Already checked out', 'registration' => $registration], 200);
+        }
+
+        if ($registration->attendance_status !== 'checked_in') {
+            return response()->json(['message' => 'Must be checked in first'], 400);
+        }
+
+        // Validate current time is >= shift end time (only for volunteers with shifts)
+        if ($type === 'volunteer' && $registration->volunteerShift) {
+            $shift = $registration->volunteerShift;
+            $now = now();
+            $shiftEndDateTime = \Carbon\Carbon::parse($shift->shift_date->toDateString() . ' ' . $shift->end_time);
+
+            if ($now->lt($shiftEndDateTime)) {
+                return response()->json([
+                    'message' => 'Check-out not allowed yet. Shift ends at ' . $shiftEndDateTime->format('d M Y, h:i A'),
+                    'can_check_out' => false
+                ], 400);
+            }
+        }
+
+        // Calculate hours
+        $checkInTime = $registration->check_in_time;
+        $checkOutTime = now();
+        
+        // Use absolute difference and ensure it's positive
+        // Carbon's diffInMinutes returns the absolute difference if the second parameter is true
+        $minutes = $checkInTime ? $checkOutTime->diffInMinutes($checkInTime, true) : 0;
+        $hours = $minutes / 60;
+
+        $registration->update([
+            'attendance_status' => 'completed',
+            'check_out_time' => $checkOutTime,
+            'total_hours' => round($hours, 2),
+            'verified_by_user_id' => Auth::id(),
+        ]);
+
+        return response()->json([
+            'message' => 'Check-out successful. Total hours: ' . round($hours, 2),
+            'registration' => $registration->fresh(['user', $type === 'participant' ? 'participantCategory' : 'volunteerRole'])
         ]);
     }
 
@@ -315,6 +399,16 @@ class RegistrationManagementController extends Controller
             $updates['verified_by_user_id'] = Auth::id();
 
             $registration->update($updates);
+
+            // If we checked out, calculate hours
+            if (isset($updates['attendance_status']) && $updates['attendance_status'] === 'completed') {
+                $checkInTime = $registration->check_in_time;
+                $checkOutTime = $registration->check_out_time;
+                if ($checkInTime && $checkOutTime) {
+                    $minutes = $checkOutTime->diffInMinutes($checkInTime, true);
+                    $registration->update(['total_hours' => round($minutes / 60, 2)]);
+                }
+            }
         }
 
         return response()->json([

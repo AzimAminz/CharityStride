@@ -103,11 +103,26 @@ export default function VolunteerRegistrationPage() {
     );
   }
 
-  const selectedRole = event.volunteer_roles?.find(
+  // Get today's date in YYYY-MM-DD format (Malaysia time)
+  // Use a reliable method for the client timezone
+  const todayStr = new Date().toLocaleDateString("en-CA"); // YYYY-MM-DD
+
+  // Filter roles and their shifts
+  const filteredRoles = (event.volunteer_roles || [])
+    .map((role) => ({
+      ...role,
+      upcomingShifts: (role.shifts || []).filter((shift) => {
+        if (!shift.shift_date) return true; // Keep shifts without dates
+        return shift.shift_date >= todayStr;
+      }),
+    }))
+    .filter((role) => role.upcomingShifts.length > 0);
+
+  const selectedRole = filteredRoles.find(
     (role) => role.id === parseInt(formData.volunteer_role_id)
   );
 
-  const availableShifts = selectedRole?.shifts || [];
+  const availableShifts = selectedRole?.upcomingShifts || [];
 
   // Group shifts by date for better UX
   const shiftsByDate = availableShifts.reduce((acc, shift) => {
@@ -240,7 +255,7 @@ export default function VolunteerRegistrationPage() {
             </h2>
 
             <div className="space-y-3">
-              {event.volunteer_roles?.map((role) => (
+              {filteredRoles.map((role) => (
                 <label
                   key={role.id}
                   className={`block p-4 rounded-lg border-2 cursor-pointer transition-all ${
@@ -272,12 +287,19 @@ export default function VolunteerRegistrationPage() {
                         </p>
                       )}
                       <p className="text-xs text-gray-500 mt-1">
-                        {role.shifts?.length || 0} shift(s) available
+                        {role.upcomingShifts?.length || 0} shift(s) available
                       </p>
                     </div>
                   </div>
                 </label>
               ))}
+              {filteredRoles.length === 0 && (
+                <div className="text-center py-6 bg-gray-50 rounded-lg border border-dashed border-gray-300">
+                  <p className="text-gray-500 text-sm">
+                    No upcoming volunteer roles available for this event.
+                  </p>
+                </div>
+              )}
             </div>
 
             {errors.volunteer_role_id && (
@@ -498,17 +520,33 @@ export default function VolunteerRegistrationPage() {
                                     </p>
                                   )}
                                   {shift.capacity && (
-                                    <div className="mt-2">
-                                      <div className="flex items-center justify-between text-xs text-gray-600 mb-1">
-                                        <span>Capacity</span>
+                                    <div className="mt-2 text-xs text-gray-500">
+                                      <div className="flex justify-between items-center mb-1">
+                                        <span>Availability</span>
                                         <span className="font-medium">
-                                          0 / {shift.capacity}
+                                          {shift.current_registrations || 0} /{" "}
+                                          {shift.capacity}
                                         </span>
                                       </div>
-                                      <div className="w-full bg-gray-200 rounded-full h-2">
+                                      <div className="w-full bg-gray-200 rounded-full h-1.5 overflow-hidden">
                                         <div
-                                          className="bg-purple-600 h-2 rounded-full transition-all"
-                                          style={{ width: "0%" }}
+                                          className={`h-full transition-all duration-500 rounded-full ${
+                                            (shift.current_registrations /
+                                              shift.capacity) *
+                                              100 >=
+                                            100
+                                              ? "bg-red-500"
+                                              : "bg-purple-600"
+                                          }`}
+                                          style={{
+                                            width: `${Math.min(
+                                              100,
+                                              ((shift.current_registrations ||
+                                                0) /
+                                                shift.capacity) *
+                                                100
+                                            )}%`,
+                                          }}
                                         />
                                       </div>
                                     </div>

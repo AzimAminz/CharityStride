@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
+import Echo from "../../lib/echo";
 import Layout from "@/app/components/Layout";
 import {
   Users,
@@ -47,6 +48,7 @@ export default function EventRegistrationsDetailPage() {
   const [scannedData, setScannedData] = useState(null);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [isCheckingIn, setIsCheckingIn] = useState(false);
+  const [isCheckingOut, setIsCheckingOut] = useState(false);
   const [toast, setToast] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
@@ -65,6 +67,48 @@ export default function EventRegistrationsDetailPage() {
 
   useEffect(() => {
     fetchData();
+  }, [id]);
+
+  // WebSocket listener for new registrations
+  useEffect(() => {
+    if (!id || !Echo) return;
+
+    // Get user data from localStorage to get ngo_id
+    const userData = localStorage.getItem("user");
+    if (!userData) return;
+
+    const user = JSON.parse(userData);
+    const ngoId = user?.ngo_id;
+    if (!ngoId) return;
+
+    const channel = Echo.channel(`ngo.${ngoId}`);
+
+    channel.listen("registration.created", (data) => {
+      // Only refresh if the registration belongs to THIS event
+      if (data.event_id === parseInt(id)) {
+        console.log(
+          "New registration for this event received via WebSocket:",
+          data
+        );
+
+        // Option 1: Full refresh to get everything consistent
+        fetchData();
+
+        // Option 2: Show notification
+        setToast({
+          type: "success",
+          message: `New ${data.registration_type} registration received!`,
+        });
+      }
+    });
+
+    return () => {
+      if (Echo && ngoId) {
+        channel.stopListening("registration.created");
+        // We don't leave the channel here if other components might be using it,
+        // but since this is a page component, it's generally safe.
+      }
+    };
   }, [id]);
 
   // Set initial active tab based on enabled modules
@@ -138,6 +182,32 @@ export default function EventRegistrationsDetailPage() {
     }
   };
 
+  const handleConfirmCheckOut = async () => {
+    if (!scannedData) return;
+    setIsCheckingOut(true);
+    try {
+      const response = await api.post(`/ngo/events/${id}/check-out`, {
+        qr_code: scannedData.qr_code,
+      });
+      setToast({
+        type: "success",
+        message: response.data.message || "Checked out successfully!",
+      });
+      setShowConfirmModal(false);
+      setScannedData(null);
+      fetchData(); // Refresh data
+    } catch (error) {
+      setToast({
+        type: "error",
+        message:
+          error.response?.data?.message ||
+          "Failed to check out. Please try again.",
+      });
+    } finally {
+      setIsCheckingOut(false);
+    }
+  };
+
   const filteredData = useMemo(() => {
     if (!data) return [];
 
@@ -188,13 +258,25 @@ export default function EventRegistrationsDetailPage() {
     return filteredData.slice(startIndex, startIndex + itemsPerPage);
   }, [filteredData, currentPage]);
 
-  const format12Hour = (time24) => {
-    if (!time24) return "N/A";
-    const [hours, minutes] = time24.split(":");
-    const hour = parseInt(hours);
-    const ampm = hour >= 12 ? "PM" : "AM";
-    const hour12 = hour % 12 || 12;
-    return `${hour12}:${minutes} ${ampm}`;
+  const format12Hour = (dateStr) => {
+    if (!dateStr) return "(not complete)";
+
+    // If it's just a time string (HH:mm:ss or HH:mm), prepend a dummy date
+    // This handles shift times (start_time/end_time) which are usually just times
+    let date;
+    if (dateStr.length <= 8 && dateStr.includes(":")) {
+      date = new Date(`2000-01-01T${dateStr}`);
+    } else {
+      date = new Date(dateStr);
+    }
+
+    if (isNaN(date.getTime())) return "(not complete)";
+
+    return date.toLocaleTimeString("en-US", {
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+    });
   };
 
   const exportToCSV = () => {
@@ -602,22 +684,37 @@ export default function EventRegistrationsDetailPage() {
                             <div className="flex flex-col gap-1 text-xs">
                               <span
                                 className={`px-2 py-1 rounded-full text-[10px] font-bold w-fit ${
-                                  item.attendance_status === "checked_in"
+                                  item.attendance_status === "checked_in" ||
+                                  item.attendance_status === "completed" ||
+                                  item.attendance_status === "checked_out"
                                     ? "bg-green-100 text-green-700"
                                     : "bg-gray-100 text-gray-500"
                                 }`}
                               >
-                                {item.attendance_status === "checked_in"
+                                {item.attendance_status === "completed" ||
+                                item.attendance_status === "checked_out"
+                                  ? `Completed ${
+                                      item.total_hours &&
+                                      parseFloat(item.total_hours) > 0
+                                        ? `(${item.total_hours}h)`
+                                        : ""
+                                    }`
+                                  : item.attendance_status === "checked_in"
                                   ? "Present"
                                   : "Absent"}
                               </span>
-                              {item.check_in_time && (
-                                <span className="text-[10px] text-gray-400 font-mono">
-                                  {format12Hour(
-                                    item.check_in_time.split(" ")[1]
-                                  )}
+                              <div className="flex items-center gap-1 text-[10px] text-gray-400 font-mono">
+                                <span className="font-bold text-gray-500">
+                                  IN:
                                 </span>
-                              )}
+                                <span>{format12Hour(item.check_in_time)}</span>
+                              </div>
+                              <div className="flex items-center gap-1 text-[10px] text-gray-400 font-mono">
+                                <span className="font-bold text-gray-500">
+                                  OUT:
+                                </span>
+                                <span>{format12Hour(item.check_out_time)}</span>
+                              </div>
                             </div>
                           </td>
                         </>
@@ -769,12 +866,17 @@ export default function EventRegistrationsDetailPage() {
 
       <CheckInConfirmationModal
         isOpen={showConfirmModal}
-        onClose={() => setShowConfirmModal(false)}
+        onClose={() => {
+          setShowConfirmModal(false);
+          setScannedData(null);
+        }}
         data={scannedData?.registration}
         type={scannedData?.type}
         event={scannedData?.event}
         onConfirm={handleConfirmCheckIn}
+        onConfirmCheckOut={handleConfirmCheckOut}
         isConfirming={isCheckingIn}
+        isCheckingOut={isCheckingOut}
         isViewOnly={scannedData?.isViewOnly}
       />
 

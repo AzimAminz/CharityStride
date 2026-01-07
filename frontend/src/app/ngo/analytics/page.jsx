@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import Echo from "../../lib/echo";
 import Layout from "@/app/components/Layout";
 import { api } from "../../lib/api";
 import {
@@ -54,6 +55,34 @@ const NGOAnalyticsPage = () => {
 
   React.useEffect(() => {
     fetchData(range);
+  }, [range]);
+
+  // WebSocket listener for new registrations (Organization-wide)
+  React.useEffect(() => {
+    if (!Echo) return;
+
+    // Get user data from localStorage to get ngo_id
+    const userData = localStorage.getItem("user");
+    if (!userData) return;
+
+    const user = JSON.parse(userData);
+    const ngoId = user?.ngo_id;
+    if (!ngoId) return;
+
+    const channel = Echo.channel(`ngo.${ngoId}`);
+
+    channel.listen("registration.created", (data) => {
+      console.log("Analytics refresh triggered by WebSocket:", data);
+
+      // Refresh the entire analytics dataset to update charts and summary cards
+      fetchData(range);
+    });
+
+    return () => {
+      if (Echo && ngoId) {
+        channel.stopListening("registration.created");
+      }
+    };
   }, [range]);
 
   const formatCurrency = (amount) => {

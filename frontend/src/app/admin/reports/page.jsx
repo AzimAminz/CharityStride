@@ -12,20 +12,6 @@ import {
   Activity,
 } from "lucide-react";
 import { motion } from "framer-motion";
-import {
-  LineChart,
-  Line,
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-  ResponsiveContainer,
-  AreaChart,
-  Area,
-} from "recharts";
 
 const AdminReportsPage = () => {
   const [startDate, setStartDate] = useState(
@@ -36,11 +22,6 @@ const AdminReportsPage = () => {
   );
   const [loading, setLoading] = useState(null);
   const [overview, setOverview] = useState(null);
-  const [graphData, setGraphData] = useState({
-    revenue: [],
-    ngoPerformance: [],
-    eventAnalytics: [],
-  });
 
   const reports = [
     {
@@ -50,8 +31,6 @@ const AdminReportsPage = () => {
       icon: DollarSign,
       color: "emerald",
       endpoint: "/reports/revenue",
-      graphEndpoint: "/reports/revenue/graph",
-      graphType: "line",
     },
     {
       id: "ngo-performance",
@@ -60,8 +39,6 @@ const AdminReportsPage = () => {
       icon: Building2,
       color: "blue",
       endpoint: "/reports/ngo-performance",
-      graphEndpoint: "/reports/ngo-performance/graph",
-      graphType: "bar",
     },
     {
       id: "event-analytics",
@@ -70,8 +47,6 @@ const AdminReportsPage = () => {
       icon: Activity,
       color: "purple",
       endpoint: "/reports/event-analytics",
-      graphEndpoint: "/reports/event-analytics/graph",
-      graphType: "multibar",
     },
     {
       id: "user-activity",
@@ -104,58 +79,6 @@ const AdminReportsPage = () => {
       setOverview(data);
     } catch (err) {
       console.error(err);
-    }
-  };
-
-  const fetchGraphData = async () => {
-    try {
-      const token = localStorage.getItem("token");
-      const baseUrl =
-        process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-
-      const [revenueRes, ngoRes, eventRes] = await Promise.all([
-        fetch(
-          `${baseUrl}/api/admin/reports/revenue/graph?start_date=${startDate}&end_date=${endDate}`,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-              Accept: "application/json",
-            },
-          }
-        ),
-        fetch(
-          `${baseUrl}/api/admin/reports/ngo-performance/graph?start_date=${startDate}&end_date=${endDate}`,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-              Accept: "application/json",
-            },
-          }
-        ),
-        fetch(
-          `${baseUrl}/api/admin/reports/event-analytics/graph?start_date=${startDate}&end_date=${endDate}`,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-              Accept: "application/json",
-            },
-          }
-        ),
-      ]);
-
-      const [revenueData, ngoData, eventData] = await Promise.all([
-        revenueRes.ok ? revenueRes.json() : Promise.resolve([]),
-        ngoRes.ok ? ngoRes.json() : Promise.resolve([]),
-        eventRes.ok ? eventRes.json() : Promise.resolve([]),
-      ]);
-
-      setGraphData({
-        revenue: Array.isArray(revenueData) ? revenueData : [],
-        ngoPerformance: Array.isArray(ngoData) ? ngoData : [],
-        eventAnalytics: Array.isArray(eventData) ? eventData : [],
-      });
-    } catch (err) {
-      console.error("Failed to fetch graph data:", err);
     }
   };
 
@@ -196,7 +119,6 @@ const AdminReportsPage = () => {
 
   React.useEffect(() => {
     fetchOverview();
-    fetchGraphData();
   }, [startDate, endDate]);
 
   const colorConfig = {
@@ -204,184 +126,6 @@ const AdminReportsPage = () => {
     blue: "bg-blue-50 text-blue-600 border-blue-100",
     purple: "bg-purple-50 text-purple-600 border-purple-100",
     rose: "bg-rose-50 text-rose-600 border-rose-100",
-  };
-  const renderGraph = (report) => {
-    if (!report.graphEndpoint) return null;
-
-    let data = [];
-    if (report.id === "revenue") {
-      data = graphData.revenue;
-    } else if (report.id === "ngo-performance") {
-      data = graphData.ngoPerformance;
-    } else if (report.id === "event-analytics") {
-      data = graphData.eventAnalytics;
-    }
-
-    if (!data || !Array.isArray(data) || data.length === 0) {
-      return (
-        <div className="h-64 flex items-center justify-center text-gray-400 text-sm">
-          No data available for the selected date range
-        </div>
-      );
-    }
-
-    if (report.graphType === "line") {
-      return (
-        <ResponsiveContainer width="100%" height={300}>
-          <AreaChart
-            data={data}
-            margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
-          >
-            <defs>
-              <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
-                <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
-              </linearGradient>
-            </defs>
-            <CartesianGrid
-              strokeDasharray="3 3"
-              vertical={false}
-              stroke="#f3f4f6"
-            />
-            <XAxis
-              dataKey="date"
-              axisLine={false}
-              tickLine={false}
-              stroke="#9ca3af"
-              tick={{ fontSize: 11 }}
-              dy={10}
-            />
-            <YAxis
-              axisLine={false}
-              tickLine={false}
-              stroke="#9ca3af"
-              tick={{ fontSize: 11 }}
-              tickFormatter={(value) => `RM ${value}`}
-            />
-            <Tooltip
-              contentStyle={{
-                backgroundColor: "#fff",
-                border: "none",
-                borderRadius: "16px",
-                boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1)",
-                padding: "12px",
-              }}
-              formatter={(value) => [`RM ${value}`, "Revenue"]}
-            />
-            <Area
-              type="monotone"
-              dataKey="revenue"
-              stroke="#10b981"
-              strokeWidth={3}
-              fillOpacity={1}
-              fill="url(#colorRevenue)"
-            />
-          </AreaChart>
-        </ResponsiveContainer>
-      );
-    } else if (report.graphType === "bar") {
-      return (
-        <ResponsiveContainer width="100%" height={300}>
-          <BarChart
-            data={data}
-            margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
-          >
-            <CartesianGrid
-              strokeDasharray="3 3"
-              vertical={false}
-              stroke="#f3f4f6"
-            />
-            <XAxis
-              dataKey="name"
-              axisLine={false}
-              tickLine={false}
-              stroke="#9ca3af"
-              tick={{ fontSize: 11 }}
-              dy={10}
-            />
-            <YAxis
-              axisLine={false}
-              tickLine={false}
-              stroke="#9ca3af"
-              tick={{ fontSize: 11 }}
-            />
-            <Tooltip
-              contentStyle={{
-                backgroundColor: "#fff",
-                border: "none",
-                borderRadius: "16px",
-                boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1)",
-                padding: "12px",
-              }}
-            />
-            <Bar
-              dataKey="total_raised"
-              fill="#3b82f6"
-              radius={[6, 6, 0, 0]}
-              name="Total Raised (RM)"
-              barSize={40}
-            />
-          </BarChart>
-        </ResponsiveContainer>
-      );
-    } else if (report.graphType === "multibar") {
-      return (
-        <ResponsiveContainer width="100%" height={300}>
-          <BarChart
-            data={data}
-            margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
-          >
-            <CartesianGrid
-              strokeDasharray="3 3"
-              vertical={false}
-              stroke="#f3f4f6"
-            />
-            <XAxis
-              dataKey="name"
-              axisLine={false}
-              tickLine={false}
-              stroke="#9ca3af"
-              tick={{ fontSize: 11 }}
-              dy={10}
-            />
-            <YAxis
-              axisLine={false}
-              tickLine={false}
-              stroke="#9ca3af"
-              tick={{ fontSize: 11 }}
-            />
-            <Tooltip
-              contentStyle={{
-                backgroundColor: "#fff",
-                border: "none",
-                borderRadius: "16px",
-                boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1)",
-                padding: "12px",
-              }}
-            />
-            <Legend verticalAlign="top" height={36} iconType="circle" />
-            <Bar
-              dataKey="participants"
-              fill="#8b5cf6"
-              radius={[6, 6, 0, 0]}
-              name="Participants"
-            />
-            <Bar
-              dataKey="volunteers"
-              fill="#ec4899"
-              radius={[6, 6, 0, 0]}
-              name="Volunteers"
-            />
-            <Bar
-              dataKey="donations"
-              fill="#10b981"
-              radius={[6, 6, 0, 0]}
-              name="Donations"
-            />
-          </BarChart>
-        </ResponsiveContainer>
-      );
-    }
   };
 
   return (
@@ -460,7 +204,7 @@ const AdminReportsPage = () => {
       )}
 
       {/* Report Cards */}
-      <div className="grid grid-cols-1 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {reports.map((report) => {
           const Icon = report.icon;
           const isLoading = loading === report.id;
@@ -468,52 +212,45 @@ const AdminReportsPage = () => {
           return (
             <motion.div
               key={report.id}
-              className="bg-white rounded-[2.5rem] border border-gray-100 shadow-sm hover:shadow-xl transition-all p-8 relative overflow-hidden"
+              whileHover={{ scale: 1.02 }}
+              className="bg-white rounded-[2.5rem] border border-gray-100 shadow-sm hover:shadow-xl transition-all p-8 relative overflow-hidden group"
             >
-              <div className="flex items-start justify-between mb-6">
-                <div className="flex items-start gap-4">
-                  <div
-                    className={`p-4 rounded-3xl ${
-                      colorConfig[report.color]
-                    } border`}
-                  >
-                    <Icon className="h-6 w-6" />
-                  </div>
-                  <div>
-                    <h3 className="text-2xl font-black text-gray-900 mb-2">
-                      {report.title}
-                    </h3>
-                    <p className="text-gray-500 font-medium text-sm">
-                      {report.description}
-                    </p>
-                  </div>
-                </div>
-
-                <button
-                  onClick={() => downloadReport(report)}
-                  disabled={isLoading}
-                  className="py-3 px-6 bg-gray-900 hover:bg-black text-white font-black rounded-2xl transition-all shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                >
-                  {isLoading ? (
-                    <>
-                      <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                      Generating...
-                    </>
-                  ) : (
-                    <>
-                      <Download className="h-5 w-5" />
-                      Download CSV
-                    </>
-                  )}
-                </button>
+              <div
+                className={`p-4 rounded-3xl ${
+                  colorConfig[report.color]
+                } border w-fit mb-6`}
+              >
+                <Icon className="h-6 w-6" />
               </div>
 
-              {/* Graph */}
-              {report.graphEndpoint && (
-                <div className="mt-6 bg-gray-50 rounded-2xl p-6">
-                  {renderGraph(report)}
-                </div>
-              )}
+              <h3 className="text-2xl font-black text-gray-900 mb-2">
+                {report.title}
+              </h3>
+              <p className="text-gray-500 font-medium text-sm mb-6">
+                {report.description}
+              </p>
+
+              <button
+                onClick={() => downloadReport(report)}
+                disabled={isLoading}
+                className="w-full py-4 bg-gray-900 hover:bg-black text-white font-black rounded-2xl transition-all shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              >
+                {isLoading ? (
+                  <>
+                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    Generating...
+                  </>
+                ) : (
+                  <>
+                    <Download className="h-5 w-5" />
+                    Download CSV
+                  </>
+                )}
+              </button>
+
+              <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
+                <Icon className="h-32 w-32" />
+              </div>
             </motion.div>
           );
         })}

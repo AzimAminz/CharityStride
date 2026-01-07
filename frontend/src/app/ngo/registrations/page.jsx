@@ -37,11 +37,13 @@ const NGORegistrationsPage = () => {
   const [toast, setToast] = useState(null);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [scannedData, setScannedData] = useState(null);
+  const [isCheckingIn, setIsCheckingIn] = useState(false);
+  const [isCheckingOut, setIsCheckingOut] = useState(false);
 
   useEffect(() => {
     const fetchEvents = async () => {
       try {
-        const response = await getEvents({ user_id: "me" }); // Fetch events for current NGO
+        const response = await getEvents({ user_id: "me", per_page: 100 }); // Fetch events for current NGO
         // Handle paginated response
         const events = response.data || response;
         console.log("Fetched events for NGO:", events);
@@ -82,7 +84,7 @@ const NGORegistrationsPage = () => {
     channel.listen("registration.created", (data) => {
       console.log("New registration received:", data);
 
-      // Update the specific event in the list
+      // 1. Update the specific event in the list for per-card stats
       setPublishedEvents((prevEvents) =>
         prevEvents.map((event) => {
           if (event.id === data.event_id) {
@@ -94,6 +96,15 @@ const NGORegistrationsPage = () => {
           return event;
         })
       );
+
+      // 2. Note: The summary stats at the top are derived from publishedEvents.reduce(...)
+      // So they will update automatically when publishedEvents is updated above.
+
+      // Optional: Add a subtle toast or notification
+      setToast({
+        type: "success",
+        message: `New ${data.registration_type} registration for: ${data.event_title}`,
+      });
     });
 
     return () => {
@@ -141,6 +152,7 @@ const NGORegistrationsPage = () => {
 
   const handleConfirmCheckIn = async () => {
     if (!scannedData) return;
+    setIsCheckingIn(true);
 
     try {
       const response = await api.post(
@@ -160,11 +172,11 @@ const NGORegistrationsPage = () => {
       setScannedData(null);
 
       // Refresh events to update stats
-      const eventsResponse = await getEvents({ user_id: "me" });
+      const eventsResponse = await getEvents({ user_id: "me", per_page: 100 });
       const events = eventsResponse.data || eventsResponse;
       if (Array.isArray(events)) {
         const published = events.filter(
-          (e) => e.is_published || e.status === "open" || e.is_published === 1
+          (e) => e.is_published || e.is_published === 1
         );
         setPublishedEvents(published);
       }
@@ -175,6 +187,49 @@ const NGORegistrationsPage = () => {
           error.response?.data?.message ||
           "Failed to check in. Please try again.",
       });
+    } finally {
+      setIsCheckingIn(false);
+    }
+  };
+
+  const handleConfirmCheckOut = async () => {
+    if (!scannedData) return;
+    setIsCheckingOut(true);
+
+    try {
+      const response = await api.post(
+        `/ngo/events/${scannedData.event.id}/check-out`,
+        {
+          qr_code: scannedData.qr_code,
+        }
+      );
+
+      setToast({
+        type: "success",
+        message: response.data.message || "Successfully checked out",
+      });
+
+      setShowConfirmModal(false);
+      setScannedData(null);
+
+      // Refresh events to update stats
+      const eventsResponse = await getEvents({ user_id: "me", per_page: 100 });
+      const events = eventsResponse.data || eventsResponse;
+      if (Array.isArray(events)) {
+        const published = events.filter(
+          (e) => e.is_published || e.is_published === 1
+        );
+        setPublishedEvents(published);
+      }
+    } catch (error) {
+      setToast({
+        type: "error",
+        message:
+          error.response?.data?.message ||
+          "Failed to check out. Please try again.",
+      });
+    } finally {
+      setIsCheckingOut(false);
     }
   };
 
@@ -609,11 +664,12 @@ const NGORegistrationsPage = () => {
               setScannedData(null);
             }}
             onConfirm={handleConfirmCheckIn}
-            registration={{
-              type: scannedData.type,
-              data: scannedData.registration,
-              event: scannedData.event,
-            }}
+            onConfirmCheckOut={handleConfirmCheckOut}
+            data={scannedData.registration}
+            type={scannedData.type}
+            event={scannedData.event}
+            isConfirming={isCheckingIn}
+            isCheckingOut={isCheckingOut}
           />
         )}
       </div>

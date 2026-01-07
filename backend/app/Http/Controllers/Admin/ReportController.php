@@ -63,7 +63,7 @@ class ReportController extends Controller
             ->get();
 
         $csvData = [];
-        $csvData[] = ['Date', 'Event', 'NGO', 'Donor', 'Amount (RM)'];
+        $csvData[] = ['Date', 'Event', 'NGO', 'Donor', 'Amount (RM)', 'Payment Method'];
 
         foreach ($donations as $donation) {
             $csvData[] = [
@@ -71,7 +71,8 @@ class ReportController extends Controller
                 $donation->event->title ?? 'N/A',
                 $donation->event->ngo->name ?? 'N/A',
                 $donation->user->name ?? 'N/A',
-                number_format($donation->amount_paid / 100, 2)
+                number_format($donation->amount_paid / 100, 2),
+                'Online Payment'
             ];
         }
 
@@ -87,34 +88,26 @@ class ReportController extends Controller
         $endDate = $request->query('end_date', Carbon::now()->toDateString());
 
         $ngos = Ngo::with(['events' => function($q) use ($startDate, $endDate) {
-            $q->where('is_published', true)
-              ->whereNull('taken_down_at')
-              ->whereBetween('created_at', [$startDate, $endDate]);
+            $q->whereBetween('created_at', [$startDate, $endDate]);
         }])->get();
 
         $csvData = [];
-        $csvData[] = ['NGO Name', 'Registration No', 'Total Events', 'Total Funds Raised (RM)', 'Total Participants', 'Total Volunteers'];
+        $csvData[] = ['NGO Name', 'Registration No', 'Total Events', 'Published Events', 'Total Funds Raised (RM)', 'Total Participants', 'Total Volunteers'];
 
         foreach ($ngos as $ngo) {
             $totalFunds = DonationRegistration::whereHas('event', function($q) use ($ngo) {
-                $q->where('ngo_id', $ngo->id)
-                  ->where('is_published', true)
-                  ->whereNull('taken_down_at');
+                $q->where('ngo_id', $ngo->id);
             })->whereHas('payments', function($q) {
                 $q->where('payment_status', 'paid');
             })->whereBetween('created_at', [$startDate, $endDate])->sum('amount_paid');
 
             $totalParticipants = ParticipantRegistration::whereHas('event', function($q) use ($ngo) {
-                $q->where('ngo_id', $ngo->id)
-                  ->where('is_published', true)
-                  ->whereNull('taken_down_at');
+                $q->where('ngo_id', $ngo->id);
             })->where('status', 'confirmed')
             ->whereBetween('created_at', [$startDate, $endDate])->count();
 
             $totalVolunteers = VolunteerRegistration::whereHas('event', function($q) use ($ngo) {
-                $q->where('ngo_id', $ngo->id)
-                  ->where('is_published', true)
-                  ->whereNull('taken_down_at');
+                $q->where('ngo_id', $ngo->id);
             })->where('status', 'approved')
             ->whereBetween('created_at', [$startDate, $endDate])->count();
 
@@ -122,6 +115,7 @@ class ReportController extends Controller
                 $ngo->name,
                 $ngo->registration_no,
                 $ngo->events->count(),
+                $ngo->events->where('is_published', true)->count(),
                 number_format($totalFunds / 100, 2),
                 $totalParticipants,
                 $totalVolunteers
@@ -140,8 +134,6 @@ class ReportController extends Controller
         $endDate = $request->query('end_date', Carbon::now()->toDateString());
 
         $events = Event::with('ngo')
-            ->where('is_published', true)
-            ->whereNull('taken_down_at')
             ->whereBetween('created_at', [$startDate, $endDate])
             ->get();
 
@@ -229,104 +221,6 @@ class ReportController extends Controller
         }
 
         return $this->generateCSV($csvData, 'user_activity_report_' . date('Ymd'));
-    }
-
-    /**
-     * Get Revenue Graph Data
-     */
-    public function revenueGraphData(Request $request)
-    {
-        $startDate = $request->query('start_date', Carbon::now()->subMonth()->toDateString());
-        $endDate = $request->query('end_date', Carbon::now()->toDateString());
-
-        $revenueData = DonationRegistration::whereHas('payments', function($q) {
-                $q->where('payment_status', 'paid');
-            })
-            ->whereBetween('created_at', [$startDate, $endDate])
-            ->selectRaw('DATE(created_at) as date, SUM(amount_paid) as total')
-            ->groupBy('date')
-            ->orderBy('date')
-            ->get()
-            ->map(function($item) {
-                return [
-                    'date' => $item->date,
-                    'revenue' => $item->total / 100
-                ];
-            });
-
-        return response()->json($revenueData);
-    }
-
-    /**
-     * Get NGO Performance Graph Data
-     */
-    public function ngoPerformanceGraphData(Request $request)
-    {
-        $startDate = $request->query('start_date', Carbon::now()->subMonth()->toDateString());
-        $endDate = $request->query('end_date', Carbon::now()->toDateString());
-
-        $ngoData = Ngo::select('ngos.id', 'ngos.name')
-            ->leftJoin('events', 'ngos.id', '=', 'events.ngo_id')
-            ->leftJoin('donation_registrations', 'events.id', '=', 'donation_registrations.event_id')
-            ->where('events.is_published', true)
-            ->whereNull('events.taken_down_at')
-            ->whereExists(function($query) {
-                $query->select(DB::raw(1))
-                    ->from('payments')
-                    ->whereColumn('payments.donation_registration_id', 'donation_registrations.id')
-                    ->where('payments.payment_status', 'paid');
-            })
-            ->whereBetween('donation_registrations.created_at', [$startDate, $endDate])
-            ->groupBy('ngos.id', 'ngos.name')
-            ->selectRaw('SUM(donation_registrations.amount_paid) as total_raised')
-            ->orderByDesc('total_raised')
-            ->limit(10)
-            ->get()
-            ->map(function($item) {
-                return [
-                    'name' => $item->name,
-                    'total_raised' => $item->total_raised / 100
-                ];
-            });
-
-        return response()->json($ngoData);
-    }
-
-    /**
-     * Get Event Analytics Graph Data
-     */
-    public function eventAnalyticsGraphData(Request $request)
-    {
-        $startDate = $request->query('start_date', Carbon::now()->subMonth()->toDateString());
-        $endDate = $request->query('end_date', Carbon::now()->toDateString());
-
-        $events = Event::where('is_published', true)
-            ->whereNull('taken_down_at')
-            ->whereBetween('created_at', [$startDate, $endDate])
-            ->limit(10)
-            ->get();
-
-        $eventData = $events->map(function($event) {
-            $participants = ParticipantRegistration::where('event_id', $event->id)
-                ->where('status', 'confirmed')->count();
-            
-            $volunteers = VolunteerRegistration::where('event_id', $event->id)
-                ->where('status', 'approved')->count();
-            
-            $donations = DonationRegistration::where('event_id', $event->id)
-                ->whereHas('payments', function($q) {
-                    $q->where('payment_status', 'paid');
-                })->count();
-
-            return [
-                'name' => strlen($event->title) > 20 ? substr($event->title, 0, 20) . '...' : $event->title,
-                'participants' => $participants,
-                'volunteers' => $volunteers,
-                'donations' => $donations
-            ];
-        });
-
-        return response()->json($eventData);
     }
 
     /**

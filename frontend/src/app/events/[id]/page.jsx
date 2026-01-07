@@ -1039,10 +1039,16 @@ function DetailsTab({ event, selectedModule: propSelectedModule }) {
   const hasAnyModule =
     event.has_participant || event.has_volunteer || event.has_donation;
 
-  // Get all shifts from all volunteer roles
+  // Get today's date in YYYY-MM-DD format (Malaysia time)
+  const todayStr = new Date().toLocaleDateString("en-CA"); // YYYY-MM-DD
+
+  // Get all upcoming shifts from all volunteer roles
   const allShifts =
     event.volunteer_roles?.flatMap(
-      (role) => role.shifts?.map((shift) => ({ ...shift, role })) || []
+      (role) =>
+        role.shifts
+          ?.filter((shift) => !shift.shift_date || shift.shift_date >= todayStr)
+          .map((shift) => ({ ...shift, role })) || []
     ) || [];
 
   // Filter shifts
@@ -1114,12 +1120,19 @@ function DetailsTab({ event, selectedModule: propSelectedModule }) {
                         <FilterDropdown
                           options={[
                             { value: "all", label: "All Roles" },
-                            ...event.volunteer_roles.map((role) => ({
-                              value: role.id,
-                              label:
-                                role.custom_role_name ||
-                                role.role_type?.name_en,
-                            })),
+                            ...[
+                              ...new Set(allShifts.map((s) => s.role.id)),
+                            ].map((roleId) => {
+                              const role = event.volunteer_roles.find(
+                                (r) => r.id === roleId
+                              );
+                              return {
+                                value: role.id,
+                                label:
+                                  role.custom_role_name ||
+                                  role.role_type?.name_en,
+                              };
+                            }),
                           ]}
                           selectedValue={selectedRole}
                           onSelect={setSelectedRole}
@@ -1158,9 +1171,10 @@ function DetailsTab({ event, selectedModule: propSelectedModule }) {
                       </h4>
 
                       {paginatedShifts.map((shift) => {
-                        const registered = 0; // TODO: Get from registrations
+                        const registered = shift.current_registrations || 0;
                         const capacity = shift.capacity;
-                        const percentage = (registered / capacity) * 100;
+                        const percentage =
+                          capacity > 0 ? (registered / capacity) * 100 : 0;
 
                         // Convert to 12-hour format
                         const formatTime12Hour = (time24) => {
@@ -1378,7 +1392,7 @@ function DetailsTab({ event, selectedModule: propSelectedModule }) {
                           (c) => c.id == selectedCategory
                         )
                     ).map((category) => {
-                      const registered = 0; // TODO: Get from registrations
+                      const registered = category.current_registrations || 0;
                       const capacity = category.capacity;
                       const isUnlimited = !capacity || capacity === 0;
                       const percentage = isUnlimited

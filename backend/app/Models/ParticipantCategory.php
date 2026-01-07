@@ -43,6 +43,8 @@ class ParticipantCategory extends Model
         'version' => 'integer',
     ];
 
+    protected $appends = ['current_registrations'];
+
     // Relationships
     public function event()
     {
@@ -60,7 +62,7 @@ class ParticipantCategory extends Model
     }
 
     // Computed current count (avoid race conditions)
-    public function getCurrentCountAttribute()
+    public function getCurrentRegistrationsAttribute()
     {
         return $this->registrations()->whereIn('status', ['confirmed', 'completed'])->count();
     }

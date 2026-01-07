@@ -23,6 +23,8 @@ class VolunteerShift extends Model
         'capacity' => 'integer',
     ];
 
+    protected $appends = ['current_registrations'];
+
     // Relationships
     public function volunteerRole()
     {
@@ -40,7 +42,7 @@ class VolunteerShift extends Model
     }
 
     // Computed current count
-    public function getCurrentCountAttribute()
+    public function getCurrentRegistrationsAttribute()
     {
         return $this->registrations()->whereIn('status', ['approved', 'completed'])->count();
     }
