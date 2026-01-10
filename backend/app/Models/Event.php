@@ -35,7 +35,51 @@ class Event extends Model
         'take_down_reason',
     ];
 
-    protected $appends = ['stats', 'location', 'price_range'];
+    protected static function booted()
+    {
+        static::forceDeleting(function ($event) {
+            // 1. Delete simple child relations (no further children or with cascade)
+            $event->sections()->delete();
+            $event->donationConfig()->delete();
+            $event->participantConfig()->delete();
+            $event->registrationLinks()->delete();
+            $event->reviews()->delete();
+            $event->unpublishRequests()->delete();
+            
+            // 2. Delete relations that might have their own dependencies
+            // Use each()->delete() to trigger their own deleting events if they have any
+            
+            // Volunteer Roles -> Shifts
+            $event->volunteerRoles()->each(function($role) {
+                // If VolunteerRole has shifts, ensure they are deleted too.
+                // Assuming VolunteerRole model handles its own children or we do it here if not.
+                $role->shifts()->delete(); 
+                $role->registrations()->delete(); // Accessing registrations via role
+                $role->delete();
+            });
+            // Also delete volunteer registrations directly linked to event if any (redundant check usually)
+            $event->volunteerRegistrations()->delete();
+
+
+            // Participant Categories -> Tiers
+            $event->participantCategories()->each(function($category) {
+                $category->tiers()->delete();
+                $category->delete();
+            });
+            // Delete participant registrations
+            $event->participantRegistrations()->each(function($reg) {
+                $reg->payments()->delete(); // If payments linked to reg
+                $reg->delete();
+            });
+            
+            // Donation Registrations
+            $event->donationRegistrations()->each(function($reg) {
+                $reg->payments()->delete();
+                $reg->delete();
+            });
+
+        });
+    }
 
     /**
      * Get the price range for participant categories

@@ -87,7 +87,7 @@ Route::middleware(['auth:sanctum'])->group(function() {
 });
 
 // NGO Routes (Protected - User/NGO role)
-Route::middleware(['auth:sanctum', 'role:user,ngo'])->prefix('ngo')->group(function(){
+Route::middleware(['auth:sanctum', 'role:user,ngo,admin'])->prefix('ngo')->group(function(){
     // NGO Registration
     Route::post('/register', [NgoController::class, 'register']);
     
@@ -96,7 +96,13 @@ Route::middleware(['auth:sanctum', 'role:user,ngo'])->prefix('ngo')->group(funct
         Route::get('/dashboard', [\App\Http\Controllers\Api\Ngo\DashboardController::class, 'index']);
         Route::get('/analytics', [\App\Http\Controllers\Api\Ngo\AnalyticsController::class, 'index']);
         Route::get('/analytics/report', [\App\Http\Controllers\Api\Ngo\AnalyticsController::class, 'generateReport']);
-        Route::apiResource('events', EventController::class);
+        
+        // Custom route definition for 'show' and 'index' to allow admin access
+        Route::get('events', [EventController::class, 'index'])->withoutMiddleware('role:ngo')->middleware('role:ngo,admin');
+        Route::get('events/{id}', [EventController::class, 'show'])->withoutMiddleware('role:ngo')->middleware('role:ngo,admin');
+        
+        Route::apiResource('events', EventController::class)->except(['index', 'show']); // Exclude index and show as they are defined above
+        
         Route::post('events/{id}/publish', [EventController::class, 'publish']);
         Route::post('events/{id}/cancel-publish-request', [EventController::class, 'cancelPublishRequest']);
         Route::post('events/{id}/unpublish', [EventController::class, 'unpublish']);

@@ -146,28 +146,49 @@ class EventController extends Controller
      */
     public function show(Request $request, $id)
     {
-        $ngo = $request->user()->ngo;
+        $user = $request->user();
 
-        if (!$ngo) {
-            return response()->json([
-                'message' => 'NGO profile not found'
-            ], 404);
+        // Allow Admin to view any event (Mainly for previewing/approval)
+        if ($user->role === 'admin') {
+             $event = Event::where('id', $id)
+                ->with([
+                    'sections',
+                    'ngo' => function($query) {
+                        $query->withCount('activeEvents');
+                    },
+                    'participantCategories',
+                    'volunteerRoles' => function($query) {
+                        $query->with(['shifts', 'roleType']);
+                    },
+                    'donationConfig'
+                ])
+                ->withTrashed() // Admins might need to see trashed events too? Maybe later.
+                ->first();
+        } else {
+            // Normal NGO One
+            $ngo = $user->ngo;
+
+            if (!$ngo) {
+                return response()->json([
+                    'message' => 'NGO profile not found'
+                ], 404);
+            }
+
+            $event = Event::where('id', $id)
+                ->where('ngo_id', $ngo->id)
+                ->with([
+                    'sections',
+                    'ngo' => function($query) {
+                        $query->withCount('activeEvents');
+                    },
+                    'participantCategories',
+                    'volunteerRoles' => function($query) {
+                        $query->with(['shifts', 'roleType']);
+                    },
+                    'donationConfig'
+                ])
+                ->first();
         }
-
-        $event = Event::where('id', $id)
-            ->where('ngo_id', $ngo->id)
-            ->with([
-                'sections',
-                'ngo' => function($query) {
-                    $query->withCount('activeEvents');
-                },
-                'participantCategories',
-                'volunteerRoles' => function($query) {
-                    $query->with(['shifts', 'roleType']);
-                },
-                'donationConfig'
-            ])
-            ->first();
 
         if (!$event) {
             return response()->json([
@@ -519,6 +540,67 @@ class EventController extends Controller
             ->first();
 
         if (!$event) return response()->json(['message' => 'Event not found'], 404);
+
+        // Manually delete relations to prevent FK constraint errors
+        // (Since model hooks seem to be failing or race-condition prone)
+        
+        // 1. Delete simple relations
+        $event->sections()->delete();
+        $event->registrationLinks()->delete();
+        $event->reviews()->delete();
+        $event->unpublishRequests()->delete();
+
+        // 2. Models that might not use SoftDeletes (Hard delete them)
+        if ($event->donationConfig) {
+            $event->donationConfig()->delete();
+        }
+        if ($event->participantConfig) {
+            $event->participantConfig()->delete();
+        }
+
+        // 3. Complex relations (Volunteer Roles -> Shifts)
+        // VolunteerRole does NOT use SoftDeletes, so we fetch normally.
+        $event->volunteerRoles()->each(function($role) {
+            $role->shifts()->delete(); // Shifts don't use SD (assumed based on pattern)
+            $role->registrations()->withTrashed()->forceDelete(); // Regs use SD
+            $role->delete(); // Hard delete role
+        });
+        $event->volunteerRegistrations()->withTrashed()->forceDelete();
+
+        // 4. Participant Categories -> Tiers
+        // ParticipantCategory does NOT use SoftDeletes
+        $event->participantCategories()->each(function($category) {
+            if (method_exists($category, 'tiers')) {
+                 $category->tiers()->delete();
+            } else if (method_exists($category, 'feeTiers')) {
+                 $category->feeTiers()->delete();
+            }
+            $category->delete(); // Hard delete category
+        });
+        
+        // 5. Registrations (These define the FK constraints blocking us)
+        $event->participantRegistrations()->withTrashed()->chunk(100, function($regs) {
+            foreach ($regs as $reg) {
+                // Manually delete foreign key constraints if models don't handle it
+                \Illuminate\Support\Facades\DB::table('payment_constraints')
+                    ->where('participant_registration_id', $reg->id)
+                    ->delete();
+                    
+                $reg->payments()->delete();
+                $reg->forceDelete();
+            }
+        });
+
+        $event->donationRegistrations()->withTrashed()->chunk(100, function($regs) {
+             foreach ($regs as $reg) {
+                \Illuminate\Support\Facades\DB::table('payment_constraints')
+                    ->where('donation_registration_id', $reg->id)
+                    ->delete();
+
+                $reg->payments()->delete();
+                $reg->forceDelete();
+            }
+        });
 
         $event->forceDelete();
 

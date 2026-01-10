@@ -28,10 +28,13 @@ import { format, parseISO, isAfter } from "date-fns";
 import Link from "next/link";
 import { getStorageUrl } from "../../../../lib/api";
 
+import { useAuth } from "../../../../hooks/useAuth";
+
 export default function EventPreviewPage() {
   const router = useRouter();
   const params = useParams();
   const id = params.id;
+  const { user } = useAuth(); // No role required, just get user info
 
   // Fetch actual event data
   const { event, loading, error } = useEventDetail(id);
@@ -113,34 +116,52 @@ export default function EventPreviewPage() {
   };
 
   const handleShare = () => {
+    // Implement share functionality
     if (navigator.share) {
       navigator.share({
-        title: event?.title,
-        text: event?.description?.substring(0, 100) + "...",
+        title: event.title,
+        text: event.description,
         url: window.location.href,
       });
     } else {
-      alert("Share link: " + window.location.href);
+      setShowShareModal(true);
     }
   };
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
-        <div className="w-12 h-12 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600"></div>
       </div>
     );
   }
 
   if (error || !event) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <p className="text-gray-500">Event not found</p>
+      <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 p-4">
+        <div className="bg-white p-8 rounded-2xl shadow-sm text-center max-w-md w-full">
+          <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <span className="text-2xl">⚠️</span>
+          </div>
+          <h2 className="text-xl font-bold text-gray-900 mb-2">
+            Event Not Found
+          </h2>
+          <p className="text-gray-600 mb-6">
+            The event you are looking for might have been removed or is
+            temporarily unavailable.
+          </p>
+          <button
+            onClick={() => router.back()}
+            className="w-full py-3 bg-gray-900 text-white rounded-xl font-semibold hover:bg-gray-800 transition-colors"
+          >
+            Go Back
+          </button>
+        </div>
       </div>
     );
   }
 
-  const isRegistrationOpen = true; // Always show as open in preview
+  const isRegistrationOpen = event.status === "open";
   const isEventUpcoming = isAfter(
     parseISO(event.end_date || new Date().toISOString()),
     new Date()
@@ -162,6 +183,13 @@ export default function EventPreviewPage() {
 
   const registrationStatus = null; // Always show as not registered in preview
 
+  const isNgo = user?.role === "ngo";
+  const isAdmin = user?.role === "admin";
+
+  // STRICT EDIT RULE: Only 'open' (Draft) events that are NOT published can be edited directly.
+  // Pending, Published, Closed, Completed events cannot be edited.
+  const isEditable = !isAdmin && event.status === "open" && !event.is_published;
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-teal-50/30">
       {/* PREVIEW MODE HEADER */}
@@ -173,24 +201,37 @@ export default function EventPreviewPage() {
         <span className="text-xs font-bold tracking-wider uppercase bg-gradient-to-r from-teal-800 to-emerald-100 bg-clip-text text-white">
           Preview Mode
         </span>
-        <div className="w-px h-4 bg-white/20"></div>
-        <Link
-          href={`/ngo/events/${id}/edit`}
-          className="text-xs font-semibold hover:text-emerald-300 flex items-center gap-1.5 transition-all hover:gap-2"
-        >
-          <Edit className="h-3.5 w-3.5" /> Edit Event
-        </Link>
+
+        {isEditable && (
+          <>
+            <div className="w-px h-4 bg-white/20"></div>
+            <Link
+              href={`/ngo/events/${id}/edit`}
+              className="text-xs font-semibold hover:text-emerald-300 flex items-center gap-1.5 transition-all hover:gap-2"
+            >
+              <Edit className="h-3.5 w-3.5" /> Edit Event
+            </Link>
+          </>
+        )}
       </div>
 
       {/* Back Button */}
       <div className="sticky top-0 z-40 bg-white border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
           <button
-            onClick={() => router.push("/ngo/events")}
+            onClick={() => {
+              if (isAdmin) {
+                router.push("/admin/events");
+              } else {
+                router.push("/ngo/events");
+              }
+            }}
             className="flex items-center gap-2 text-gray-700 hover:text-gray-900 transition-colors group"
           >
             <ArrowLeft className="h-4 w-4 group-hover:-translate-x-0.5 transition-transform" />
-            <span className="text-sm font-medium">Back to My Events</span>
+            <span className="text-sm font-medium">
+              {isAdmin ? "Back to Event List" : "Back to My Events"}
+            </span>
           </button>
         </div>
       </div>

@@ -24,13 +24,16 @@ export function useAuth(roleRequired = null) {
 
         // Check role requirement
         if (roleRequired && userData.role !== roleRequired) {
-          // User is logged in but has wrong role - don't logout, just show error
-          setError(
-            `Access denied. `
-          );
-          setUser(userData); // Still set user so they're not logged out
-          setLoading(false);
-          return;
+          // Allow admins to access NGO details (e.g. for previewing events)
+          if (userData.role === "admin" && roleRequired === "ngo") {
+            // Allow access
+          } else {
+            // User is logged in but has wrong role - don't logout, just show error
+            setError(`Access denied.`);
+            setUser(userData); // Still set user so they're not logged out
+            setLoading(false);
+            return;
+          }
         }
 
         setUser(userData);
