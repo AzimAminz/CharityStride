@@ -18,5 +18,6 @@ Broadcast::channel('ngo.{id}', function ($user, $id) {
 
 // Admin private channel
 Broadcast::channel('admin-events', function ($user) {
+    \Illuminate\Support\Facades\Log::info('Admin channel auth attempt', ['user_id' => $user->id, 'role' => $user->role]);
     return $user->role === 'admin';
 });

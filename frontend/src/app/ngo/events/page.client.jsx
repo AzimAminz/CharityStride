@@ -7,6 +7,7 @@ import {
   publishEvent,
   cancelPublishRequest,
   unpublishEvent,
+  cancelUnpublishRequest,
   restoreEvent,
   forceDeleteEvent,
 } from "../../lib/events";
@@ -104,7 +105,7 @@ export default function EventsListPage() {
     const user = JSON.parse(storedUser);
     if (!user.ngo_id) return;
 
-    const channel = Echo.channel(`ngo.${user.ngo_id}`);
+    const channel = Echo.private(`ngo.${user.ngo_id}`);
 
     const handleStatusUpdate = (data) => {
       console.log("Event status updated:", data);
@@ -248,6 +249,36 @@ export default function EventsListPage() {
     } finally {
       setUnpublishModal((prev) => ({ ...prev, loading: false }));
     }
+  };
+
+  const handleCancelUnpublishRequest = async (id) => {
+    setConfirmConfig({
+      isOpen: true,
+      title: "Cancel Unpublish Request",
+      message:
+        "Are you sure you want to cancel your request to unpublish this event?",
+      confirmText: "Yes, Cancel Request",
+      type: "warning",
+      onConfirm: async () => {
+        try {
+          await cancelUnpublishRequest(id);
+          refetch();
+          setFeedback({
+            isOpen: true,
+            type: "success",
+            title: "Request Cancelled",
+            message: "Your unpublish request has been cancelled.",
+          });
+        } catch (err) {
+          setFeedback({
+            isOpen: true,
+            type: "error",
+            title: "Action Failed",
+            message: err.response?.data?.message || "Something went wrong.",
+          });
+        }
+      },
+    });
   };
 
   const handlePublish = async (id, currentState) => {
@@ -508,6 +539,7 @@ export default function EventsListPage() {
                   onPublish={handlePublish}
                   onRestore={handleRestore}
                   onCancelRequest={handleCancelRequest}
+                  onCancelUnpublishRequest={handleCancelUnpublishRequest}
                   deleting={deleting === event.id}
                   publishing={publishing === event.id}
                   cancelling={cancelling === event.id}
@@ -669,6 +701,7 @@ function EventCard({
   onPublish,
   onRestore,
   onCancelRequest,
+  onCancelUnpublishRequest,
   deleting,
   publishing,
   cancelling,
@@ -751,6 +784,14 @@ function EventCard({
                 </span>
               )}
 
+              {/* Unpublish Request Pending Badge */}
+              {event.unpublish_requests &&
+                event.unpublish_requests.length > 0 && (
+                  <span className="text-xs px-2 py-1 rounded-full font-medium bg-amber-100 text-amber-800 border border-amber-200">
+                    ⚠️ Unpublish Requested
+                  </span>
+                )}
+
               {/* Status Badge */}
               {isCompleted && (
                 <span className="text-xs px-2 py-1 rounded-full font-medium bg-gray-100 text-gray-600 flex items-center gap-1">
@@ -810,7 +851,16 @@ function EventCard({
         </div>
 
         {/* Actions */}
-        <div className="flex gap-2 pt-4 border-t">
+        <div className="flex items-center gap-2 pt-4 border-t border-gray-100">
+          <a
+            href={`/ngo/events/${event.id}/preview`}
+            target="_blank"
+            className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-gray-50 text-gray-700 rounded-xl font-bold hover:bg-gray-100 transition-colors"
+          >
+            <Eye className="h-4 w-4" />
+            Preview
+          </a>
+
           {activeTab === "trashed" ? (
             <>
               <button
@@ -839,125 +889,106 @@ function EventCard({
             </>
           ) : (
             <>
-              {/* Pending Approval State */}
-              {event.status === "pending_approval" ? (
-                <>
-                  <button
-                    disabled
-                    className="flex-1 flex items-center justify-center gap-1 px-3 py-2 bg-gray-50 text-gray-400 rounded-md text-sm font-medium cursor-not-allowed"
-                    title="Editing disabled while pending approval"
-                  >
-                    <Edit className="h-4 w-4" />
-                    Edit
-                  </button>
-
-                  <Link
-                    href={`/ngo/events/${event.id}/preview`}
-                    className="flex items-center justify-center gap-1 px-3 py-2 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-md text-sm font-medium transition-colors"
-                  >
-                    <Eye className="h-4 w-4" />
-                  </Link>
-
-                  <button
-                    onClick={() => onCancelRequest(event.id)}
-                    disabled={cancelling}
-                    className="flex-1 flex items-center justify-center gap-1 px-3 py-2 bg-red-100 hover:bg-red-200 text-red-700 rounded-md text-sm font-medium transition-colors"
-                  >
-                    {cancelling ? (
-                      <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
-                    ) : (
-                      <RotateCcw className="h-4 w-4" />
-                    )}
-                    Cancel
-                  </button>
-                </>
+              {/* Pending Unpublish Request - Show Cancel Button */}
+              {event.unpublish_requests &&
+              event.unpublish_requests.length > 0 ? (
+                <button
+                  onClick={() => onCancelUnpublishRequest(event.id)}
+                  className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-amber-50 text-amber-700 border border-amber-100 rounded-xl font-bold hover:bg-amber-100 transition-colors"
+                >
+                  <RotateCcw className="h-4 w-4" />
+                  Cancel Req
+                </button>
               ) : (
                 <>
-                  {!event.is_published && (
-                    <Link
-                      href={`/ngo/events/${event.id}/edit`}
-                      className="flex-1 flex items-center justify-center gap-1 px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-md text-sm font-medium transition-colors"
-                    >
-                      <Edit className="h-4 w-4" />
-                      Edit
-                    </Link>
-                  )}
-
-                  <Link
-                    href={`/ngo/events/${event.id}/preview`}
-                    className="flex items-center justify-center gap-1 px-3 py-2 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-md text-sm font-medium transition-colors"
-                    title="Preview"
-                  >
-                    <Eye className="h-4 w-4" />
-                  </Link>
-
-                  <button
-                    onClick={() => {
-                      if (event.is_published) {
-                        setUnpublishModal({
-                          isOpen: true,
-                          eventId: event.id,
-                          reason: "",
-                          loading: false,
-                        });
-                      } else {
-                        onPublish(event.id, event.is_published);
-                      }
-                    }}
-                    disabled={
-                      publishing ||
-                      (event.unpublish_requests &&
-                        event.unpublish_requests.length > 0) ||
-                      event.status === "pending_approval" ||
-                      isCompleted
-                    }
-                    className={`flex-1 flex items-center justify-center gap-1 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                      isCompleted
-                        ? "bg-gray-100 text-gray-500 cursor-not-allowed"
-                        : event.is_published
-                        ? "bg-red-100 hover:bg-red-200 text-red-700"
-                        : event.status === "pending_approval"
-                        ? "bg-yellow-100 text-yellow-700 cursor-not-allowed"
-                        : "bg-emerald-100 hover:bg-emerald-200 text-emerald-700"
-                    }`}
-                  >
-                    {publishing ? (
-                      <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
-                    ) : isCompleted ? (
-                      <>
-                        <CheckCircle className="h-4 w-4" />
-                        Completed
-                      </>
-                    ) : event.is_published ? (
-                      <>
-                        <Globe className="h-4 w-4" />
-                        Unpublish
-                      </>
-                    ) : event.status === "pending_approval" ? (
-                      <>
-                        <Clock className="h-4 w-4" />
-                        Pending
-                      </>
-                    ) : (
-                      <>
-                        <Globe className="h-4 w-4" />
-                        Publish
-                      </>
-                    )}
-                  </button>
-
-                  {!event.is_published && (
-                    <button
-                      onClick={() => onDelete(event.id)}
-                      disabled={deleting}
-                      className="flex items-center justify-center gap-1 px-3 py-2 bg-red-100 hover:bg-red-200 text-red-700 rounded-md text-sm font-medium transition-colors"
-                    >
-                      {deleting ? (
-                        <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
-                      ) : (
-                        <Trash2 className="h-4 w-4" />
+                  {/* Pending Approval State */}
+                  {event.status === "pending_approval" ? (
+                    <>
+                      <button
+                        onClick={() => onCancelRequest(event.id)}
+                        disabled={cancelling}
+                        className="flex-1 flex items-center justify-center gap-1 px-3 py-2 bg-red-100 hover:bg-red-200 text-red-700 rounded-md text-sm font-medium transition-colors"
+                      >
+                        {cancelling ? (
+                          <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                        ) : (
+                          <RotateCcw className="h-4 w-4" />
+                        )}
+                        Cancel
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      {/* Normal Action Buttons */}
+                      {!event.is_published && (
+                        <Link
+                          href={`/ngo/events/${event.id}/edit`}
+                          className="p-2 text-gray-400 hover:bg-emerald-50 hover:text-emerald-600 rounded-xl transition-colors"
+                          title="Edit"
+                        >
+                          <Edit className="h-5 w-5" />
+                        </Link>
                       )}
-                    </button>
+
+                      {/* Publish/Unpublish Button */}
+                      <button
+                        onClick={() => {
+                          if (event.is_published) {
+                            setUnpublishModal({
+                              isOpen: true,
+                              eventId: event.id,
+                              reason: "",
+                              loading: false,
+                            });
+                          } else {
+                            onPublish(event.id, event.is_published);
+                          }
+                        }}
+                        disabled={publishing || isCompleted}
+                        className={`flex-1 flex items-center justify-center gap-1 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                          isCompleted
+                            ? "bg-gray-100 text-gray-500 cursor-not-allowed"
+                            : event.is_published
+                            ? "bg-red-100 hover:bg-red-200 text-red-700"
+                            : "bg-emerald-100 hover:bg-emerald-200 text-emerald-700"
+                        }`}
+                      >
+                        {publishing ? (
+                          <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                        ) : isCompleted ? (
+                          <>
+                            <CheckCircle className="h-4 w-4" />
+                            Completed
+                          </>
+                        ) : event.is_published ? (
+                          <>
+                            <Globe className="h-4 w-4" />
+                            Unpublish
+                          </>
+                        ) : (
+                          <>
+                            <Globe className="h-4 w-4" />
+                            Publish
+                          </>
+                        )}
+                      </button>
+
+                      {/* Delete Button */}
+                      {!event.is_published && (
+                        <button
+                          onClick={() => onDelete(event.id)}
+                          disabled={deleting}
+                          className="p-2 text-gray-400 hover:bg-red-50 hover:text-red-600 rounded-xl transition-colors disabled:opacity-50"
+                          title="Delete"
+                        >
+                          {deleting ? (
+                            <div className="w-5 h-5 border-2 border-red-600 border-t-transparent rounded-full animate-spin" />
+                          ) : (
+                            <Trash2 className="h-5 w-5" />
+                          )}
+                        </button>
+                      )}
+                    </>
                   )}
                 </>
               )}

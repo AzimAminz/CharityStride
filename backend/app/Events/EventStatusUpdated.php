@@ -5,7 +5,8 @@ namespace App\Events;
 use App\Models\Event;
 use Illuminate\Broadcasting\Channel;
 use Illuminate\Broadcasting\InteractsWithSockets;
-use Illuminate\Contracts\Broadcasting\ShouldBroadcastNow;
+use Illuminate\Broadcasting\PrivateChannel; // Added PrivateChannel
+use Illuminate\Contracts\Broadcasting\ShouldBroadcastNow; // Typically needed for instant updates
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 
@@ -21,6 +22,7 @@ class EventStatusUpdated implements ShouldBroadcastNow
     public function __construct(Event $event)
     {
         $this->event = $event->load(['ngo:id,name']);
+        \Illuminate\Support\Facades\Log::info('EventStatusUpdated Dispatching', ['event_id' => $event->id, 'status' => $event->status]);
     }
 
     /**
@@ -30,8 +32,8 @@ class EventStatusUpdated implements ShouldBroadcastNow
     {
         return [
             new Channel('public-events'),
-            new Channel('ngo.' . $this->event->ngo_id),
-            new Channel('admin-events'),
+            new PrivateChannel('ngo.' . $this->event->ngo_id),
+            new PrivateChannel('admin-events'),
         ];
     }
 

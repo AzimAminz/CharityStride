@@ -15,6 +15,12 @@ use App\Http\Controllers\Api\ParticipantController;
 use App\Http\Controllers\Api\LookupDataController;
 use App\Http\Controllers\Api\PublicEventController;
 use App\Http\Controllers\Api\RegistrationStatusController;
+use Illuminate\Support\Facades\Broadcast;
+
+// Enable Broadcasting for API (Sanctum Auth)
+Route::post('/broadcasting/auth', function (Illuminate\Http\Request $request) {
+    return Broadcast::auth($request);
+})->middleware('auth:sanctum');
 
 
 // Lookup Data Routes (Public - needed for event creation forms)
@@ -106,6 +112,7 @@ Route::middleware(['auth:sanctum', 'role:user,ngo,admin'])->prefix('ngo')->group
         Route::post('events/{id}/publish', [EventController::class, 'publish']);
         Route::post('events/{id}/cancel-publish-request', [EventController::class, 'cancelPublishRequest']);
         Route::post('events/{id}/unpublish', [EventController::class, 'unpublish']);
+        Route::post('events/{id}/cancel-unpublish-request', [EventController::class, 'cancelUnpublishRequest']);
         Route::post('events/{id}/restore', [EventController::class, 'restore']);
         Route::delete('events/{id}/force-delete', [EventController::class, 'forceDelete']);
         Route::post('events/{id}/duplicate', [EventDuplicateController::class, 'duplicate']);
@@ -175,11 +182,12 @@ Route::middleware(['auth:sanctum', 'role:admin'])->prefix('admin')->group(functi
     Route::get('/events', [\App\Http\Controllers\Api\Admin\EventController::class, 'index']); // Use new controller
     Route::patch('/events/{id}/approve', [\App\Http\Controllers\Api\Admin\EventController::class, 'approve']);
     Route::patch('/events/{id}/reject', [\App\Http\Controllers\Api\Admin\EventController::class, 'reject']);
+    Route::patch('/events/{id}/take-down', [\App\Http\Controllers\Api\Admin\EventController::class, 'takeDown']);
     
-    // Existing unpublish request routes (keeping them as is for now)
-    Route::get('/events/unpublish-requests', [EventManagementController::class, 'unpublishRequests']);
-    Route::patch('/events/{id}/unpublish', [EventManagementController::class, 'unpublish']);
-    Route::patch('/unpublish-requests/{id}/process', [EventManagementController::class, 'processUnpublishRequest']);
+    // Unpublish Requests
+    Route::get('/unpublish-requests', [\App\Http\Controllers\Api\Admin\EventController::class, 'unpublishRequests']);
+    Route::patch('/unpublish-requests/{id}/approve', [\App\Http\Controllers\Api\Admin\EventController::class, 'approveUnpublish']);
+    Route::patch('/unpublish-requests/{id}/reject', [\App\Http\Controllers\Api\Admin\EventController::class, 'rejectUnpublish']);
 
     // Report Generation
     Route::get('/reports/platform-overview', [\App\Http\Controllers\Admin\ReportController::class, 'platformOverview']);

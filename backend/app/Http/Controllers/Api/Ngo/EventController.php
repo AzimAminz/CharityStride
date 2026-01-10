@@ -502,8 +502,45 @@ class EventController extends Controller
             'status' => 'pending',
         ]);
 
+        // Notify Admin via WebSocket
+        EventStatusUpdated::dispatch($event);
+
         return response()->json([
             'message' => 'Unpublish request submitted. Admin will review your request.',
+        ]);
+    }
+
+    /**
+     * Cancel unpublish request
+     */
+    public function cancelUnpublishRequest(Request $request, $id)
+    {
+        $ngo = $request->user()->ngo;
+        if (!$ngo) return response()->json(['message' => 'NGO profile not found'], 404);
+
+        $event = Event::where('id', $id)
+            ->where('ngo_id', $ngo->id)
+            ->first();
+
+        if (!$event) return response()->json(['message' => 'Event not found'], 404);
+
+        $unpublishRequest = EventUnpublishRequest::where('event_id', $event->id)
+            ->where('status', 'pending')
+            ->first();
+
+        if (!$unpublishRequest) {
+            return response()->json([
+                'message' => 'No pending unpublish request found for this event.'
+            ], 404);
+        }
+
+        $unpublishRequest->delete(); // Or update status to 'cancelled' if soft deletes used (not used here)
+        
+        // Notify Admin via WebSocket
+        EventStatusUpdated::dispatch($event);
+
+        return response()->json([
+            'message' => 'Unpublish request cancelled.',
         ]);
     }
     /**

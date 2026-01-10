@@ -1,6 +1,8 @@
 import Echo from "laravel-echo";
 import Pusher from "pusher-js";
 
+import { api } from "./api";
+
 // Only create Echo instance on client side
 let echo = null;
 
@@ -15,6 +17,23 @@ if (typeof window !== "undefined") {
     wssPort: process.env.NEXT_PUBLIC_REVERB_PORT || 6001,
     forceTLS: (process.env.NEXT_PUBLIC_REVERB_SCHEME || "http") === "https",
     enabledTransports: ["ws", "wss"],
+    authorizer: (channel, options) => {
+      return {
+        authorize: (socketId, callback) => {
+          api
+            .post("/broadcasting/auth", {
+              socket_id: socketId,
+              channel_name: channel.name,
+            })
+            .then((response) => {
+              callback(false, response.data);
+            })
+            .catch((error) => {
+              callback(true, error);
+            });
+        },
+      };
+    },
   });
 }
 

@@ -61,6 +61,12 @@ export const unpublishEvent = async (id, data) => {
   return res.data;
 };
 
+// Cancel unpublish request
+export const cancelUnpublishRequest = async (id) => {
+  const res = await api.post(`/ngo/events/${id}/cancel-unpublish-request`);
+  return res.data;
+};
+
 // Duplicate event
 export const duplicateEvent = async (id) => {
   const res = await api.post(`/ngo/events/${id}/duplicate`);

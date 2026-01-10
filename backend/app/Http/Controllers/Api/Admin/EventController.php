@@ -83,4 +83,106 @@ class EventController extends Controller
             'event' => $event
         ]);
     }
+    /**
+     * Take down event (Ban/Suspend)
+     */
+    public function takeDown(Request $request, $id)
+    {
+        $request->validate([
+            'reason' => 'required|string|min:5'
+        ]);
+
+        $event = Event::findOrFail($id);
+
+        $event->update([
+            'status' => 'taken_down',
+            'is_published' => false,
+            'taken_down_at' => now(),
+            'take_down_reason' => $request->reason,
+        ]);
+
+        EventStatusUpdated::dispatch($event);
+
+        return response()->json([
+            'message' => 'Event has been taken down.',
+            'event' => $event
+        ]);
+    }
+
+    /**
+     * List unpublish requests
+     */
+    public function unpublishRequests(Request $request)
+    {
+        $requests = \App\Models\EventUnpublishRequest::where('status', 'pending')
+            ->with(['event.ngo'])
+            ->latest()
+            ->paginate(10);
+
+        return response()->json($requests);
+    }
+
+    /**
+     * Approve unpublish request
+     */
+    public function approveUnpublish($id)
+    {
+        $unpublishRequest = \App\Models\EventUnpublishRequest::with('event')->findOrFail($id);
+        
+        if ($unpublishRequest->status !== 'pending') {
+             return response()->json(['message' => 'Request already processed'], 400);
+        }
+
+        $event = $unpublishRequest->event;
+        
+        // Update Event
+        $event->update([
+            'is_published' => false,
+            'status' => 'open', // Revert to draft
+            'published_at' => null,
+        ]);
+
+        // Update Request
+        $unpublishRequest->update([
+            'status' => 'approved',
+            'processed_at' => now(),
+        ]);
+
+        EventStatusUpdated::dispatch($event);
+
+        return response()->json([
+            'message' => 'Event unpublished successfully.',
+            'event' => $event
+        ]);
+    }
+
+    /**
+     * Reject unpublish request
+     */
+    public function rejectUnpublish(Request $request, $id)
+    {
+        $unpublishRequest = \App\Models\EventUnpublishRequest::with('event')->findOrFail($id);
+
+         if ($unpublishRequest->status !== 'pending') {
+             return response()->json(['message' => 'Request already processed'], 400);
+        }
+
+        $request->validate([
+            'admin_note' => 'required|string|min:5'
+        ]);
+
+        // Request rejected, event stays published
+        $unpublishRequest->update([
+            'status' => 'rejected',
+            'admin_note' => $request->admin_note,
+            'processed_at' => now(),
+        ]);
+        
+        // Optional: Notify NGO via EventStatusUpdated or other channel
+        EventStatusUpdated::dispatch($unpublishRequest->event);
+
+        return response()->json([
+            'message' => 'Unpublish request rejected.',
+        ]);
+    }
 }
