@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import Link from "next/link";
 import {
   Users,
   Building,
@@ -126,44 +127,87 @@ const AdminDashboardPage = () => {
         <div className="lg:col-span-2 space-y-8">
           {/* Registered NGOs List */}
           <NgoListSection />
+        </div>
 
+        {/* Sidebar Section */}
+        <div className="space-y-8">
           {/* Pending NGO Section */}
           <Section
-            title="Pending NGO Approvals"
+            title="Pending NGO"
             badge={data.pending.ngos_count}
             color="emerald"
           >
             {data.pending.ngos.length > 0 ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-4">
                 {data.pending.ngos.map((ngo) => (
-                  <div
+                  <Link
+                    href={`/admin/ngos?search=${ngo.name}`}
                     key={ngo.id}
-                    className="flex flex-col p-4 bg-gray-50 hover:bg-emerald-50/50 rounded-2xl transition-all border border-transparent hover:border-emerald-100 group"
+                    className="block"
                   >
-                    <div className="flex items-center gap-4 mb-3">
-                      <div className="w-10 h-10 bg-white rounded-xl shadow-sm flex items-center justify-center font-bold text-emerald-600">
-                        {ngo.name[0]}
+                    <div className="flex items-center justify-between p-3 bg-gray-50 hover:bg-emerald-50/50 rounded-2xl transition-all border border-transparent hover:border-emerald-100 group cursor-pointer">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-white rounded-xl shadow-sm flex items-center justify-center font-bold text-emerald-600 border border-emerald-100">
+                          {ngo.name[0]}
+                        </div>
+                        <div>
+                          <h4 className="font-bold text-gray-900 line-clamp-1 text-sm">
+                            {ngo.name}
+                          </h4>
+                          <p className="text-[10px] text-gray-500 font-medium uppercase">
+                            {ngo.registration_no}
+                          </p>
+                        </div>
                       </div>
-                      <div>
-                        <h4 className="font-bold text-gray-900 line-clamp-1">
-                          {ngo.name}
-                        </h4>
-                        <p className="text-[10px] text-gray-500 font-medium uppercase">
-                          {ngo.registration_no}
-                        </p>
-                      </div>
+                      <ChevronRight className="h-4 w-4 text-emerald-400 group-hover:text-emerald-600 transition-colors" />
                     </div>
-                    <button className="w-full py-2 bg-white border border-gray-200 group-hover:border-emerald-200 text-gray-700 hover:text-emerald-700 font-bold text-xs rounded-xl shadow-sm transition-all">
-                      Review Application
-                    </button>
-                  </div>
+                  </Link>
                 ))}
               </div>
             ) : (
-              <div className="p-10 text-center space-y-3">
-                <CheckCircle className="h-10 w-10 text-emerald-200 mx-auto" />
-                <p className="text-sm text-gray-400 font-medium">
+              <div className="p-6 text-center space-y-2">
+                <CheckCircle className="h-8 w-8 text-emerald-200 mx-auto" />
+                <p className="text-xs text-gray-400 font-medium">
                   No pending NGO registrations
+                </p>
+              </div>
+            )}
+          </Section>
+
+          {/* Publish Requests (Pending Events) Section */}
+          <Section
+            title="Publish Requests"
+            badge={data.pending.events_count || 0}
+            color="amber"
+          >
+            {(data.pending.events || []).length > 0 ? (
+              <div className="space-y-4">
+                {data.pending.events.map((event) => (
+                  <Link href={`/admin/events`} key={event.id} className="block">
+                    <div className="flex items-center justify-between p-3 bg-white border border-gray-100 rounded-2xl shadow-sm hover:shadow-md transition-all group cursor-pointer">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-amber-50 rounded-xl flex items-center justify-center border border-amber-100">
+                          <Clock className="h-5 w-5 text-amber-600" />
+                        </div>
+                        <div>
+                          <h4 className="font-bold text-gray-900 text-sm line-clamp-1">
+                            {event.title}
+                          </h4>
+                          <p className="text-[10px] text-gray-500 font-medium">
+                            By {event.ngo?.name}
+                          </p>
+                        </div>
+                      </div>
+                      <ChevronRight className="h-4 w-4 text-gray-300 group-hover:text-amber-500 transition-colors" />
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            ) : (
+              <div className="p-6 text-center space-y-2">
+                <CheckCircle className="h-8 w-8 text-amber-200 mx-auto" />
+                <p className="text-xs text-gray-400 font-medium">
+                  No pending events
                 </p>
               </div>
             )}
@@ -171,130 +215,42 @@ const AdminDashboardPage = () => {
 
           {/* Unpublish Requests Section */}
           <Section
-            title="Unpublish Requests"
+            title="Unpublish Request"
             badge={data.pending.unpublish_count}
             color="rose"
           >
             {data.pending.unpublish_requests.length > 0 ? (
               <div className="space-y-4">
                 {data.pending.unpublish_requests.map((req) => (
-                  <div
-                    key={req.id}
-                    className="flex items-center justify-between p-4 bg-white border border-gray-100 rounded-2xl shadow-sm hover:shadow-md transition-all"
-                  >
-                    <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 bg-rose-50 rounded-xl flex items-center justify-center">
-                        <Calendar className="h-6 w-6 text-rose-600" />
+                  <Link href={`/admin/events`} key={req.id} className="block">
+                    <div className="flex items-center justify-between p-3 bg-white border border-gray-100 rounded-2xl shadow-sm hover:shadow-md transition-all group cursor-pointer">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-rose-50 rounded-xl flex items-center justify-center">
+                          <Calendar className="h-5 w-5 text-rose-600" />
+                        </div>
+                        <div>
+                          <h4 className="font-bold text-gray-900 text-sm line-clamp-1">
+                            {req.event?.title}
+                          </h4>
+                          <p className="text-[10px] text-gray-500 font-medium">
+                            By {req.event?.ngo?.name}
+                          </p>
+                        </div>
                       </div>
-                      <div>
-                        <h4 className="font-bold text-gray-900">
-                          {req.event?.title}
-                        </h4>
-                        <p className="text-xs text-gray-500 font-medium">
-                          By {req.event?.ngo?.name}
-                        </p>
-                        <p className="text-[10px] text-rose-600 font-bold mt-1 bg-rose-50 px-2 py-0.5 rounded-full w-fit italic truncate max-w-[200px]">
-                          "{req.reason}"
-                        </p>
-                      </div>
+                      <ChevronRight className="h-4 w-4 text-gray-300 group-hover:text-rose-600 transition-colors" />
                     </div>
-                    <button className="p-2 hover:bg-rose-50 rounded-xl text-rose-600 transition-all">
-                      <ChevronRight className="h-5 w-5" />
-                    </button>
-                  </div>
+                  </Link>
                 ))}
               </div>
             ) : (
-              <div className="p-10 text-center space-y-3">
-                <CheckCircle className="h-10 w-10 text-rose-200 mx-auto" />
-                <p className="text-sm text-gray-400 font-medium">
-                  No pending unpublish requests
+              <div className="p-6 text-center space-y-2">
+                <CheckCircle className="h-8 w-8 text-rose-200 mx-auto" />
+                <p className="text-xs text-gray-400 font-medium">
+                  No pending requests
                 </p>
               </div>
             )}
           </Section>
-        </div>
-
-        {/* Sidebar Section */}
-        <div className="space-y-8">
-          {/* Revenue Trend Mini Chart */}
-          <div className="bg-white rounded-[2.5rem] border border-gray-100 shadow-sm p-8 space-y-6">
-            <h3 className="text-xl font-black text-gray-900 flex items-center gap-2">
-              <Activity className="h-5 w-5 text-emerald-600" />
-              Revenue Trend
-            </h3>
-
-            <div className="flex items-end gap-2 h-24 pt-4 px-2">
-              {(data?.revenue_chart || []).slice(-7).map((day, i) => {
-                const max = Math.max(
-                  ...(data?.revenue_chart || []).map((d) => d.total)
-                );
-                const height = max > 0 ? (day.total / max) * 100 : 0;
-                return (
-                  <div
-                    key={i}
-                    className="flex-1 flex flex-col items-center gap-2 group relative"
-                  >
-                    <motion.div
-                      initial={{ height: 0 }}
-                      animate={{ height: `${Math.max(height, 5)}%` }}
-                      className="w-full bg-emerald-100 rounded-lg group-hover:bg-emerald-500 transition-colors relative"
-                    >
-                      <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-gray-900 text-white text-[10px] font-black px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-20">
-                        RM {(day.total / 100).toFixed(0)}
-                      </div>
-                    </motion.div>
-                    <span className="text-[8px] font-black text-gray-400 uppercase">
-                      {new Date(day.date).toLocaleDateString(undefined, {
-                        weekday: "short",
-                      })}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* NGO Categories Distribution */}
-
-          {/* Top Donors Profile */}
-          <div className="bg-white rounded-[2.5rem] border border-gray-100 shadow-sm p-8 space-y-6">
-            <h3 className="text-xl font-black text-gray-900 flex items-center gap-2">
-              <Heart className="h-5 w-5 text-rose-600" />
-              Top Donors
-            </h3>
-
-            <div className="space-y-4">
-              {(data?.top_donors || []).map((donor, i) => (
-                <div
-                  key={i}
-                  className="flex items-center justify-between p-3 bg-gray-50 rounded-2xl hover:bg-rose-50/50 transition-all border border-transparent hover:border-rose-100"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center font-black text-[10px] text-rose-600 border border-rose-100 shadow-sm">
-                      {donor.user?.name[0]}
-                    </div>
-                    <div>
-                      <p className="text-xs font-black text-gray-900 line-clamp-1">
-                        {donor.user?.name}
-                      </p>
-                      <p className="text-[8px] font-bold text-gray-400 uppercase tracking-tighter">
-                        Contributor
-                      </p>
-                    </div>
-                  </div>
-                  <p className="text-xs font-black text-emerald-600">
-                    RM {(donor.total_contributed / 100).toLocaleString()}
-                  </p>
-                </div>
-              ))}
-              {(data?.top_donors || []).length === 0 && (
-                <p className="text-center text-xs text-gray-400 font-medium py-4">
-                  No donations yet.
-                </p>
-              )}
-            </div>
-          </div>
         </div>
       </div>
 

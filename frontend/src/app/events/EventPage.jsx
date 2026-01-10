@@ -51,24 +51,25 @@ const EventsPage = () => {
   const radius = searchParams.get("radius");
   const sort = searchParams.get("sort");
 
-  // Fetch sections data (Popular, Newest, Donations) - only once
+  // Fetch sections data (Popular, Newest, Donations)
+  const fetchSections = async () => {
+    try {
+      const [popular, newest, donation] = await Promise.all([
+        getPopularEvents(),
+        getNewestEvents(),
+        getDonationEvents(),
+      ]);
+      setPopularEvents(popular);
+      setNewestEvents(newest);
+      setDonationEvents(donation);
+    } catch (err) {
+      console.error("Error fetching section events:", err);
+    } finally {
+      setInitialLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const fetchSections = async () => {
-      try {
-        const [popular, newest, donation] = await Promise.all([
-          getPopularEvents(),
-          getNewestEvents(),
-          getDonationEvents(),
-        ]);
-        setPopularEvents(popular);
-        setNewestEvents(newest);
-        setDonationEvents(donation);
-      } catch (err) {
-        console.error("Error fetching section events:", err);
-      } finally {
-        setInitialLoading(false);
-      }
-    };
     fetchSections();
   }, []);
 
@@ -81,20 +82,22 @@ const EventsPage = () => {
   useEffect(() => {
     if (!isConnected) return;
 
+    // Listen for any status update (Publish, Unpublish, Take Down)
     const unsubscribe = subscribe(
       "public-events",
-      "event.published",
+      "event.status.updated",
       (data) => {
-        setNewestEvents((prev) => [data.event, ...prev.slice(0, 3)]);
-        // If on first page and no complex filters, maybe refresh?
-        // For simplicity, we just update newest events
+        console.log("Public: Event status updated", data);
+        // Refresh all data
+        fetchSections();
+        fetchAllEvents();
       }
     );
 
     return () => {
       if (unsubscribe) unsubscribe();
     };
-  }, [isConnected, currentPage]);
+  }, [isConnected, currentPage, category, lat, lng, radius, sort, filters]);
 
   const fetchAllEvents = async () => {
     setLoading(true);

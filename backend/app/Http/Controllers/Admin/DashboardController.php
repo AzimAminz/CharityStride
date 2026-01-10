@@ -45,6 +45,12 @@ class DashboardController extends Controller
             ->take(5)
             ->get();
 
+        $pendingEvents = Event::with('ngo')
+            ->where('status', 'pending_approval')
+            ->latest()
+            ->take(5)
+            ->get();
+
         $unpublishRequests = EventUnpublishRequest::with(['event', 'event.ngo'])
             ->where('status', 'pending')
             ->latest()
@@ -105,8 +111,10 @@ class DashboardController extends Controller
             ],
             'pending' => [
                 'ngos_count' => $pendingNgoCount,
+                'events_count' => Event::where('status', 'pending_approval')->count(),
                 'unpublish_count' => $pendingUnpublishCount,
                 'ngos' => $pendingNgos,
+                'events' => $pendingEvents,
                 'unpublish_requests' => $unpublishRequests
             ],
             'revenue_chart' => $recentDonations,

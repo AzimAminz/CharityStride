@@ -7,6 +7,10 @@ use App\Models\Event;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
+use Illuminate\Support\Facades\Mail;
+use App\Mail\EventPublishedMail;
+use App\Mail\EventUnpublishedMail;
+use App\Mail\EventTakenDownMail;
 use App\Events\EventStatusUpdated;
 
 class EventController extends Controller
@@ -40,7 +44,7 @@ class EventController extends Controller
      */
     public function approve($id)
     {
-        $event = Event::findOrFail($id);
+        $event = Event::with('ngo.user')->findOrFail($id);
 
         $event->update([
             'status' => 'open',
@@ -50,7 +54,33 @@ class EventController extends Controller
 
         EventStatusUpdated::dispatch($event);
 
-        // You might want to send a notification to the NGO here
+        // Send Email
+        try {
+            // Explicitly load NGO and User to avoid relation partial loading issues
+            $ngo = \App\Models\Ngo::with('user')->find($event->ngo_id);
+            
+            \Illuminate\Support\Facades\Log::info('Debug Mail Data (Explicit)', [
+                'event_id' => $event->id,
+                'ngo_id' => $ngo?->id,
+                'ngo_contact_email' => $ngo?->contact_email,
+                'user_id' => $ngo?->user?->id,
+                'user_email' => $ngo?->user?->email
+            ]);
+
+            $recipients = array_filter([
+                $ngo->contact_email ?? null,
+                $ngo->user->email ?? null
+            ]);
+            
+            if (!empty($recipients)) {
+                Mail::to($recipients)->send(new EventPublishedMail($event));
+                \Illuminate\Support\Facades\Log::info('EventPublishedMail sent successfully');
+            } else {
+                \Illuminate\Support\Facades\Log::warning('No recipients found for EventPublishedMail');
+            }
+        } catch (\Exception $e) {
+            Log::error('Mail Error: ' . $e->getMessage());
+        }
 
         return response()->json([
             'message' => 'Event approved and published successfully',
@@ -92,7 +122,7 @@ class EventController extends Controller
             'reason' => 'required|string|min:5'
         ]);
 
-        $event = Event::findOrFail($id);
+        $event = Event::with('ngo.user')->findOrFail($id);
 
         $event->update([
             'status' => 'taken_down',
@@ -102,6 +132,20 @@ class EventController extends Controller
         ]);
 
         EventStatusUpdated::dispatch($event);
+
+        // Send Email
+        try {
+            $ngo = \App\Models\Ngo::with('user')->find($event->ngo_id);
+            $recipients = array_filter([
+                $ngo->contact_email ?? null,
+                $ngo->user->email ?? null
+            ]);
+            if (!empty($recipients)) {
+                Mail::to($recipients)->send(new EventTakenDownMail($event, $request->reason));
+            }
+        } catch (\Exception $e) {
+            Log::error('Mail Error: ' . $e->getMessage());
+        }
 
         return response()->json([
             'message' => 'Event has been taken down.',
@@ -127,7 +171,7 @@ class EventController extends Controller
      */
     public function approveUnpublish($id)
     {
-        $unpublishRequest = \App\Models\EventUnpublishRequest::with('event')->findOrFail($id);
+        $unpublishRequest = \App\Models\EventUnpublishRequest::with('event.ngo.user')->findOrFail($id);
         
         if ($unpublishRequest->status !== 'pending') {
              return response()->json(['message' => 'Request already processed'], 400);
@@ -149,6 +193,20 @@ class EventController extends Controller
         ]);
 
         EventStatusUpdated::dispatch($event);
+
+        // Send Email
+        try {
+             $ngo = \App\Models\Ngo::with('user')->find($event->ngo_id);
+            $recipients = array_filter([
+                $ngo->contact_email ?? null,
+                $ngo->user->email ?? null
+            ]);
+            if (!empty($recipients)) {
+                Mail::to($recipients)->send(new EventUnpublishedMail($event));
+            }
+        } catch (\Exception $e) {
+            Log::error('Mail Error: ' . $e->getMessage());
+        }
 
         return response()->json([
             'message' => 'Event unpublished successfully.',

@@ -41,6 +41,14 @@ class Ngo extends Model
         'deleted_at' => 'datetime',
     ];
 
+    public function getLogoUrlAttribute($value)
+    {
+        if ($value && !str_starts_with($value, 'http')) {
+            return asset('storage/' . $value);
+        }
+        return $value;
+    }
+
     // Relationships
     public function user()
     {

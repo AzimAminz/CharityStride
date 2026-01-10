@@ -8,14 +8,17 @@ import Pagination from "../components/Pagination";
 import FilterSidebar from "./components/FilterSidebar";
 import SearchResultsHeader from "./components/SearchResultsHeader";
 
+import { useWebSocket } from "../../contexts/WebSocketProvider";
+
 const SearchPage = () => {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { subscribe, isConnected } = useWebSocket();
 
   // URL Params
   const queryParam = searchParams.get("q") || "";
   const catParam = searchParams.get("category");
-  const stateParam = searchParams.get("location") || "all"; // changed logic to use 'location' for state
+  const stateParam = searchParams.get("location") || "all";
   const sortParam = searchParams.get("sort") || "newest";
   const latParam = searchParams.get("lat");
   const lngParam = searchParams.get("lng");
@@ -28,6 +31,7 @@ const SearchPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [isMobileFiltersOpen, setIsMobileFiltersOpen] = useState(false);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   // Filter State (synced with URL initially)
   const [filters, setFilters] = useState({
@@ -52,7 +56,26 @@ const SearchPage = () => {
     lngParam,
     radiusParam,
     pageParam,
+    refreshTrigger,
   ]);
+
+  // Real-time updates
+  useEffect(() => {
+    if (!isConnected) return;
+
+    const unsubscribe = subscribe(
+      "public-events",
+      "event.status.updated",
+      (data) => {
+        console.log("Search: Event status updated, triggering refresh", data);
+        setRefreshTrigger((prev) => prev + 1);
+      }
+    );
+
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
+  }, [isConnected]);
 
   const fetchEvents = async () => {
     setLoading(true);
