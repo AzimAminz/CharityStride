@@ -174,12 +174,12 @@ class RegistrationManagementController extends Controller
                 ->with(['user', 'participantCategory'])
                 ->firstOrFail();
 
-            if ($registration->attendance_status === 'checked_in') {
-                return response()->json(['message' => 'Already checked in', 'registration' => $registration], 200);
+            if ($registration->attendance_status === 'completed' || $registration->attendance_status === 'checked_in') {
+                return response()->json(['message' => 'Attendance already recorded', 'registration' => $registration], 200);
             }
 
             $registration->update([
-                'attendance_status' => 'checked_in',
+                'attendance_status' => 'completed',
                 'check_in_time' => now(),
                 'verified_by_user_id' => Auth::id(),
             ]);
@@ -372,7 +372,7 @@ class RegistrationManagementController extends Controller
 
             $updates = [];
             if ($request->has('attendance')) {
-                $updates['attendance_status'] = $request->attendance ? 'checked_in' : 'absent';
+                $updates['attendance_status'] = $request->attendance ? 'completed' : 'absent';
                 $updates['check_in_time'] = $request->attendance ? now() : null;
             }
             if ($request->has('tshirt') && $registration->participantCategory->has_tshirt) {

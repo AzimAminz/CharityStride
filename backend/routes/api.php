@@ -98,6 +98,7 @@ Route::middleware(['auth:sanctum', 'role:user,ngo'])->prefix('ngo')->group(funct
         Route::get('/analytics/report', [\App\Http\Controllers\Api\Ngo\AnalyticsController::class, 'generateReport']);
         Route::apiResource('events', EventController::class);
         Route::post('events/{id}/publish', [EventController::class, 'publish']);
+        Route::post('events/{id}/cancel-publish-request', [EventController::class, 'cancelPublishRequest']);
         Route::post('events/{id}/unpublish', [EventController::class, 'unpublish']);
         Route::post('events/{id}/restore', [EventController::class, 'restore']);
         Route::delete('events/{id}/force-delete', [EventController::class, 'forceDelete']);
@@ -165,7 +166,11 @@ Route::middleware(['auth:sanctum', 'role:admin'])->prefix('admin')->group(functi
     Route::patch('/ngos/{id}/status', [NgoManagementController::class, 'updateStatus']);
 
     // Event Management
-    Route::get('/events', [EventManagementController::class, 'index']);
+    Route::get('/events', [\App\Http\Controllers\Api\Admin\EventController::class, 'index']); // Use new controller
+    Route::patch('/events/{id}/approve', [\App\Http\Controllers\Api\Admin\EventController::class, 'approve']);
+    Route::patch('/events/{id}/reject', [\App\Http\Controllers\Api\Admin\EventController::class, 'reject']);
+    
+    // Existing unpublish request routes (keeping them as is for now)
     Route::get('/events/unpublish-requests', [EventManagementController::class, 'unpublishRequests']);
     Route::patch('/events/{id}/unpublish', [EventManagementController::class, 'unpublish']);
     Route::patch('/unpublish-requests/{id}/process', [EventManagementController::class, 'processUnpublishRequest']);

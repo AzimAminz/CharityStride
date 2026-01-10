@@ -6,7 +6,11 @@ use App\Http\Controllers\Controller;
 use App\Models\Event;
 use App\Models\EventUnpublishRequest;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
+
+
+use App\Events\EventStatusUpdated;
 
 class EventController extends Controller
 {
@@ -48,7 +52,12 @@ class EventController extends Controller
 
             // Filter by status
             if ($request->has('status')) {
-                $query->where('status', $request->status);
+                if ($request->status === 'completed') {
+                    $query->where('is_published', true)
+                          ->whereDate('end_date', '<', now()->toDateString());
+                } else {
+                    $query->where('status', $request->status);
+                }
             }
         }
 
@@ -327,18 +336,90 @@ class EventController extends Controller
             ], 400);
         }
 
-        $event->is_published = true;
-        $event->published_at = now();
-        $event->save();
+        if ($event->status === 'pending_approval') {
+             return response()->json([
+                'message' => 'Event is already pending approval'
+            ], 400);
+        }
 
-        // Reload event with ngo relationship for broadcast
-        $event->load('ngo:id,name,logo_url');
+        // Validate event readiness
+        Log::info('Event Publish Check:', [
+            'id' => $event->id,
+            'start_date' => $event->start_date,
+            'end_date' => $event->end_date,
+            'address' => $event->address,
+            'has_participant' => $event->has_participant,
+            'has_volunteer' => $event->has_volunteer,
+            'has_donation' => $event->has_donation
+        ]);
 
-        // Broadcast event published for real-time updates
-        broadcast(new \App\Events\EventPublished($event));
+        $missing = [];
+        if (!$event->start_date) $missing[] = 'Start Date';
+        if (!$event->end_date) $missing[] = 'End Date';
+        
+        // Address is required ONLY if it involves participants or volunteers
+        if (($event->has_participant || $event->has_volunteer) && !$event->address) {
+            $missing[] = 'Location (Address) - Required for events with Participants or Volunteers';
+        }
+
+        if (!empty($missing)) {
+             return response()->json([
+                'message' => 'Event details incomplete: ' . implode(', ', $missing) . ' missing.'
+            ], 400);
+        }
+
+        $event->update([
+            'is_published' => false,
+            'status' => 'pending_approval',
+            'published_at' => null
+        ]);
+
+        EventStatusUpdated::dispatch($event);
 
         return response()->json([
-            'message' => 'Event published successfully',
+            'message' => 'Event submitted for approval',
+            'event' => $event
+        ]);
+    }
+
+    /**
+     * Cancel publish request
+     */
+    public function cancelPublishRequest(Request $request, $id)
+    {
+        $ngo = $request->user()->ngo;
+
+        if (!$ngo) {
+            return response()->json([
+                'message' => 'NGO profile not found'
+            ], 404);
+        }
+
+        $event = Event::where('id', $id)
+            ->where('ngo_id', $ngo->id)
+            ->first();
+
+        if (!$event) {
+            return response()->json([
+                'message' => 'Event not found'
+            ], 404);
+        }
+
+        if ($event->status !== 'pending_approval') {
+            return response()->json([
+                'message' => 'Event is not pending approval'
+            ], 400);
+        }
+
+        $event->update([
+            'status' => 'open', // Revert to draft/open state
+            'is_published' => false,
+        ]);
+
+        EventStatusUpdated::dispatch($event);
+
+        return response()->json([
+            'message' => 'Publish request cancelled. Event is now in draft.',
             'event' => $event
         ]);
     }

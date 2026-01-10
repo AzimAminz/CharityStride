@@ -31,6 +31,7 @@ class EventStatusUpdated implements ShouldBroadcastNow
         return [
             new Channel('public-events'),
             new Channel('ngo.' . $this->event->ngo_id),
+            new Channel('admin-events'),
         ];
     }
 

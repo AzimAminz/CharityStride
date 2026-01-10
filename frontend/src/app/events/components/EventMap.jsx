@@ -143,25 +143,24 @@ export default function EventMap({
           const errorCode = error?.code ?? null;
           const errorMessage = error?.message ?? "Unknown error";
 
+          // Log the raw code and message for debugging
+          console.error("Location Error Details:", {
+            code: errorCode,
+            message: errorMessage,
+            rawError: error,
+          });
+
           console.log(
             "Location permission denied or unavailable, using default location",
             {
-              errorObject: error,
               code: errorCode,
               message: errorMessage,
-              errorType:
+              type:
                 errorCode === 1
                   ? "PERMISSION_DENIED"
                   : errorCode === 2
                   ? "POSITION_UNAVAILABLE"
-                  : errorCode === 3
-                  ? "TIMEOUT"
-                  : "UNKNOWN",
-              allKeys: error ? Object.keys(error) : [],
-              stringified: JSON.stringify(
-                error,
-                Object.getOwnPropertyNames(error)
-              ),
+                  : "TIMEOUT",
             }
           );
 

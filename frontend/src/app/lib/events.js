@@ -49,6 +49,12 @@ export const publishEvent = async (id) => {
   return res.data;
 };
 
+// Cancel publish request
+export const cancelPublishRequest = async (id) => {
+  const res = await api.post(`/ngo/events/${id}/cancel-publish-request`);
+  return res.data;
+};
+
 // Unpublish event
 export const unpublishEvent = async (id, data) => {
   const res = await api.post(`/ngo/events/${id}/unpublish`, data);

@@ -11,15 +11,26 @@ use Illuminate\Support\Facades\Schedule;
 use App\Models\Event;
 use App\Events\EventStatusUpdated;
 
-Schedule::call(function () {
+// Register command for manual execution
+Artisan::command('events:check-expiry', function () {
+    $this->info('Checking for expired events...');
+    
     $events = Event::where('end_date', '<', now()->toDateString())
-        ->where('status', '!=', 'completed')
+        ->where('status', '!=', 'closed')
         ->get();
 
+    $count = 0;
     foreach ($events as $event) {
-        $event->status = 'completed';
+        $event->status = 'closed';
         $event->save();
         
         broadcast(new EventStatusUpdated($event));
+        $this->info("Closed event: {$event->title}");
+        $count++;
     }
-})->everyMinute();
+
+    $this->info("Done. Closed {$count} events.");
+})->purpose('Check and close expired events');
+
+// Schedule the command to run every minute
+Schedule::command('events:check-expiry')->everyMinute();

@@ -1,6 +1,6 @@
 "use client";
 
-import { X, AlertTriangle } from "lucide-react";
+import { X, AlertTriangle, CheckCircle } from "lucide-react";
 
 /**
  * ConfirmModal - User-friendly confirmation dialog
@@ -36,11 +36,15 @@ export default function ConfirmModal({
         <div className="p-6">
           <div className="flex items-start gap-4">
             <div className="flex-shrink-0">
-              <AlertTriangle
-                className={`w-12 h-12 ${
-                  type === "danger" ? "text-red-600" : "text-yellow-600"
-                }`}
-              />
+              {type === "success" ? (
+                <CheckCircle className="w-12 h-12 text-emerald-600" />
+              ) : (
+                <AlertTriangle
+                  className={`w-12 h-12 ${
+                    type === "danger" ? "text-red-600" : "text-yellow-600"
+                  }`}
+                />
+              )}
             </div>
             <div className="flex-1">
               <p className="text-gray-700">{message}</p>
@@ -64,6 +68,8 @@ export default function ConfirmModal({
             className={`px-4 py-2 text-white rounded-lg ${
               type === "danger"
                 ? "bg-red-600 hover:bg-red-700"
+                : type === "success"
+                ? "bg-emerald-600 hover:bg-emerald-700"
                 : "bg-yellow-600 hover:bg-yellow-700"
             }`}
           >

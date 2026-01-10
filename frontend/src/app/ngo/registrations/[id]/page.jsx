@@ -709,12 +709,16 @@ export default function EventRegistrationsDetailPage() {
                                 </span>
                                 <span>{format12Hour(item.check_in_time)}</span>
                               </div>
-                              <div className="flex items-center gap-1 text-[10px] text-gray-400 font-mono">
-                                <span className="font-bold text-gray-500">
-                                  OUT:
-                                </span>
-                                <span>{format12Hour(item.check_out_time)}</span>
-                              </div>
+                              {activeTab !== "participants" && (
+                                <div className="flex items-center gap-1 text-[10px] text-gray-400 font-mono">
+                                  <span className="font-bold text-gray-500">
+                                    OUT:
+                                  </span>
+                                  <span>
+                                    {format12Hour(item.check_out_time)}
+                                  </span>
+                                </div>
+                              )}
                             </div>
                           </td>
                         </>

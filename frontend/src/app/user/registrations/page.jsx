@@ -308,26 +308,6 @@ const RegistrationsPage = () => {
                                   {format12Hour(reg.check_in_time)}
                                 </p>
                               </div>
-                              <div>
-                                <p className="text-[10px] text-gray-500 mb-0.5">
-                                  Check-out
-                                </p>
-                                <p className="text-sm font-semibold text-gray-900">
-                                  {format12Hour(reg.check_out_time)}
-                                </p>
-                              </div>
-                              <div>
-                                <p className="text-[10px] text-gray-500 mb-0.5">
-                                  Total Hours
-                                </p>
-                                <p className="text-sm font-bold text-emerald-600">
-                                  {reg.total_hours
-                                    ? `${Number(reg.total_hours).toFixed(
-                                        2
-                                      )} hrs`
-                                    : "-"}
-                                </p>
-                              </div>
                             </div>
                           </div>
                         )}
