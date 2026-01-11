@@ -13,15 +13,29 @@ import {
   CheckCircle,
   AlertCircle,
   ChevronRight,
-  TrendingUp,
   Search,
   Filter,
-  DollarSign,
   Activity,
 } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { useSearchParams } from "next/navigation";
 import StatusModal from "@/app/components/StatusModal";
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+  Sector,
+} from "recharts";
+import { jsPDF } from "jspdf";
+import autoTable from "jspdf-autotable";
 
 const AdminDashboardPage = () => {
   const searchParams = useSearchParams();
@@ -127,6 +141,19 @@ const AdminDashboardPage = () => {
         <div className="lg:col-span-2 space-y-8">
           {/* Registered NGOs List */}
           <NgoListSection />
+
+          {/* Event Analytics */}
+          {data?.event_analytics && data.event_analytics.length > 0 && (
+            <EventAnalyticsSection data={data.event_analytics} />
+          )}
+
+          {/* NGO Performance */}
+          {data?.ngo_performance && data.ngo_performance.length > 0 && (
+            <NgoPerformanceSection data={data.ngo_performance} />
+          )}
+
+          {/* Event Distribution */}
+          <EventDistributionSection />
         </div>
 
         {/* Sidebar Section */}
@@ -139,7 +166,7 @@ const AdminDashboardPage = () => {
           >
             {data.pending.ngos.length > 0 ? (
               <div className="space-y-4">
-                {data.pending.ngos.map((ngo) => (
+                {data.pending.ngos.slice(0, 3).map((ngo) => (
                   <Link
                     href={`/admin/ngos?search=${ngo.name}`}
                     key={ngo.id}
@@ -163,6 +190,14 @@ const AdminDashboardPage = () => {
                     </div>
                   </Link>
                 ))}
+                {data.pending.ngos_count > 3 && (
+                  <Link
+                    href="/admin/ngos"
+                    className="block text-center text-xs font-bold text-gray-500 hover:text-emerald-600 py-2 transition-colors"
+                  >
+                    See more ({data.pending.ngos_count - 3} more)
+                  </Link>
+                )}
               </div>
             ) : (
               <div className="p-6 text-center space-y-2">
@@ -182,7 +217,7 @@ const AdminDashboardPage = () => {
           >
             {(data.pending.events || []).length > 0 ? (
               <div className="space-y-4">
-                {data.pending.events.map((event) => (
+                {data.pending.events.slice(0, 3).map((event) => (
                   <Link href={`/admin/events`} key={event.id} className="block">
                     <div className="flex items-center justify-between p-3 bg-white border border-gray-100 rounded-2xl shadow-sm hover:shadow-md transition-all group cursor-pointer">
                       <div className="flex items-center gap-3">
@@ -202,6 +237,14 @@ const AdminDashboardPage = () => {
                     </div>
                   </Link>
                 ))}
+                {(data.pending.events_count || 0) > 3 && (
+                  <Link
+                    href="/admin/events"
+                    className="block text-center text-xs font-bold text-gray-500 hover:text-amber-600 py-2 transition-colors"
+                  >
+                    See more ({(data.pending.events_count || 0) - 3} more)
+                  </Link>
+                )}
               </div>
             ) : (
               <div className="p-6 text-center space-y-2">
@@ -221,7 +264,7 @@ const AdminDashboardPage = () => {
           >
             {data.pending.unpublish_requests.length > 0 ? (
               <div className="space-y-4">
-                {data.pending.unpublish_requests.map((req) => (
+                {data.pending.unpublish_requests.slice(0, 3).map((req) => (
                   <Link href={`/admin/events`} key={req.id} className="block">
                     <div className="flex items-center justify-between p-3 bg-white border border-gray-100 rounded-2xl shadow-sm hover:shadow-md transition-all group cursor-pointer">
                       <div className="flex items-center gap-3">
@@ -241,6 +284,14 @@ const AdminDashboardPage = () => {
                     </div>
                   </Link>
                 ))}
+                {data.pending.unpublish_count > 3 && (
+                  <Link
+                    href="/admin/events"
+                    className="block text-center text-xs font-bold text-gray-500 hover:text-rose-600 py-2 transition-colors"
+                  >
+                    See more ({data.pending.unpublish_count - 3} more)
+                  </Link>
+                )}
               </div>
             ) : (
               <div className="p-6 text-center space-y-2">
@@ -392,6 +443,248 @@ const NgoListSection = () => {
   );
 };
 
+const EventAnalyticsSection = ({ data: initialData }) => {
+  const [data, setData] = useState(initialData || []);
+  const [month, setMonth] = useState("");
+  const [year, setYear] = useState(new Date().getFullYear());
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    // Skip initial fetch if we have initialData and no filters changed (handled by initial state)
+    // But if filters change, we fetch.
+    if (month === "" && year === new Date().getFullYear() && initialData) {
+      setData(initialData);
+      return;
+    }
+
+    const fetchData = async () => {
+      setLoading(true);
+      try {
+        const token = localStorage.getItem("token");
+        const response = await fetch(
+          `${
+            process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"
+          }/api/admin/dashboard/analytics?year=${year}&month=${month}`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              Accept: "application/json",
+            },
+          }
+        );
+        const result = await response.json();
+        setData(result);
+      } catch (err) {
+        console.error("Failed to fetch analytics", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    const timer = setTimeout(fetchData, 300); // Debounce
+    return () => clearTimeout(timer);
+  }, [month, year]);
+
+  const downloadReport = () => {
+    const doc = new jsPDF();
+
+    doc.text("Event Analytics Report", 14, 15);
+    doc.setFontSize(10);
+    doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 14, 22);
+    doc.text(
+      `Filter: Year ${year} ${month ? `| Month: ${month}` : "| All Months"}`,
+      14,
+      27
+    );
+
+    const tableColumn = [
+      "Event Name",
+      "Date",
+      "Participants",
+      "Volunteers",
+      "Donors",
+    ];
+    const tableRows = [];
+
+    data.forEach((event) => {
+      const eventData = [
+        event.full_name,
+        event.date,
+        event.participants,
+        event.volunteers,
+        event.donors,
+      ];
+      tableRows.push(eventData);
+    });
+
+    autoTable(doc, {
+      head: [tableColumn],
+      body: tableRows,
+      startY: 32,
+    });
+
+    doc.save(`event_analytics_report_${year}_${month || "all"}.pdf`);
+  };
+
+  const months = [
+    { value: "", label: "All Months" },
+    { value: "1", label: "January" },
+    { value: "2", label: "February" },
+    { value: "3", label: "March" },
+    { value: "4", label: "April" },
+    { value: "5", label: "May" },
+    { value: "6", label: "June" },
+    { value: "7", label: "July" },
+    { value: "8", label: "August" },
+    { value: "9", label: "September" },
+    { value: "10", label: "October" },
+    { value: "11", label: "November" },
+    { value: "12", label: "December" },
+  ];
+
+  const totals = data.reduce(
+    (acc, curr) => ({
+      participants: acc.participants + curr.participants,
+      volunteers: acc.volunteers + curr.volunteers,
+      donors: acc.donors + curr.donors,
+    }),
+    { participants: 0, volunteers: 0, donors: 0 }
+  );
+
+  return (
+    <Section title="Event Analytics">
+      <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
+        <div className="flex items-center gap-2">
+          {/* Year Filter */}
+          <select
+            value={year}
+            onChange={(e) => setYear(e.target.value)}
+            className="px-3 py-2 bg-gray-50 border border-gray-100 rounded-xl text-sm font-medium outline-none focus:ring-2 focus:ring-emerald-500/20"
+          >
+            {[2024, 2025, 2026].map((y) => (
+              <option key={y} value={y}>
+                {y}
+              </option>
+            ))}
+          </select>
+
+          {/* Month Filter */}
+          <select
+            value={month}
+            onChange={(e) => setMonth(e.target.value)}
+            className="px-3 py-2 bg-gray-50 border border-gray-100 rounded-xl text-sm font-medium outline-none focus:ring-2 focus:ring-emerald-500/20"
+          >
+            {months.map((m) => (
+              <option key={m.value} value={m.value}>
+                {m.label}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <button
+          onClick={downloadReport}
+          className="px-4 py-2 bg-emerald-600 text-white text-xs font-bold rounded-xl hover:bg-emerald-700 transition-colors shadow-sm flex items-center gap-2"
+        >
+          <ArrowDownRight className="h-4 w-4" />
+          Download Report
+        </button>
+      </div>
+
+      {/* Summary Stats */}
+      <div className="grid grid-cols-3 gap-4 mb-6">
+        <div className="p-4 bg-emerald-50 rounded-2xl border border-emerald-100">
+          <p className="text-xs text-emerald-600 font-bold uppercase tracking-wider mb-1">
+            Total Participants
+          </p>
+          <p className="text-2xl font-black text-emerald-700">
+            {totals.participants.toLocaleString()}
+          </p>
+        </div>
+        <div className="p-4 bg-purple-50 rounded-2xl border border-purple-100">
+          <p className="text-xs text-purple-600 font-bold uppercase tracking-wider mb-1">
+            Total Volunteers
+          </p>
+          <p className="text-2xl font-black text-purple-700">
+            {totals.volunteers.toLocaleString()}
+          </p>
+        </div>
+        <div className="p-4 bg-rose-50 rounded-2xl border border-rose-100">
+          <p className="text-xs text-rose-600 font-bold uppercase tracking-wider mb-1">
+            Total Donors
+          </p>
+          <p className="text-2xl font-black text-rose-700">
+            {totals.donors.toLocaleString()}
+          </p>
+        </div>
+      </div>
+
+      <div className="h-[350px] w-full relative">
+        {loading && (
+          <div className="absolute inset-0 bg-white/50 backdrop-blur-[1px] flex items-center justify-center z-10">
+            <div className="w-6 h-6 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+          </div>
+        )}
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart
+            data={data}
+            margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
+            barGap={2}
+          >
+            <CartesianGrid
+              strokeDasharray="3 3"
+              vertical={false}
+              stroke="#E5E7EB"
+            />
+            <XAxis
+              dataKey="name"
+              axisLine={false}
+              tickLine={false}
+              tick={{ fontSize: 10, fill: "#6B7280" }}
+              interval={0}
+            />
+            <YAxis
+              axisLine={false}
+              tickLine={false}
+              tick={{ fontSize: 10, fill: "#6B7280" }}
+            />
+            <Tooltip
+              cursor={{ fill: "#F9FAFB" }}
+              contentStyle={{
+                borderRadius: "12px",
+                border: "none",
+                boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1)",
+              }}
+            />
+            <Legend wrapperStyle={{ paddingTop: "20px" }} />
+            <Bar
+              dataKey="participants"
+              name="Participants"
+              fill="#10B981"
+              radius={[4, 4, 0, 0]}
+              barSize={20}
+            />
+            <Bar
+              dataKey="volunteers"
+              name="Volunteers"
+              fill="#8B5CF6"
+              radius={[4, 4, 0, 0]}
+              barSize={20}
+            />
+            <Bar
+              dataKey="donors"
+              name="Donors"
+              fill="#F43F5E"
+              radius={[4, 4, 0, 0]}
+              barSize={20}
+            />
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+    </Section>
+  );
+};
+
 const StatsCard = ({ stat }) => {
   const icons = {
     users: Users,
@@ -466,5 +759,460 @@ const Section = ({ title, badge, color, children }) => (
     {children}
   </div>
 );
+
+const NgoPerformanceSection = ({ data: initialData }) => {
+  const [data, setData] = useState(initialData || []);
+  const [month, setMonth] = useState("");
+  const [year, setYear] = useState(new Date().getFullYear());
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    // Similar logic: Fetch if filters change.
+    if (
+      month === "" &&
+      year === new Date().getFullYear() &&
+      initialData.length > 0
+    ) {
+      // Optional: Skip fetch if initialData is provided and filters are default
+    }
+
+    const fetchData = async () => {
+      setLoading(true);
+      try {
+        const token = localStorage.getItem("token");
+        const response = await fetch(
+          `${
+            process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"
+          }/api/admin/dashboard/ngo-performance?year=${year}&month=${month}`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              Accept: "application/json",
+            },
+          }
+        );
+        const result = await response.json();
+        setData(result);
+      } catch (err) {
+        console.error("Failed to fetch ngo performance", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [month, year]);
+
+  const downloadReport = () => {
+    const doc = new jsPDF();
+
+    doc.text("NGO Performance Report", 14, 15);
+    doc.setFontSize(10);
+    doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 14, 22);
+    doc.text(
+      `Filter: Year ${year} ${month ? `| Month: ${month}` : "| All Months"}`,
+      14,
+      27
+    );
+
+    const tableColumn = [
+      "NGO Name",
+      "Participants",
+      "Volunteers",
+      "Funds Raised (RM)",
+    ];
+    const tableRows = [];
+
+    data.forEach((item) => {
+      const rowData = [
+        item.full_name,
+        item.participants,
+        item.volunteers,
+        item.total_raised.toLocaleString(undefined, {
+          minimumFractionDigits: 2,
+        }),
+      ];
+      tableRows.push(rowData);
+    });
+
+    autoTable(doc, {
+      head: [tableColumn],
+      body: tableRows,
+      startY: 32,
+    });
+
+    doc.save(`ngo_performance_report_${year}_${month || "all"}.pdf`);
+  };
+
+  const months = [
+    { value: "", label: "All Months" },
+    { value: "1", label: "January" },
+    { value: "2", label: "February" },
+    { value: "3", label: "March" },
+    { value: "4", label: "April" },
+    { value: "5", label: "May" },
+    { value: "6", label: "June" },
+    { value: "7", label: "July" },
+    { value: "8", label: "August" },
+    { value: "9", label: "September" },
+    { value: "10", label: "October" },
+    { value: "11", label: "November" },
+    { value: "12", label: "December" },
+  ];
+
+  return (
+    <Section title="NGO Performance Comparison">
+      <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
+        <div className="flex items-center gap-2">
+          {/* Year Filter */}
+          <select
+            value={year}
+            onChange={(e) => setYear(e.target.value)}
+            className="px-3 py-2 bg-gray-50 border border-gray-100 rounded-xl text-sm font-medium outline-none focus:ring-2 focus:ring-emerald-500/20"
+          >
+            {[2024, 2025, 2026].map((y) => (
+              <option key={y} value={y}>
+                {y}
+              </option>
+            ))}
+          </select>
+
+          {/* Month Filter */}
+          <select
+            value={month}
+            onChange={(e) => setMonth(e.target.value)}
+            className="px-3 py-2 bg-gray-50 border border-gray-100 rounded-xl text-sm font-medium outline-none focus:ring-2 focus:ring-emerald-500/20"
+          >
+            {months.map((m) => (
+              <option key={m.value} value={m.value}>
+                {m.label}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <button
+          onClick={downloadReport}
+          className="px-4 py-2 bg-emerald-600 text-white text-xs font-bold rounded-xl hover:bg-emerald-700 transition-colors shadow-sm flex items-center gap-2"
+        >
+          <ArrowDownRight className="h-4 w-4" />
+          Download Report
+        </button>
+      </div>
+
+      <div className="h-[400px] w-full relative">
+        {loading && (
+          <div className="absolute inset-0 bg-white/50 backdrop-blur-[1px] flex items-center justify-center z-10">
+            <div className="w-6 h-6 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+          </div>
+        )}
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart
+            data={data}
+            margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
+            barGap={0}
+          >
+            <CartesianGrid
+              strokeDasharray="3 3"
+              vertical={false}
+              stroke="#E5E7EB"
+            />
+            <XAxis
+              dataKey="name"
+              axisLine={false}
+              tickLine={false}
+              tick={{ fontSize: 10, fill: "#6B7280" }}
+              interval={0}
+            />
+            {/* Left Axis for People Counts */}
+            <YAxis
+              yAxisId="left"
+              orientation="left"
+              stroke="#10B981"
+              axisLine={false}
+              tickLine={false}
+              tick={{ fontSize: 10, fill: "#10B981" }}
+              label={{
+                value: "People",
+                angle: -90,
+                position: "insideLeft",
+                fill: "#10B981",
+                fontSize: 10,
+              }}
+            />
+            {/* Right Axis for Money */}
+            <YAxis
+              yAxisId="right"
+              orientation="right"
+              stroke="#F43F5E"
+              axisLine={false}
+              tickLine={false}
+              tick={{ fontSize: 10, fill: "#F43F5E" }}
+              tickFormatter={(val) => `RM${val / 1000}k`}
+              label={{
+                value: "Funds",
+                angle: 90,
+                position: "insideRight",
+                fill: "#F43F5E",
+                fontSize: 10,
+              }}
+            />
+            <Tooltip
+              cursor={{ fill: "#F9FAFB" }}
+              contentStyle={{
+                borderRadius: "12px",
+                border: "none",
+                boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1)",
+              }}
+              formatter={(value, name) => {
+                if (name === "Total Funds")
+                  return `RM ${value.toLocaleString()}`;
+                return value;
+              }}
+            />
+            <Legend wrapperStyle={{ paddingTop: "20px" }} />
+
+            <Bar
+              yAxisId="left"
+              dataKey="participants"
+              name="Participants"
+              fill="#10B981"
+              radius={[4, 4, 0, 0]}
+              barSize={20}
+            />
+            <Bar
+              yAxisId="left"
+              dataKey="volunteers"
+              name="Volunteers"
+              fill="#8B5CF6"
+              radius={[4, 4, 0, 0]}
+              barSize={20}
+            />
+            <Bar
+              yAxisId="right"
+              dataKey="total_raised"
+              name="Total Funds"
+              fill="#F43F5E"
+              radius={[4, 4, 0, 0]}
+              barSize={20}
+            />
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+    </Section>
+  );
+};
+
+const EventDistributionSection = () => {
+  const [data, setData] = useState([]);
+  const [year, setYear] = useState(new Date().getFullYear());
+  const [month, setMonth] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [activeIndex, setActiveIndex] = useState(0);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      setLoading(true);
+      try {
+        const token = localStorage.getItem("token");
+        const response = await fetch(
+          `${
+            process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"
+          }/api/admin/dashboard/event-distribution?year=${year}&month=${month}`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              Accept: "application/json",
+            },
+          }
+        );
+        const result = await response.json();
+        setData(result);
+      } catch (err) {
+        console.error("Failed to fetch distribution", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [year, month]);
+
+  const COLORS = [
+    "#10B981",
+    "#3B82F6",
+    "#F59E0B",
+    "#EF4444",
+    "#8B5CF6",
+    "#EC4899",
+    "#6366F1",
+    "#14B8A6",
+  ];
+
+  const months = [
+    { value: "", label: "All Months" },
+    { value: "1", label: "January" },
+    { value: "2", label: "February" },
+    { value: "3", label: "March" },
+    { value: "4", label: "April" },
+    { value: "5", label: "May" },
+    { value: "6", label: "June" },
+    { value: "7", label: "July" },
+    { value: "8", label: "August" },
+    { value: "9", label: "September" },
+    { value: "10", label: "October" },
+    { value: "11", label: "November" },
+    { value: "12", label: "December" },
+  ];
+
+  const onPieEnter = (_, index) => {
+    setActiveIndex(index);
+  };
+
+  return (
+    <Section title="State Contribution (Participants + Volunteers)">
+      <div className="flex items-center justify-end gap-2 mb-6">
+        <select
+          value={year}
+          onChange={(e) => setYear(e.target.value)}
+          className="px-3 py-2 bg-gray-50 border border-gray-100 rounded-xl text-sm font-medium outline-none focus:ring-2 focus:ring-emerald-500/20"
+        >
+          {[2024, 2025, 2026].map((y) => (
+            <option key={y} value={y}>
+              {y}
+            </option>
+          ))}
+        </select>
+        <select
+          value={month}
+          onChange={(e) => setMonth(e.target.value)}
+          className="px-3 py-2 bg-gray-50 border border-gray-100 rounded-xl text-sm font-medium outline-none focus:ring-2 focus:ring-emerald-500/20"
+        >
+          {months.map((m) => (
+            <option key={m.value} value={m.value}>
+              {m.label}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <div className="h-[400px] w-full relative flex items-center justify-center">
+        {loading && (
+          <div className="absolute inset-0 bg-white/50 backdrop-blur-[1px] flex items-center justify-center z-10">
+            <div className="w-6 h-6 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+          </div>
+        )}
+        <ResponsiveContainer width="100%" height="100%">
+          <PieChart>
+            <Pie
+              activeIndex={activeIndex}
+              activeShape={renderActiveShape}
+              data={data}
+              cx="50%"
+              cy="50%"
+              innerRadius={80}
+              outerRadius={120}
+              fill="#8884d8"
+              dataKey="value"
+              onMouseEnter={onPieEnter}
+              paddingAngle={2}
+            >
+              {data.map((entry, index) => (
+                <Cell
+                  key={`cell-${index}`}
+                  fill={COLORS[index % COLORS.length]}
+                />
+              ))}
+            </Pie>
+            <Tooltip
+              formatter={(value) => [`${value} people`, "Contribution"]}
+            />
+            <Legend verticalAlign="bottom" height={36} />
+          </PieChart>
+        </ResponsiveContainer>
+      </div>
+    </Section>
+  );
+};
+
+const renderActiveShape = (props) => {
+  const RADIAN = Math.PI / 180;
+  const {
+    cx,
+    cy,
+    midAngle,
+    innerRadius,
+    outerRadius,
+    startAngle,
+    endAngle,
+    fill,
+    payload,
+    percent,
+    value,
+  } = props;
+  const sin = Math.sin(-RADIAN * midAngle);
+  const cos = Math.cos(-RADIAN * midAngle);
+  const sx = cx + (outerRadius + 10) * cos;
+  const sy = cy + (outerRadius + 10) * sin;
+  const mx = cx + (outerRadius + 30) * cos;
+  const my = cy + (outerRadius + 30) * sin;
+  const ex = mx + (cos >= 0 ? 1 : -1) * 22;
+  const ey = my;
+  const textAnchor = cos >= 0 ? "start" : "end";
+
+  return (
+    <g>
+      <text
+        x={cx}
+        y={cy}
+        dy={8}
+        textAnchor="middle"
+        fill={fill}
+        className="text-xl font-bold"
+      >
+        {payload.name}
+      </text>
+      <Sector
+        cx={cx}
+        cy={cy}
+        innerRadius={innerRadius}
+        outerRadius={outerRadius}
+        startAngle={startAngle}
+        endAngle={endAngle}
+        fill={fill}
+      />
+      <Sector
+        cx={cx}
+        cy={cy}
+        startAngle={startAngle}
+        endAngle={endAngle}
+        innerRadius={outerRadius + 6}
+        outerRadius={outerRadius + 10}
+        fill={fill}
+      />
+      <path
+        d={`M${sx},${sy}L${mx},${my}L${ex},${ey}`}
+        stroke={fill}
+        fill="none"
+      />
+      <circle cx={ex} cy={ey} r={2} fill={fill} stroke="none" />
+      <text
+        x={ex + (cos >= 0 ? 1 : -1) * 12}
+        y={ey}
+        textAnchor={textAnchor}
+        fill="#333"
+      >{`People: ${value}`}</text>
+      <text
+        x={ex + (cos >= 0 ? 1 : -1) * 12}
+        y={ey}
+        dy={18}
+        textAnchor={textAnchor}
+        fill="#999"
+      >
+        {`(Rate ${(percent * 100).toFixed(2)}%)`}
+      </text>
+    </g>
+  );
+};
 
 export default AdminDashboardPage;

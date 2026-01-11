@@ -17,8 +17,8 @@ class DashboardController extends Controller
     public function index()
     {
         // 1. Overview Stats
-        $totalUsers = User::count();
-        $totalNgos = Ngo::count();
+        $totalUsers = User::where('role', 'user')->count();
+        $totalNgos = Ngo::where('status', 'approved')->count();
         $totalEvents = Event::count();
         $totalDonationsCents = DonationRegistration::sum('amount_paid');
         
@@ -74,6 +74,41 @@ class DashboardController extends Controller
             ->take(5)
             ->get();
 
+        // 8. Event Analytics (Top 5 Active Events)
+        $eventAnalytics = Event::withCount(['participantRegistrations', 'donationRegistrations', 'volunteerRegistrations'])
+            ->whereNotIn('status', ['rejected', 'taken_down'])
+            ->orderByRaw('(participant_registrations_count + donation_registrations_count + volunteer_registrations_count) DESC')
+            ->take(5)
+            ->get()
+            ->map(function ($event) {
+                return [
+                    'name' => \Illuminate\Support\Str::limit($event->title, 20),
+                    'full_name' => $event->title,
+                    'participants' => $event->participant_registrations_count,
+                    'donors' => $event->donation_registrations_count,
+                    'volunteers' => $event->volunteer_registrations_count,
+                    'date' => $event->start_date ? $event->start_date->format('d M Y') : 'TBA'
+                ];
+            });
+
+        // 9. NGO Performance (Top 5 by Funds Raised)
+        $ngoPerformance = Ngo::withCount('activeEvents')
+            ->withSum(['donationRegistrations' => function($q) {
+                $q->whereHas('payments', function($sq) {
+                    $sq->where('payment_status', 'paid');
+                });
+            }], 'amount_paid')
+            ->orderByDesc('donation_registrations_sum_amount_paid')
+            ->take(5)
+            ->get()
+            ->map(function($ngo) {
+                return [
+                    'name' => $ngo->name,
+                    'events_count' => $ngo->active_events_count,
+                    'total_raised' => $ngo->donation_registrations_sum_amount_paid / 100 // Convert cents to RM
+                ];
+            });
+
         return response()->json([
             'stats' => [
                 [
@@ -102,7 +137,7 @@ class DashboardController extends Controller
                 ],
                 [
                     'label' => 'Live Events',
-                    'value' => number_format(Event::where('is_published', true)->count()),
+                    'value' => number_format(Event::where('status', 'open')->count()),
                     'change' => 'Active now',
                     'trend' => 'neutral',
                     'icon' => 'calendar',
@@ -120,6 +155,154 @@ class DashboardController extends Controller
             'revenue_chart' => $recentDonations,
             'ngo_categories' => $ngoCategories,
             'top_donors' => $topDonors,
+            'event_analytics' => $eventAnalytics,
+            'ngo_performance' => $ngoPerformance,
         ]);
+    }
+
+    public function getAnalytics(Request $request)
+    {
+        $year = $request->input('year', date('Y'));
+        $month = $request->input('month'); // Optional, 1-12
+
+        $query = Event::withCount(['participantRegistrations', 'donationRegistrations', 'volunteerRegistrations'])
+            ->whereNotIn('status', ['rejected', 'taken_down']);
+
+        if ($month && $month !== 'all') {
+            $query->whereYear('start_date', $year)
+                  ->whereMonth('start_date', $month);
+        } else {
+             $query->whereYear('start_date', $year);
+        }
+
+        $analytics = $query->orderByRaw('(participant_registrations_count + donation_registrations_count + volunteer_registrations_count) DESC')
+            ->take(10) // Limit to top 10 for readability in graph
+            ->get()
+            ->map(function ($event) {
+                return [
+                    'name' => \Illuminate\Support\Str::limit($event->title, 15),
+                    'full_name' => $event->title,
+                    'participants' => $event->participant_registrations_count,
+                    'donors' => $event->donation_registrations_count,
+                    'volunteers' => $event->volunteer_registrations_count,
+                    'date' => $event->start_date ? $event->start_date->format('d M Y') : 'TBA'
+                ];
+            });
+
+        return response()->json($analytics);
+    }
+
+    public function getNgoPerformance(Request $request)
+    {
+        $year = $request->input('year', date('Y'));
+        $month = $request->input('month');
+
+        $query = Event::query()
+            ->whereNotIn('status', ['rejected', 'taken_down']);
+
+        if ($month && $month !== 'all') {
+            $query->whereYear('start_date', $year)
+                  ->whereMonth('start_date', $month);
+        } else {
+             $query->whereYear('start_date', $year);
+        }
+
+        $events = $query->with('ngo')
+            ->withCount(['participantRegistrations', 'volunteerRegistrations'])
+            ->withSum(['donationRegistrations' => function($q) {
+                $q->whereHas('payments', fn($p) => $p->where('payment_status', 'paid'));
+            }], 'amount_paid')
+            ->get();
+
+        // Aggregate by NGO
+        $ngoStats = $events->groupBy('ngo_id')->map(function ($ngoEvents) {
+            $ngo = $ngoEvents->first()->ngo;
+            return [
+                'name' => \Illuminate\Support\Str::limit($ngo->name, 15),
+                'full_name' => $ngo->name,
+                'participants' => $ngoEvents->sum('participant_registrations_count'),
+                'volunteers' => $ngoEvents->sum('volunteer_registrations_count'),
+                'total_raised' => $ngoEvents->sum('donation_registrations_sum_amount_paid') / 100,
+                'activity_score' => $ngoEvents->sum('participant_registrations_count') + $ngoEvents->sum('volunteer_registrations_count')
+            ];
+        })->sortByDesc('activity_score')->take(5)->values();
+
+        return response()->json($ngoStats);
+    }
+
+    public function getEventDistribution(Request $request)
+    {
+        $year = $request->input('year', date('Y'));
+        $month = $request->input('month');
+        
+        $query = Event::whereYear('start_date', $year)
+            ->whereNotIn('status', ['rejected', 'taken_down']);
+
+        if ($month && $month !== 'all') {
+            $query->whereMonth('start_date', $month);
+        }
+
+        $events = $query->withCount(['participantRegistrations', 'volunteerRegistrations'])
+            ->get();
+
+        $stateKeywords = [
+            'Johor' => ['Johor'],
+            'Kedah' => ['Kedah'],
+            'Kelantan' => ['Kelantan'],
+            'Melaka' => ['Melaka', 'Malacca'],
+            'Negeri Sembilan' => ['Negeri Sembilan', 'N. Sembilan'],
+            'Pahang' => ['Pahang'],
+            'Perak' => ['Perak'],
+            'Perlis' => ['Perlis'],
+            'Pulau Pinang' => ['Pulau Pinang', 'Penang'],
+            'Sabah' => ['Sabah'],
+            'Sarawak' => ['Sarawak'],
+            'Selangor' => ['Selangor'],
+            'Terengganu' => ['Terengganu'],
+            'Kuala Lumpur' => ['Kuala Lumpur', 'KL', 'W.P. Kuala Lumpur', 'Wilayah Persekutuan Kuala Lumpur'],
+            'Putrajaya' => ['Putrajaya', 'W.P. Putrajaya'],
+            'Labuan' => ['Labuan', 'W.P. Labuan']
+        ];
+
+        $distribution = collect($stateKeywords)->keys()->mapWithKeys(fn($state) => [$state => 0]);
+        $distribution['Unknown'] = 0;
+
+        foreach ($events as $event) {
+            $address = $event->address ?? '';
+            $matchedState = 'Unknown';
+
+            foreach ($stateKeywords as $canonicalState => $keywords) {
+                foreach ($keywords as $keyword) {
+                    if (stripos($address, $keyword) !== false) {
+                        $matchedState = $canonicalState;
+                        break 2;
+                    }
+                }
+            }
+
+            // If not found in address, fallback to state column if valid
+            if ($matchedState === 'Unknown' && $event->state) {
+                // Check if event->state matches any canonical or keyword
+                foreach ($stateKeywords as $canonicalState => $keywords) {
+                     if (stripos($event->state, $canonicalState) !== false || in_array($event->state, $keywords)) {
+                         $matchedState = $canonicalState;
+                         break;
+                     }
+                }
+            }
+
+            $contribution = $event->participant_registrations_count + $event->volunteer_registrations_count;
+            $distribution[$matchedState] += $contribution;
+        }
+
+        // Format for Recharts and sort
+        $formatted = $distribution
+            ->filter(fn($value) => $value > 0) // Only show states with activity
+            ->map(fn($value, $key) => ['name' => $key, 'value' => $value])
+            ->values()
+            ->sortByDesc('value')
+            ->values();
+
+        return response()->json($formatted);
     }
 }

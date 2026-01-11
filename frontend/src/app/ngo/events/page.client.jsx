@@ -26,6 +26,7 @@ import {
   RotateCcw,
   Clock,
   CheckCircle,
+  XCircle,
 } from "lucide-react";
 import Link from "next/link";
 import { motion } from "framer-motion";
@@ -73,6 +74,19 @@ export default function EventsListPage() {
     message: "",
   });
 
+  // Rejection Reason Modal State
+  const [reasonModal, setReasonModal] = useState({
+    isOpen: false,
+    reason: "",
+  });
+
+  const handleViewReason = (reason) => {
+    setReasonModal({
+      isOpen: true,
+      reason: reason || "No reason provided.",
+    });
+  };
+
   // Debounce search input
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -92,6 +106,7 @@ export default function EventsListPage() {
     ...(activeTab === "draft" && { is_published: 0 }),
     ...(activeTab === "published" && { is_published: 1 }),
     ...(activeTab === "completed" && { status: "completed" }),
+    ...(activeTab === "rejected" && { status: "rejected" }),
     ...(activeTab === "trashed" && { trashed: 1 }),
   };
 
@@ -365,6 +380,7 @@ export default function EventsListPage() {
     { id: "draft", label: "Drafts", icon: FileText },
     { id: "published", label: "Published", icon: Globe },
     { id: "completed", label: "Completed", icon: Users },
+    { id: "rejected", label: "Rejected", icon: XCircle },
     { id: "trashed", label: "Trash", icon: Trash2 },
   ];
 
@@ -540,6 +556,7 @@ export default function EventsListPage() {
                   onRestore={handleRestore}
                   onCancelRequest={handleCancelRequest}
                   onCancelUnpublishRequest={handleCancelUnpublishRequest}
+                  onViewReason={handleViewReason}
                   deleting={deleting === event.id}
                   publishing={publishing === event.id}
                   cancelling={cancelling === event.id}
@@ -670,6 +687,30 @@ export default function EventsListPage() {
           </form>
         </FormModal>
 
+        {/* Reason Modal */}
+        <FormModal
+          isOpen={reasonModal.isOpen}
+          onClose={() => setReasonModal({ ...reasonModal, isOpen: false })}
+          title="Rejection Reason"
+          size="md"
+        >
+          <div className="space-y-4">
+            <div className="bg-red-50 border border-red-100 rounded-xl p-4">
+              <p className="text-red-700 mt-1">{reasonModal.reason}</p>
+            </div>
+            <div className="flex justify-end">
+              <button
+                onClick={() =>
+                  setReasonModal({ ...reasonModal, isOpen: false })
+                }
+                className="px-6 py-2 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </FormModal>
+
         {/* Confirmation Modal */}
         <ConfirmModal
           isOpen={confirmConfig.isOpen}
@@ -702,6 +743,7 @@ function EventCard({
   onRestore,
   onCancelRequest,
   onCancelUnpublishRequest,
+  onViewReason,
   deleting,
   publishing,
   cancelling,
@@ -713,6 +755,7 @@ function EventCard({
     closed: "bg-gray-100 text-gray-700",
     completed: "bg-blue-100 text-blue-700",
     pending_approval: "bg-orange-100 text-orange-700",
+    rejected: "bg-red-100 text-red-700",
   };
 
   // Check if event is completed (end date is BEFORE today OR status is 'closed')
@@ -811,11 +854,14 @@ function EventCard({
               )}
 
               {/* Draft Badge */}
-              {!event.is_published && !event.deleted_at && (
-                <span className="text-xs px-2 py-1 rounded-full font-medium bg-yellow-100 text-yellow-700">
-                  Draft
-                </span>
-              )}
+              {!event.is_published &&
+                !event.deleted_at &&
+                event.status !== "rejected" &&
+                event.status !== "pending_approval" && (
+                  <span className="text-xs px-2 py-1 rounded-full font-medium bg-yellow-100 text-yellow-700">
+                    Draft
+                  </span>
+                )}
 
               {/* Deleted Badge */}
               {event.deleted_at && (
@@ -851,7 +897,7 @@ function EventCard({
         </div>
 
         {/* Actions */}
-        <div className="flex items-center gap-2 pt-4 border-t border-gray-100">
+        <div className="flex flex-wrap items-center gap-2 pt-4 border-t border-gray-100">
           <a
             href={`/ngo/events/${event.id}/preview`}
             target="_blank"
@@ -901,8 +947,49 @@ function EventCard({
                 </button>
               ) : (
                 <>
-                  {/* Pending Approval State */}
-                  {event.status === "pending_approval" ? (
+                  {/* Rejected State */}
+                  {event.status === "rejected" ? (
+                    <>
+                      <button
+                        onClick={() => onViewReason(event.take_down_reason)}
+                        className="flex-1 flex items-center justify-center gap-1 px-3 py-2 bg-red-100 hover:bg-red-200 text-red-700 rounded-xl text-sm font-bold transition-all"
+                      >
+                        <XCircle className="h-4 w-4" />
+                        View Reason
+                      </button>
+                      <button
+                        onClick={() => onPublish(event.id, false)}
+                        disabled={publishing}
+                        className="flex-1 flex items-center justify-center gap-1 px-3 py-2 bg-emerald-100 hover:bg-emerald-200 text-emerald-700 rounded-xl text-sm font-bold transition-all"
+                      >
+                        {publishing ? (
+                          <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                        ) : (
+                          <RotateCcw className="h-4 w-4" />
+                        )}
+                        Resubmit
+                      </button>
+                      <Link
+                        href={`/ngo/events/${event.id}/edit`}
+                        className="p-2 text-gray-400 hover:bg-emerald-50 hover:text-emerald-600 rounded-xl transition-colors"
+                        title="Edit"
+                      >
+                        <Edit className="h-5 w-5" />
+                      </Link>
+                      <button
+                        onClick={() => onDelete(event.id)}
+                        disabled={deleting}
+                        className="p-2 text-gray-400 hover:bg-red-50 hover:text-red-600 rounded-xl transition-colors disabled:opacity-50"
+                        title="Delete"
+                      >
+                        {deleting ? (
+                          <div className="w-5 h-5 border-2 border-red-600 border-t-transparent rounded-full animate-spin" />
+                        ) : (
+                          <Trash2 className="h-5 w-5" />
+                        )}
+                      </button>
+                    </>
+                  ) : event.status === "pending_approval" ? (
                     <>
                       <button
                         onClick={() => onCancelRequest(event.id)}

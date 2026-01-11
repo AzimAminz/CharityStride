@@ -398,67 +398,71 @@ export default function NgoDetailPage() {
             </motion.div>
 
             {/* Actions */}
-            <motion.div
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.1 }}
-              className="bg-white rounded-xl shadow-sm p-6"
-            >
-              <h2 className="text-lg font-bold text-gray-900 mb-4">Actions</h2>
+            {ngo.status !== "rejected" && ngo.status !== "blocked" && (
+              <motion.div
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.1 }}
+                className="bg-white rounded-xl shadow-sm p-6"
+              >
+                <h2 className="text-lg font-bold text-gray-900 mb-4">
+                  Actions
+                </h2>
 
-              <div className="space-y-3">
-                {ngo.status !== "approved" && (
-                  <button
-                    onClick={() => openStatusModal("approved")}
-                    disabled={updating}
-                    className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white font-semibold rounded-lg transition-colors"
-                  >
-                    {updating ? (
-                      <Loader2 className="h-5 w-5 animate-spin" />
-                    ) : (
-                      <>
-                        <CheckCircle className="h-5 w-5" />
-                        Approve
-                      </>
-                    )}
-                  </button>
-                )}
+                <div className="space-y-3">
+                  {ngo.status !== "approved" && (
+                    <button
+                      onClick={() => openStatusModal("approved")}
+                      disabled={updating}
+                      className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white font-semibold rounded-lg transition-colors"
+                    >
+                      {updating ? (
+                        <Loader2 className="h-5 w-5 animate-spin" />
+                      ) : (
+                        <>
+                          <CheckCircle className="h-5 w-5" />
+                          Approve
+                        </>
+                      )}
+                    </button>
+                  )}
 
-                {ngo.status !== "rejected" && (
-                  <button
-                    onClick={() => openStatusModal("rejected")}
-                    disabled={updating}
-                    className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-red-600 hover:bg-red-700 disabled:bg-gray-400 text-white font-semibold rounded-lg transition-colors"
-                  >
-                    {updating ? (
-                      <Loader2 className="h-5 w-5 animate-spin" />
-                    ) : (
-                      <>
-                        <XCircle className="h-5 w-5" />
-                        Reject
-                      </>
-                    )}
-                  </button>
-                )}
+                  {ngo.status !== "rejected" && ngo.status !== "approved" && (
+                    <button
+                      onClick={() => openStatusModal("rejected")}
+                      disabled={updating}
+                      className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-red-600 hover:bg-red-700 disabled:bg-gray-400 text-white font-semibold rounded-lg transition-colors"
+                    >
+                      {updating ? (
+                        <Loader2 className="h-5 w-5 animate-spin" />
+                      ) : (
+                        <>
+                          <XCircle className="h-5 w-5" />
+                          Reject
+                        </>
+                      )}
+                    </button>
+                  )}
 
-                {ngo.status !== "blocked" && (
-                  <button
-                    onClick={() => openStatusModal("blocked")}
-                    disabled={updating}
-                    className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-gray-600 hover:bg-gray-700 disabled:bg-gray-400 text-white font-semibold rounded-lg transition-colors"
-                  >
-                    {updating ? (
-                      <Loader2 className="h-5 w-5 animate-spin" />
-                    ) : (
-                      <>
-                        <Ban className="h-5 w-5" />
-                        Block
-                      </>
-                    )}
-                  </button>
-                )}
-              </div>
-            </motion.div>
+                  {ngo.status !== "blocked" && (
+                    <button
+                      onClick={() => openStatusModal("blocked")}
+                      disabled={updating}
+                      className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-gray-600 hover:bg-gray-700 disabled:bg-gray-400 text-white font-semibold rounded-lg transition-colors"
+                    >
+                      {updating ? (
+                        <Loader2 className="h-5 w-5 animate-spin" />
+                      ) : (
+                        <>
+                          <Ban className="h-5 w-5" />
+                          Block
+                        </>
+                      )}
+                    </button>
+                  )}
+                </div>
+              </motion.div>
+            )}
           </div>
         </div>
       </div>

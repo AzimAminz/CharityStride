@@ -102,6 +102,8 @@ Route::middleware(['auth:sanctum', 'role:user,ngo,admin'])->prefix('ngo')->group
         Route::get('/dashboard', [\App\Http\Controllers\Api\Ngo\DashboardController::class, 'index']);
         Route::get('/analytics', [\App\Http\Controllers\Api\Ngo\AnalyticsController::class, 'index']);
         Route::get('/analytics/report', [\App\Http\Controllers\Api\Ngo\AnalyticsController::class, 'generateReport']);
+        Route::get('/analytics/events', [\App\Http\Controllers\Api\Ngo\AnalyticsController::class, 'getEventAnalytics']);
+        Route::get('/analytics/events-table', [\App\Http\Controllers\Api\Ngo\AnalyticsController::class, 'getEventPerformanceTable']);
         
         // Custom route definition for 'show' and 'index' to allow admin access
         Route::get('events', [EventController::class, 'index'])->withoutMiddleware('role:ngo')->middleware('role:ngo,admin');
@@ -174,6 +176,9 @@ Route::middleware(['auth:sanctum', 'role:user,ngo,admin'])->prefix('ngo')->group
 // Admin Routes (Protected - Admin role only)
 Route::middleware(['auth:sanctum', 'role:admin'])->prefix('admin')->group(function(){
     Route::get('/dashboard', [\App\Http\Controllers\Admin\DashboardController::class, 'index']);
+    Route::get('/dashboard/analytics', [\App\Http\Controllers\Admin\DashboardController::class, 'getAnalytics']);
+    Route::get('/dashboard/ngo-performance', [\App\Http\Controllers\Admin\DashboardController::class, 'getNgoPerformance']);
+    Route::get('/dashboard/event-distribution', [\App\Http\Controllers\Admin\DashboardController::class, 'getEventDistribution']);
     Route::get('/ngos', [NgoManagementController::class, 'index']);
     Route::get('/ngos/{id}', [NgoManagementController::class, 'show']);
     Route::patch('/ngos/{id}/status', [NgoManagementController::class, 'updateStatus']);

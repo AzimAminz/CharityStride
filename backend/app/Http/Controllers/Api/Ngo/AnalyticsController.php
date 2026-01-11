@@ -14,6 +14,119 @@ use Carbon\Carbon;
 
 class AnalyticsController extends Controller
 {
+    public function getEventAnalytics(Request $request)
+    {
+        $user = Auth::user();
+        $ngo = $user->ngo;
+
+        if (!$ngo) {
+            return response()->json(['message' => 'NGO not found'], 404);
+        }
+
+        $year = $request->query('year', date('Y'));
+        $month = $request->query('month');
+
+        $query = Event::where('ngo_id', $ngo->id)
+            ->where('is_published', true)
+            ->whereYear('start_date', $year);
+
+        if ($month) {
+            $query->whereMonth('start_date', $month);
+        }
+
+        $events = $query->withCount([
+            'participantRegistrations' => function ($q) {
+                $q->whereIn('status', ['confirmed', 'checked_in']);
+            },
+            'volunteerRegistrations' => function ($q) {
+                $q->whereIn('status', ['approved', 'checked_in']);
+            },
+            'donationRegistrations'
+        ])->get();
+
+        $analytics = $events->map(function ($event) {
+            return [
+                'name' => strlen($event->title) > 15 ? substr($event->title, 0, 15) . '...' : $event->title,
+                'full_name' => $event->title,
+                'date' => Carbon::parse($event->start_date)->format('d M Y'),
+                'participants' => $event->participant_registrations_count,
+                'volunteers' => $event->volunteer_registrations_count,
+                'donors' => $event->donation_registrations_count,
+            ];
+        });
+
+        return response()->json($analytics);
+    }
+
+    public function getEventPerformanceTable(Request $request) {
+        $user = Auth::user();
+        $ngo = $user->ngo;
+
+        if (!$ngo) {
+            return response()->json(['message' => 'NGO not found'], 404);
+        }
+
+        $search = $request->query('search');
+        $year = $request->query('year'); // Optional
+        $month = $request->query('month'); // Optional
+        $perPage = $request->query('per_page', 10);
+
+        $query = Event::where('ngo_id', $ngo->id)
+            ->where('is_published', true);
+
+        if ($search) {
+            $query->where('title', 'like', "%{$search}%");
+        }
+
+        if ($year) {
+            $query->whereYear('start_date', $year);
+        }
+
+        if ($month) {
+            $query->whereMonth('start_date', $month);
+        }
+
+        $events = $query->with(['donationConfig'])
+            ->withCount(['participantRegistrations' => function ($q) {
+                $q->whereIn('status', ['confirmed', 'checked_in']);
+            }])
+            ->withCount(['volunteerRegistrations' => function ($q) {
+                $q->whereIn('status', ['approved', 'checked_in']);
+            }])
+            ->orderBy('start_date', 'desc')
+            ->paginate($perPage);
+
+        // Process logic for each event
+        $events->getCollection()->transform(function ($event) {
+            // Calculate financials manually as before, but per item
+            $dQuery = DonationRegistration::where('event_id', $event->id);
+            $pQuery = ParticipantRegistration::where('event_id', $event->id)
+                ->whereIn('status', ['confirmed', 'checked_in']);
+            
+            $donations = $dQuery->sum('amount_paid') / 100;
+            $regFees = $pQuery->sum('amount_paid') / 100;
+            $targetAmount = ($event->donationConfig?->target_amount ?? 0) / 100;
+
+            return [
+                'id' => $event->id,
+                'full_name' => $event->title,
+                'start_date' => Carbon::parse($event->start_date)->format('d M Y'), // Format date
+                'participants' => $event->participant_registrations_count,
+                'volunteers' => $event->volunteer_registrations_count,
+                'donations' => $donations,
+                'registration_fees' => $regFees,
+                'total_raised' => $donations + $regFees,
+                'has_donation_target' => $event->donationConfig?->has_target ?? false,
+                'donation_target_amount' => $targetAmount,
+                'achievement_percent' => ($event->donationConfig?->has_target && $targetAmount > 0)
+                    ? min(100, round(($donations / $targetAmount) * 100, 1))
+                    : null,
+            ];
+        });
+
+        return response()->json($events);
+    }
+
     public function index(Request $request)
     {
         $user = Auth::user();
