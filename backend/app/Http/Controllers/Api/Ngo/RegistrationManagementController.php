@@ -32,7 +32,9 @@ class RegistrationManagementController extends Controller
                 }
             }
 
-            $event = Event::where('ngo_id', $ngoId)->findOrFail($eventId);
+            $event = Event::where('ngo_id', $ngoId)
+                ->with(['participantCategories', 'volunteerRoles.roleType'])
+                ->findOrFail($eventId);
 
             $participants = ParticipantRegistration::where('event_id', $eventId)
                 ->where('status', 'confirmed')

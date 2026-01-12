@@ -61,6 +61,21 @@ class EventController extends Controller
             }
         }
 
+        // Add counts for stats
+        $query->withCount([
+            'participantRegistrations as participants_count' => function ($q) {
+                $q->whereIn('status', ['confirmed', 'checked_in']);
+            },
+            'volunteerRegistrations as volunteers_count' => function ($q) {
+                $q->whereIn('status', ['approved', 'checked_in']);
+            },
+            'donationRegistrations as donations_count' => function ($q) {
+                $q->where('status', 'paid')->orWhereHas('payments', function ($p) {
+                    $p->where('payment_status', 'paid');
+                });
+            }
+        ]);
+
         // Sorting
         $sortBy = $request->get('sort_by', 'created_at');
         $sortOrder = $request->get('sort_order', 'desc');
@@ -74,6 +89,18 @@ class EventController extends Controller
 
         $perPage = $request->get('per_page', 10);
         $events = $query->paginate($perPage);
+
+        // Transform to include stats object
+        $events->getCollection()->transform(function ($event) {
+            $event->stats = [
+                'participants' => $event->participants_count,
+                'volunteers' => $event->volunteers_count,
+                'donations' => $event->donations_count,
+            ];
+            // Remove the temporary counts if you want cleaner object, but optional
+            // unset($event->participants_count, $event->volunteers_count, $event->donations_count);
+            return $event;
+        });
 
         return response()->json($events);
     }

@@ -23,6 +23,7 @@ export default function ParticipantRegistrationPage() {
   const [checkingStatus, setCheckingStatus] = useState(true);
   const [showErrorModal, setShowErrorModal] = useState(false);
   const [alreadyRegistered, setAlreadyRegistered] = useState(false);
+  const [registeredCategoryId, setRegisteredCategoryId] = useState(null);
 
   const [formData, setFormData] = useState({
     participant_category_id: "",
@@ -44,6 +45,9 @@ export default function ParticipantRegistrationPage() {
           const status = await getMyRegistrationStatus(id);
           if (status.has_participant_registration) {
             setAlreadyRegistered(true);
+            setRegisteredCategoryId(
+              status.participant_registration?.participant_category_id
+            );
             setShowErrorModal(true);
           }
         }
@@ -208,60 +212,91 @@ export default function ParticipantRegistrationPage() {
             </h2>
 
             <div className="space-y-3">
-              {event.participant_categories?.map((category) => (
-                <label
-                  key={category.id}
-                  className={`block p-4 rounded-lg border-2 cursor-pointer transition-all ${
-                    formData.participant_category_id === category.id.toString()
-                      ? "border-teal-500 bg-teal-50"
-                      : "border-gray-200 hover:border-gray-300"
-                  }`}
-                >
-                  <div className="flex items-start gap-3">
-                    <input
-                      type="radio"
-                      name="participant_category_id"
-                      value={category.id}
-                      checked={
-                        formData.participant_category_id ===
-                        category.id.toString()
-                      }
-                      onChange={handleInputChange}
-                      className="mt-1"
-                    />
-                    <div className="flex-1">
-                      <div className="flex items-center justify-between mb-1">
-                        <div className="flex items-center gap-2">
-                          <span className="font-semibold text-gray-900">
-                            {category.category_name}
-                          </span>
-                          {category.has_bib && (
-                            <span className="px-1.5 py-0.5 bg-amber-100 text-amber-700 text-[9px] font-bold rounded uppercase tracking-wider">
-                              BIB
+              {event.participant_categories?.map((category) => {
+                const isFull =
+                  category.capacity_type === "limited" &&
+                  (category.current_registrations || 0) >= category.capacity;
+                const isUserRegisteredForThis =
+                  alreadyRegistered &&
+                  checkingStatus === false &&
+                  formData.participant_category_id === category.id.toString();
+                const isDisabled = alreadyRegistered || isFull;
+
+                return (
+                  <label
+                    key={category.id}
+                    className={`block p-4 rounded-lg border-2 transition-all ${
+                      isDisabled
+                        ? "border-gray-100 bg-gray-50 opacity-60 cursor-not-allowed"
+                        : formData.participant_category_id ===
+                          category.id.toString()
+                        ? "border-teal-500 bg-teal-50 cursor-pointer"
+                        : "border-gray-200 hover:border-gray-300 cursor-pointer"
+                    }`}
+                  >
+                    <div className="flex items-start gap-3">
+                      <input
+                        type="radio"
+                        name="participant_category_id"
+                        value={category.id}
+                        disabled={isDisabled}
+                        checked={
+                          formData.participant_category_id ===
+                          category.id.toString()
+                        }
+                        onChange={handleInputChange}
+                        className={`mt-1 ${
+                          isDisabled ? "opacity-30" : "cursor-pointer"
+                        }`}
+                      />
+                      <div className="flex-1">
+                        <div className="flex items-center justify-between mb-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="font-semibold text-gray-900">
+                              {category.category_name}
+                            </span>
+                            {category.has_bib && (
+                              <span className="px-1.5 py-0.5 bg-amber-100 text-amber-700 text-[9px] font-bold rounded uppercase tracking-wider">
+                                BIB
+                              </span>
+                            )}
+                            {isFull && (
+                              <span className="px-1.5 py-0.5 bg-red-100 text-red-700 text-[9px] font-bold rounded uppercase tracking-wider">
+                                FULL
+                              </span>
+                            )}
+                            {registeredCategoryId === category.id && (
+                              <span className="px-1.5 py-0.5 bg-emerald-100 text-emerald-700 text-[9px] font-bold rounded uppercase tracking-wider">
+                                REGISTERED
+                              </span>
+                            )}
+                          </div>
+                          {category.base_fee > 0 && (
+                            <span
+                              className={`${
+                                isDisabled ? "text-gray-400" : "text-teal-600"
+                              } font-bold`}
+                            >
+                              RM {(category.base_fee / 100).toFixed(2)}
                             </span>
                           )}
                         </div>
-                        {category.base_fee > 0 && (
-                          <span className="text-teal-600 font-bold">
-                            RM {(category.base_fee / 100).toFixed(2)}
-                          </span>
+                        {category.description && (
+                          <p className="text-sm text-gray-600">
+                            {category.description}
+                          </p>
+                        )}
+                        {category.capacity && (
+                          <p className="text-xs text-gray-500 mt-1">
+                            Capacity: {category.current_registrations || 0} /{" "}
+                            {category.capacity}
+                          </p>
                         )}
                       </div>
-                      {category.description && (
-                        <p className="text-sm text-gray-600">
-                          {category.description}
-                        </p>
-                      )}
-                      {category.capacity && (
-                        <p className="text-xs text-gray-500 mt-1">
-                          Capacity: {category.current_registrations || 0} /{" "}
-                          {category.capacity}
-                        </p>
-                      )}
                     </div>
-                  </div>
-                </label>
-              ))}
+                  </label>
+                );
+              })}
             </div>
 
             {errors.participant_category_id && (
@@ -412,13 +447,18 @@ export default function ParticipantRegistrationPage() {
             </button>
             <button
               type="submit"
-              disabled={submitting}
+              disabled={submitting || alreadyRegistered}
               className="flex-1 px-6 py-3 rounded-lg bg-teal-600 hover:bg-teal-700 text-white font-bold shadow-md hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               {submitting ? (
                 <>
                   <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
                   Processing...
+                </>
+              ) : alreadyRegistered ? (
+                <>
+                  <AlertCircle className="h-5 w-5" />
+                  Already Registered
                 </>
               ) : (
                 <>

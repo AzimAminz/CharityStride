@@ -74,7 +74,7 @@ export default function ErrorModal({
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               onClick={handleAction}
-              className="w-full py-3 rounded-xl bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white font-semibold shadow-lg transition-all flex items-center justify-center gap-2"
+              className="w-full py-4 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold shadow-lg transition-all flex items-center justify-center gap-3"
             >
               {actionText}
               <ArrowRight size={18} />

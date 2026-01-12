@@ -308,60 +308,10 @@ const NGORegistrationsPage = () => {
         </div>
 
         {/* Summary Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          <div className="bg-white rounded-xl shadow-sm p-6">
-            <div className="flex items-center justify-between mb-2">
-              <Calendar className="h-8 w-8 text-blue-600" />
-            </div>
-            <p className="text-sm text-gray-600 mb-1">Published Events</p>
-            <p className="text-3xl font-bold text-gray-900">
-              {publishedEvents.length}
-            </p>
-          </div>
-
-          <div className="bg-white rounded-xl shadow-sm p-6">
-            <div className="flex items-center justify-between mb-2">
-              <Users className="h-8 w-8 text-green-600" />
-            </div>
-            <p className="text-sm text-gray-600 mb-1">Total Participants</p>
-            <p className="text-3xl font-bold text-gray-900">
-              {publishedEvents.reduce(
-                (sum, e) => sum + (e.stats?.participants || 0),
-                0
-              )}
-            </p>
-          </div>
-
-          <div className="bg-white rounded-xl shadow-sm p-6">
-            <div className="flex items-center justify-between mb-2">
-              <UserCheck className="h-8 w-8 text-orange-600" />
-            </div>
-            <p className="text-sm text-gray-600 mb-1">Total Volunteers</p>
-            <p className="text-3xl font-bold text-gray-900">
-              {publishedEvents.reduce(
-                (sum, e) => sum + (e.stats?.volunteers || 0),
-                0
-              )}
-            </p>
-          </div>
-
-          <div className="bg-white rounded-xl shadow-sm p-6">
-            <div className="flex items-center justify-between mb-2">
-              <Heart className="h-8 w-8 text-purple-600" />
-            </div>
-            <p className="text-sm text-gray-600 mb-1">Total Donations</p>
-            <p className="text-3xl font-bold text-gray-900">
-              {publishedEvents.reduce(
-                (sum, e) => sum + (e.stats?.donations || 0),
-                0
-              )}
-            </p>
-          </div>
-        </div>
 
         {/* Search and Sort Bar */}
         <div className="bg-white rounded-xl shadow-sm p-4 mb-6">
-          <div className="flex flex-col md:flex-row gap-4">
+          <div className="flex flex-col sm:flex-row gap-4">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
               <input
@@ -375,7 +325,7 @@ const NGORegistrationsPage = () => {
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value)}
-              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 bg-white"
+              className="sm:w-48 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 bg-white"
             >
               <option value="date-desc">Newest First</option>
               <option value="date-asc">Oldest First</option>
@@ -420,7 +370,7 @@ const NGORegistrationsPage = () => {
               )}
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 p-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 p-6">
               {paginatedEvents.map((event) => {
                 return (
                   <a
@@ -489,22 +439,11 @@ const NGORegistrationsPage = () => {
                       </div>
 
                       {/* Stats - Dynamic based on event modules */}
-                      <div
-                        className="grid gap-2 mb-4"
-                        style={{
-                          gridTemplateColumns: `repeat(${
-                            [
-                              event.has_participant,
-                              event.has_volunteer,
-                              event.has_donation,
-                            ].filter(Boolean).length || 1
-                          }, 1fr)`,
-                        }}
-                      >
+                      <div className="flex flex-wrap gap-2 mb-4">
                         {event.has_participant && (
-                          <div className="text-center p-2 bg-blue-50 rounded-lg">
+                          <div className="flex-1 min-w-[80px] text-center p-2 bg-blue-50 rounded-lg">
                             <Users className="h-4 w-4 text-blue-600 mx-auto mb-1" />
-                            <p className="text-xs text-gray-600">
+                            <p className="text-[10px] text-gray-600 uppercase tracking-tight">
                               Participants
                             </p>
                             <p className="font-bold text-blue-600">
@@ -513,18 +452,22 @@ const NGORegistrationsPage = () => {
                           </div>
                         )}
                         {event.has_volunteer && (
-                          <div className="text-center p-2 bg-orange-50 rounded-lg">
+                          <div className="flex-1 min-w-[80px] text-center p-2 bg-orange-50 rounded-lg">
                             <UserCheck className="h-4 w-4 text-orange-600 mx-auto mb-1" />
-                            <p className="text-xs text-gray-600">Volunteers</p>
+                            <p className="text-[10px] text-gray-600 uppercase tracking-tight">
+                              Volunteers
+                            </p>
                             <p className="font-bold text-orange-600">
                               {event.stats?.volunteers || 0}
                             </p>
                           </div>
                         )}
                         {event.has_donation && (
-                          <div className="text-center p-2 bg-purple-50 rounded-lg">
+                          <div className="flex-1 min-w-[80px] text-center p-2 bg-purple-50 rounded-lg">
                             <Heart className="h-4 w-4 text-purple-600 mx-auto mb-1" />
-                            <p className="text-xs text-gray-600">Donations</p>
+                            <p className="text-[10px] text-gray-600 uppercase tracking-tight">
+                              Donations
+                            </p>
                             <p className="font-bold text-purple-600">
                               {event.stats?.donations || 0}
                             </p>

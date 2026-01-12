@@ -29,7 +29,16 @@ const CertificatesPage = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [yearFilter, setYearFilter] = useState("All Years");
   const [currentPage, setCurrentPage] = useState(1);
+  const [windowWidth, setWindowWidth] = useState(
+    typeof window !== "undefined" ? window.innerWidth : 1200
+  );
   const itemsPerPage = 6;
+
+  useEffect(() => {
+    const handleResize = () => setWindowWidth(window.innerWidth);
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   useEffect(() => {
     const fetchCertificates = async () => {
@@ -320,132 +329,168 @@ const CertificatesPage = () => {
             if (e.target.id === "certificate-modal") setSelectedCert(null);
           }}
         >
-          <div className="modal-content-container relative w-full max-w-2xl bg-white rounded-[2rem] shadow-2xl overflow-hidden print:shadow-none print:rounded-none">
+          <div className="modal-content-container relative w-full sm:max-w-2xl max-h-[95vh] bg-white rounded-[2rem] shadow-2xl overflow-hidden print:shadow-none print:rounded-none flex flex-col">
             {/* Modal Actions (Hidden on print) */}
-            <div className="flex items-center justify-between px-8 py-4 border-b border-gray-100 bg-gray-50/50 print:hidden">
+            <div className="flex items-center justify-between px-6 sm:px-8 py-4 border-b border-gray-100 bg-gray-50/50 print:hidden shrink-0">
               <div className="flex items-center gap-2">
                 <Award className="h-5 w-5 text-emerald-600" />
-                <span className="font-bold text-gray-900">
+                <span className="font-bold text-gray-900 hidden sm:inline">
                   Certificate Preview
                 </span>
+                <span className="font-bold text-gray-900 sm:hidden">
+                  Preview
+                </span>
               </div>
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2 sm:gap-3">
                 <button
                   onClick={handlePrint}
-                  className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-xl font-bold hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-600/20"
+                  className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-emerald-600 text-white rounded-xl font-bold hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-600/20 text-xs sm:text-sm"
                 >
                   <Printer className="h-4 w-4" />
-                  Print A4
+                  <span className="hidden sm:inline">Print A4</span>
+                  <span className="sm:hidden">Print</span>
                 </button>
                 <button
                   onClick={() => setSelectedCert(null)}
-                  className="flex items-center gap-2 px-4 py-2 bg-white text-gray-700 border border-gray-200 rounded-xl font-bold hover:bg-gray-50 transition-all"
+                  className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-white text-gray-700 border border-gray-200 rounded-xl font-bold hover:bg-gray-50 transition-all text-xs sm:text-sm"
                 >
                   <X className="h-4 w-4" />
-                  Close
+                  <span className="hidden sm:inline">Close</span>
                 </button>
               </div>
             </div>
 
-            {/* Certificate Template */}
-            <div className="print-container p-1 pb-1">
-              <div className="bg-[#f8fafc] p-6 sm:p-10 md:p-16 relative overflow-hidden border-[16px] border-double border-emerald-600/20 m-4 rounded-[1.5rem] print:m-0 print:border-[12px] print:h-[297mm] print:w-[210mm] print:flex print:flex-col print:justify-center">
-                {/* Decorative background elements */}
-                <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-500/5 rounded-full -translate-y-1/2 translate-x-1/2" />
-                <div className="absolute bottom-0 left-0 w-96 h-96 bg-blue-500/5 rounded-full translate-y-1/2 -translate-x-1/2" />
+            {/* Certificate Template Container with Scrollable Area for Preview */}
+            <div className="flex-1 overflow-auto p-4 sm:p-6 bg-gray-100/30 print:bg-transparent print:p-0">
+              {/* Certificate Template Wrapper for Scaling */}
+              <div className="certificate-scale-wrapper flex justify-center items-start print:items-center min-h-full">
+                <div
+                  className="certificate-scaler origin-top print:origin-center print:transform-none shadow-2xl"
+                  style={{
+                    transform:
+                      windowWidth < 800
+                        ? `scale(${(windowWidth - 48) / 800})`
+                        : "scale(0.8)",
+                    width: "800px",
+                    height: "1131px",
+                    marginBottom:
+                      windowWidth < 800
+                        ? `-${1131 * (1 - (windowWidth - 48) / 800)}px`
+                        : `-${1131 * 0.2}px`,
+                  }}
+                >
+                  <div className="bg-[#f8fafc] p-16 relative overflow-hidden border-[16px] border-double border-emerald-600/20 rounded-[1.5rem] w-full h-full shadow-lg print:shadow-none print:m-0 print:border-[12px] print:p-10 print:flex print:flex-col print:justify-center">
+                    {/* Decorative background elements */}
+                    <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-500/5 rounded-full -translate-y-1/2 translate-x-1/2" />
+                    <div className="absolute bottom-0 left-0 w-96 h-96 bg-blue-500/5 rounded-full translate-y-1/2 -translate-x-1/2" />
 
-                <div className="relative z-10 text-center">
-                  {/* Branding */}
-                  <div className="flex flex-col items-center gap-3 mb-10 print:mb-8">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-emerald-500 rounded-xl flex items-center justify-center shadow-lg shadow-emerald-500/20">
-                        <span className="text-white font-black text-xl italic">
-                          C
-                        </span>
+                    <div className="relative z-10 text-center flex flex-col h-full justify-center">
+                      {/* Branding */}
+                      <div className="flex flex-col items-center gap-3 mb-10 print:mb-8">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 bg-emerald-500 rounded-xl flex items-center justify-center shadow-lg shadow-emerald-500/20 print:shadow-none text-white font-black text-xl italic">
+                            C
+                          </div>
+                          <span className="text-gray-900 font-extrabold tracking-tighter text-2xl">
+                            CHARITY
+                            <span className="text-emerald-500">STRIDE</span>
+                          </span>
+                        </div>
+                        <div className="h-px w-24 bg-emerald-200" />
                       </div>
-                      <span className="text-gray-900 font-extrabold tracking-tighter text-2xl">
-                        CHARITY<span className="text-emerald-500">STRIDE</span>
-                      </span>
+
+                      {/* Main Content */}
+                      <h2 className="text-emerald-600 font-serif italic text-xl mb-6 print:mb-4">
+                        Certificate of Appreciation
+                      </h2>
+
+                      <p className="text-gray-500 text-sm mb-3">
+                        THIS CERTIFICATE IS PROUDLY PRESENTED TO
+                      </p>
+
+                      <h3 className="text-4xl font-black text-gray-900 mb-6 font-serif leading-tight print:text-5xl">
+                        {selectedCert.user?.full_name ||
+                          selectedCert.user?.name}
+                      </h3>
+
+                      <p className="text-gray-600 text-lg max-w-lg mx-auto mb-10 leading-relaxed print:text-lg">
+                        In recognition of your exceptional commitment and
+                        dedicated volunteer service for the event{" "}
+                        <span className="font-bold text-gray-900 capitalize">
+                          "{selectedCert.event?.title}"
+                        </span>{" "}
+                        organized by{" "}
+                        <span className="font-bold text-gray-900">
+                          {selectedCert.event?.ngo?.name ||
+                            "Official Organizer"}
+                        </span>
+                        .
+                      </p>
+
+                      {/* Shift Stats Row */}
+                      <div className="grid grid-cols-2 max-w-sm mx-auto gap-6 border-y border-emerald-100 py-6 mb-12">
+                        <div className="text-center">
+                          <p className="text-emerald-600 font-bold uppercase tracking-widest text-[9px] mb-1">
+                            Shift Date
+                          </p>
+                          <p className="text-gray-900 font-bold text-base">
+                            {selectedCert.volunteer_shift?.shift_date
+                              ? formatDate(
+                                  selectedCert.volunteer_shift.shift_date
+                                )
+                              : "N/A"}
+                          </p>
+                        </div>
+                        <div className="text-center border-l border-emerald-100">
+                          <p className="text-emerald-600 font-bold uppercase tracking-widest text-[9px] mb-1">
+                            Shift Time
+                          </p>
+                          <p className="text-gray-900 font-bold text-base">
+                            {format12Hour(
+                              selectedCert.volunteer_shift?.start_time
+                            )}{" "}
+                            -{" "}
+                            {format12Hour(
+                              selectedCert.volunteer_shift?.end_time
+                            )}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Recognition/Signature Area */}
+                      <div className="flex flex-col items-center justify-center space-y-4">
+                        <div className="w-48 h-px bg-linear-to-r from-transparent via-emerald-200 to-transparent" />
+                        <div className="text-center">
+                          <p className="text-gray-900 font-black text-lg uppercase tracking-wider mb-0.5">
+                            {selectedCert.event?.ngo?.name ||
+                              "Official Organizer"}
+                          </p>
+                          <p className="text-emerald-600 font-bold text-[9px] uppercase tracking-[0.2em]">
+                            Project Organizer & Verifier
+                          </p>
+                        </div>
+                        <div className="text-center pt-2">
+                          <p className="text-gray-400 font-medium text-[10px]">
+                            Issued via CharityStride Achievement System
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Verification ID */}
+                      <div className="mt-12 pt-6 border-t border-gray-100 opacity-50">
+                        <p className="text-[9px] text-gray-400 font-mono tracking-widest uppercase">
+                          Certificate ID: CS-VOL-{selectedCert.id}-
+                          {(selectedCert.event?.title || "CERT")
+                            .substring(0, 3)
+                            .toUpperCase()}
+                          -
+                          {Math.random()
+                            .toString(36)
+                            .substr(2, 6)
+                            .toUpperCase()}
+                        </p>
+                      </div>
                     </div>
-                    <div className="h-px w-24 bg-emerald-200" />
-                  </div>
-
-                  {/* Main Content */}
-                  <h2 className="text-emerald-600 font-serif italic text-xl mb-6 print:mb-4">
-                    Certificate of Appreciation
-                  </h2>
-
-                  <p className="text-gray-500 text-sm mb-3">
-                    THIS CERTIFICATE IS PROUDLY PRESENTED TO
-                  </p>
-
-                  <h3 className="text-3xl md:text-4xl font-black text-gray-900 mb-6 font-serif leading-tight print:text-5xl">
-                    {selectedCert.user?.full_name || selectedCert.user?.name}
-                  </h3>
-
-                  <p className="text-gray-600 text-base max-w-lg mx-auto mb-10 leading-relaxed print:text-lg">
-                    In recognition of your exceptional commitment and dedicated
-                    volunteer service for the event{" "}
-                    <span className="font-bold text-gray-900 capitalize">
-                      "{selectedCert.event?.title}"
-                    </span>{" "}
-                    organized by{" "}
-                    <span className="font-bold text-gray-900">
-                      {selectedCert.event?.ngo?.name || "Official Organizer"}
-                    </span>
-                    .
-                  </p>
-
-                  {/* Shift Stats Row */}
-                  <div className="grid grid-cols-2 max-w-sm mx-auto gap-6 border-y border-emerald-100 py-6 mb-12">
-                    <div className="text-center">
-                      <p className="text-emerald-600 font-bold uppercase tracking-widest text-[9px] mb-1">
-                        Shift Date
-                      </p>
-                      <p className="text-gray-900 font-bold text-base">
-                        {selectedCert.volunteer_shift?.shift_date
-                          ? formatDate(selectedCert.volunteer_shift.shift_date)
-                          : "N/A"}
-                      </p>
-                    </div>
-                    <div className="text-center border-l border-emerald-100">
-                      <p className="text-emerald-600 font-bold uppercase tracking-widest text-[9px] mb-1">
-                        Shift Time
-                      </p>
-                      <p className="text-gray-900 font-bold text-base">
-                        {format12Hour(selectedCert.volunteer_shift?.start_time)}{" "}
-                        - {format12Hour(selectedCert.volunteer_shift?.end_time)}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Recognition/Signature Area */}
-                  <div className="flex flex-col items-center justify-center space-y-4">
-                    <div className="w-48 h-px bg-linear-to-r from-transparent via-emerald-200 to-transparent" />
-                    <div className="text-center">
-                      <p className="text-gray-900 font-black text-lg uppercase tracking-wider mb-0.5">
-                        {selectedCert.event?.ngo?.name || "Official Organizer"}
-                      </p>
-                      <p className="text-emerald-600 font-bold text-[9px] uppercase tracking-[0.2em]">
-                        Project Organizer & Verifier
-                      </p>
-                    </div>
-                    <div className="text-center pt-2">
-                      <p className="text-gray-400 font-medium text-[10px]">
-                        Issued via CharityStride Achievement System
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Verification ID */}
-                  <div className="mt-12 pt-6 border-t border-gray-100 opacity-50">
-                    <p className="text-[9px] text-gray-400 font-mono tracking-widest uppercase">
-                      Certificate ID: CS-VOL-{selectedCert.id}-
-                      {(selectedCert.event?.title || "CERT")
-                        .substring(0, 3)
-                        .toUpperCase()}
-                      -{Math.random().toString(36).substr(2, 6).toUpperCase()}
-                    </p>
                   </div>
                 </div>
               </div>
@@ -459,10 +504,19 @@ const CertificatesPage = () => {
         @media print {
           @page {
             size: A4 portrait;
-            margin: 0;
+            margin: 2mm 5mm !important;
+          }
+          *,
+          *::before,
+          *::after {
+            box-sizing: border-box !important;
+            box-shadow: none !important;
+            text-shadow: none !important;
           }
           body {
             background: white !important;
+            margin: 0 !important;
+            padding: 0 !important;
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
           }
@@ -480,27 +534,42 @@ const CertificatesPage = () => {
             width: 100% !important;
             height: 100% !important;
             padding: 0 !important;
-            margin: 0 !important;
-            display: block !important;
+            margin:  0 !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
             background: white !important;
+            z-index: 9999;
           }
           .modal-content-container {
             width: 100% !important;
-            max-width: none !important;
             height: 100% !important;
-            box-shadow: none !important;
-            border: none !important;
-            border-radius: 0 !important;
+            max-width: none !important;
             background: white !important;
             display: flex !important;
             align-items: center !important;
             justify-content: center !important;
-          }
-          .print-container {
             padding: 0 !important;
             margin: 0 !important;
-            width: 210mm !important;
-            height: 297mm !important;
+          }
+          .certificate-scale-wrapper {
+            padding: 0 !important;
+            margin: 0 !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            width: 100% !important;
+            height: 100% !important;
+          }
+          .certificate-scaler {
+            width: 200mm !important;
+            height: 293mm !important;
+            transform: scale(0.95) !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            border-radius: 0 !important;
+            border: none !important;
+            background: white !important;
           }
           .absolute,
           .rounded-full {
@@ -508,7 +577,8 @@ const CertificatesPage = () => {
             -webkit-print-color-adjust: exact !important;
           }
           button,
-          .px-8.py-4.border-b {
+          .px-8.py-4.border-b,
+          .px-6.sm:px-8.py-4.border-b {
             display: none !important;
           }
           nav,

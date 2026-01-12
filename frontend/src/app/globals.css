@@ -28,6 +28,8 @@
   --color-white: #ffffff;
   --color-black: #000000;
   --color-red-500: #ef4444;
+  --color-red-600: #dc2626;
+  --color-red-700: #b91c1c;
 
   /* Typography */
   --font-size-xs: 0.75rem;
@@ -35,7 +37,7 @@
   --font-size-base: 1rem;
   --font-size-lg: 1.125rem;
   --font-size-xl: 1.25rem;
-  
+
   --font-weight-medium: 500;
   --font-weight-semibold: 600;
   --font-weight-bold: 700;
@@ -67,9 +69,10 @@
 
   /* Shadows */
   --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
-  
+
   /* Transitions */
-  --transition-colors: color 0.15s ease-in-out, background-color 0.15s ease-in-out, border-color 0.15s ease-in-out;
+  --transition-colors: color 0.15s ease-in-out,
+    background-color 0.15s ease-in-out, border-color 0.15s ease-in-out;
   --transition-all: all 0.3s ease-in-out;
 }
 
@@ -79,11 +82,22 @@
 
 @utility from-emerald-500 {
   --tw-gradient-from: var(--color-emerald-500);
-  --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to, rgb(16 185 129 / 0));
+  --tw-gradient-stops: var(--tw-gradient-from),
+    var(--tw-gradient-to, rgb(16 185 129 / 0));
 }
 
 @utility to-emerald-600 {
   --tw-gradient-to: var(--color-emerald-600);
+}
+
+@utility from-red-500 {
+  --tw-gradient-from: var(--color-red-500);
+  --tw-gradient-stops: var(--tw-gradient-from),
+    var(--tw-gradient-to, rgb(239 68 68 / 0));
+}
+
+@utility to-red-600 {
+  --tw-gradient-to: var(--color-red-600);
 }
 
 .react-datepicker {
@@ -125,14 +139,17 @@
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1;  }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 .animate-fadeIn {
   animation: fadeIn 0.5s ease-out;
 }
-
 
 /* Toast animation */
 @keyframes slide-in-right {
