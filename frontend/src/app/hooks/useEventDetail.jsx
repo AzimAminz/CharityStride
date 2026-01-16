@@ -14,7 +14,10 @@ export function useEventDetail(id, isPublic = false) {
   const [error, setError] = useState(null);
 
   const fetchEvent = async () => {
-    if (!id) return;
+    if (!id) {
+      setLoading(false);
+      return;
+    }
 
     setLoading(true);
     setError(null);

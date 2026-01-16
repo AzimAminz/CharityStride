@@ -301,7 +301,7 @@ const SearchBar = ({
 
       {/* Suggestions Dropdown */}
       {shouldShowDropdown && (
-        <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-lg shadow-xl border border-gray-200 max-h-96 overflow-y-auto z-40">
+        <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-lg shadow-xl border border-gray-200 max-h-96 overflow-y-auto z-[70]">
           {/* Search History */}
           {history.length > 0 && query.length === 0 && (
             <div className="py-2">

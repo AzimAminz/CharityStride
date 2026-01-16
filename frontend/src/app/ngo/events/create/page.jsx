@@ -67,6 +67,7 @@ export default function CreateEventPage() {
   });
 
   const [showLocationForm, setShowLocationForm] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   // Volunteer Module hooks (only initialized after event created)
   const volunteerModule = useVolunteerModule(createdEventId);
@@ -988,7 +989,7 @@ export default function CreateEventPage() {
                 onClick={async () => {
                   try {
                     if (unsavedDonationConfig) {
-                      setLoading(true);
+                      setIsSaving(true);
                       await donationModule.updateConfig(unsavedDonationConfig);
                       setUnsavedDonationConfig(null);
                     }
@@ -1007,13 +1008,13 @@ export default function CreateEventPage() {
                         setAlertModal((prev) => ({ ...prev, isOpen: false })),
                     });
                   } finally {
-                    setLoading(false);
+                    setIsSaving(false);
                   }
                 }}
                 className="px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-semibold transition-colors disabled:opacity-50"
-                disabled={loading}
+                disabled={isSaving}
               >
-                {loading ? "Saving..." : "Next →"}
+                {isSaving ? "Saving..." : "Next →"}
               </button>
             </div>
           </div>

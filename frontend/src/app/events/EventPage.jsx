@@ -16,6 +16,7 @@ import FilterModal from "./components/FilterModal";
 import EventCard from "./components/EventCard";
 import PopularEventsCarousel from "./components/PopularEventsCarousel";
 import ThumbnailCarousel from "./components/ThumbnailCarousel";
+import Footer from "../components/Footer";
 
 const EventsPage = () => {
   const [popularEvents, setPopularEvents] = useState([]);
@@ -192,7 +193,7 @@ const EventsPage = () => {
     <div className="min-h-screen bg-white">
       {/* Hero Section */}
       <div
-        className="relative text-white py-24 px-4 bg-cover bg-center bg-no-repeat"
+        className="relative z-20 text-white py-24 px-4 bg-cover bg-center bg-no-repeat"
         style={{ backgroundImage: "url(/hero-bg.jpg)" }}
       >
         <div className="absolute inset-0 bg-gradient-to-b from-gray-900/70 via-gray-900/60 to-gray-900/70"></div>
@@ -320,6 +321,10 @@ const EventsPage = () => {
         onApplyFilters={handleApplyFilters}
         events={allEvents}
       />
+
+      <div className="-mx-4 lg:-mx-6 -mb-4 lg:-mb-6 pt-12">
+        <Footer />
+      </div>
     </div>
   );
 };

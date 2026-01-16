@@ -27,6 +27,13 @@ class RegistrationConfirmation extends Mailable
      */
     public function __construct(ParticipantRegistration|VolunteerRegistration|DonationRegistration $registration)
     {
+        $this->qrCodePath = storage_path('app/temp/qr_' . $registration->id . '.png');
+        
+        // Ensure temp directory exists
+        if (!file_exists(storage_path('app/temp'))) {
+            mkdir(storage_path('app/temp'), 0755, true);
+        }
+
         if ($registration instanceof ParticipantRegistration) {
             $this->registration = $registration->load(['event.ngo', 'user', 'participantCategory', 'payments']);
         } elseif ($registration instanceof VolunteerRegistration) {
@@ -37,23 +44,15 @@ class RegistrationConfirmation extends Mailable
         
         // Skip QR Code and check-in info for donations
         if (!($registration instanceof DonationRegistration)) {
-            // Generate QR Code using GD (not imagick)
-            $this->qrCodePath = storage_path('app/temp/qr_' . $registration->id . '.png');
-            
-            // Ensure temp directory exists
-            if (!file_exists(storage_path('app/temp'))) {
-                mkdir(storage_path('app/temp'), 0755, true);
-            }
-            
-            // Generate QR Code using online API (no imagick required)
+            // Generate QR Code using external API but with robust Http facade and timeout
             try {
                 $qrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=' . urlencode($registration->qr_code);
-                $qrImage = file_get_contents($qrUrl);
+                $response = \Illuminate\Support\Facades\Http::timeout(5)->get($qrUrl);
                 
-                if ($qrImage) {
-                    file_put_contents($this->qrCodePath, $qrImage);
+                if ($response->successful()) {
+                    file_put_contents($this->qrCodePath, $response->body());
                 } else {
-                    \Log::error('Failed to generate QR code from API');
+                    \Log::error('Failed to generate QR code from API: ' . $response->status());
                 }
             } catch (\Exception $e) {
                 \Log::error('QR code generation error: ' . $e->getMessage());

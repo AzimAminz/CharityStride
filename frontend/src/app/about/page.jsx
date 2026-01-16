@@ -1,16 +1,11 @@
-import React from "react";
-import Layout from "../components/Layout";
+import AboutPageClient from "./page.client";
 
 export const metadata = {
-  title: "About",
+  title: "About Us | CharityStride",
+  description:
+    "Learn about our vision, mission, and the team behind CharityStride.",
 };
 
-const page = () => {
-  return (
-    <>
-      <Layout></Layout>
-    </>
-  );
-};
-
-export default page;
+export default function AboutPage() {
+  return <AboutPageClient />;
+}

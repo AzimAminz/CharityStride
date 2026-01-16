@@ -928,8 +928,13 @@ export default function ParticipantCategoryManager({
                   setEditingCategory(category);
                   setCategoryForm({
                     category_name: category.category_name,
+                    has_custom_datetime: !!(
+                      category.event_date || category.event_time
+                    ),
                     event_date: category.event_date || "",
-                    event_time: category.event_time || "",
+                    event_time: category.event_time
+                      ? category.event_time.slice(0, 5)
+                      : "",
                     capacity_type: category.capacity_type,
                     capacity: category.capacity || "",
                     has_category_location: !!category.location_name, // Auto-check if has location

@@ -1502,6 +1502,30 @@ function DetailsTab({ event, selectedModule: propSelectedModule }) {
                                       (Number(category.base_fee) || 0) / 100
                                     ).toFixed(2)}`}
                               </p>
+
+                              {/* Custom Date/Time Display */}
+                              {(category.event_date || category.event_time) && (
+                                <div className="flex items-center gap-2 mt-2 text-sm text-emerald-700 font-medium bg-emerald-50 px-2 py-1 rounded w-fit">
+                                  <Calendar className="h-4 w-4" />
+                                  <span>
+                                    {category.event_date &&
+                                      format(
+                                        parseISO(category.event_date),
+                                        "dd MMM yyyy"
+                                      )}
+                                    {category.event_date &&
+                                      category.event_time &&
+                                      " • "}
+                                    {category.event_time &&
+                                      format(
+                                        parseISO(
+                                          `2000-01-01T${category.event_time}`
+                                        ),
+                                        "h:mm a"
+                                      )}
+                                  </span>
+                                </div>
+                              )}
                             </div>
                             <span
                               className={`px-3 py-1 rounded-full text-xs font-semibold ${

@@ -76,10 +76,12 @@ export default function VolunteerRegistrationPage() {
   // Debug log (Must be before early returns)
   useEffect(() => {
     if (event?.volunteer_roles) {
-      console.log("🛠️ Volunteer Filtering Debug:", {
-        todayStr,
-        totalRoles: event.volunteer_roles.length,
-      });
+      // console.log("🛠️ Volunteer Filtering Debug:", {
+      //   todayStr,
+      //   totalRoles: event.volunteer_roles.length,
+      //   loading,
+      //   checkingStatus,
+      // });
     }
   }, [event?.volunteer_roles, todayStr]);
 
@@ -240,6 +242,11 @@ export default function VolunteerRegistrationPage() {
       setSubmitting(false);
     }
   };
+
+  console.log(
+    "🎨 [VolunteerRegistration] Rendering main form. Submitting:",
+    submitting
+  );
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-purple-50/30">

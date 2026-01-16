@@ -20,6 +20,7 @@ class DonationConfig extends Model
 
     protected $casts = [
         'has_target' => 'boolean',
+        'target_amount' => 'integer',
     ];
 
     // Relationships

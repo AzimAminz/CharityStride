@@ -1306,9 +1306,9 @@ function DetailsTab({ event, selectedModule: propSelectedModule }) {
                         </span>
                       </div>
                       <div className="h-3 bg-gray-100 rounded-full overflow-hidden shadow-inner border border-gray-200">
-                        <motion.div
-                          initial={{ width: 0 }}
-                          animate={{
+                        <div
+                          className="h-full bg-emerald-600 rounded-full transition-all duration-1000 ease-out"
+                          style={{
                             width: `${Math.min(
                               100,
                               ((event.stats?.total_raised || 0) /
@@ -1316,8 +1316,6 @@ function DetailsTab({ event, selectedModule: propSelectedModule }) {
                                 100
                             )}%`,
                           }}
-                          transition={{ duration: 1.5, ease: "easeOut" }}
-                          className="h-full bg-gradient-to-r from-emerald-500 via-teal-500 to-emerald-600"
                         />
                       </div>
                       <p className="text-gray-500 text-xs text-right">
@@ -1401,6 +1399,30 @@ function DetailsTab({ event, selectedModule: propSelectedModule }) {
                                       (Number(category.base_fee) || 0) / 100
                                     ).toFixed(2)}`}
                               </p>
+
+                              {/* Custom Date/Time Display */}
+                              {(category.event_date || category.event_time) && (
+                                <div className="flex items-center gap-2 mt-2 text-sm text-emerald-700 font-medium bg-emerald-50 px-2 py-1 rounded w-fit">
+                                  <Calendar className="h-4 w-4" />
+                                  <span>
+                                    {category.event_date &&
+                                      format(
+                                        parseISO(category.event_date),
+                                        "dd MMM yyyy"
+                                      )}
+                                    {category.event_date &&
+                                      category.event_time &&
+                                      " • "}
+                                    {category.event_time &&
+                                      format(
+                                        parseISO(
+                                          `2000-01-01T${category.event_time}`
+                                        ),
+                                        "h:mm a"
+                                      )}
+                                  </span>
+                                </div>
+                              )}
                             </div>
                             <span
                               className={`px-3 py-1 rounded-full text-xs font-semibold ${

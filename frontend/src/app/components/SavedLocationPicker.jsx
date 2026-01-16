@@ -287,7 +287,7 @@ export default function SavedLocationPicker({ value, onChange, placeholder }) {
 
         <LocationPicker
           value={value}
-          onChange={onChange}
+          onLocationSelect={onChange}
           placeholder={placeholder || "🔍 Search for location..."}
         />
       </div>

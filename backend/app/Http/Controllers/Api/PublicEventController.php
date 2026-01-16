@@ -212,6 +212,62 @@ class PublicEventController extends Controller
             ], 404);
         }
 
+        $event->append('stats');
+
         return response()->json($event);
+    }
+
+    /**
+     * Get platform-wide statistics for the landing page
+     */
+    public function stats()
+    {
+        $activeEventsCount = Event::published()
+            ->openForRegistration()
+            ->count();
+
+        $volunteersCount = \App\Models\VolunteerRegistration::where('status', 'approved')
+            ->count();
+
+        // Funds raised: Sum of all PAID payments
+        $fundsRaisedCents = \App\Models\Payment::where('payment_status', 'paid')
+            ->sum('amount');
+        
+        // Convert to Ringgit
+        $fundsRaisedRM = $fundsRaisedCents / 100;
+
+        return response()->json([
+            'active_events' => $activeEventsCount,
+            'volunteers' => $volunteersCount,
+            'funds_raised' => $fundsRaisedRM,
+            // Format for UI convenience
+            'formatted' => [
+                'active_events' => $this->formatNumber($activeEventsCount),
+                'volunteers' => $this->formatNumber($volunteersCount),
+                'funds_raised' => 'RM ' . $this->formatCurrency($fundsRaisedRM),
+            ]
+        ]);
+    }
+
+    private function formatNumber($number)
+    {
+        if ($number >= 1000000) {
+            return round($number / 1000000, 1) . 'M+';
+        }
+        if ($number >= 1000) {
+            return round($number / 1000, 1) . 'K+';
+        }
+        return $number;
+    }
+
+    private function formatCurrency($amount)
+    {
+        if ($amount >= 1000000) {
+            return round($amount / 1000000, 1) . 'M';
+        }
+        if ($amount >= 1000) {
+            return round($amount / 1000, 1) . 'K';
+        }
+        return number_format($amount, 2);
     }
 }

@@ -33,6 +33,7 @@ Route::prefix('lookups')->group(function() {
 // Public Event Discovery Routes
 Route::prefix('public/events')->group(function() {
     Route::get('/', [PublicEventController::class, 'index']);
+    Route::get('/stats', [PublicEventController::class, 'stats']); // Add stats route
     Route::get('/popular', [PublicEventController::class, 'popular']);
     Route::get('/newest', [PublicEventController::class, 'newest']);
     Route::get('/donations', [PublicEventController::class, 'donations']);

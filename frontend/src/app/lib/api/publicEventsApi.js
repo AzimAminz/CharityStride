@@ -104,3 +104,16 @@ export const getEventById = async (id) => {
     throw error;
   }
 };
+
+/**
+ * Get platform-wide statistics
+ */
+export const getPlatformStats = async () => {
+  try {
+    const response = await axios.get(`${API_BASE_URL}/api/public/events/stats`);
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching platform stats:", error);
+    throw error;
+  }
+};
