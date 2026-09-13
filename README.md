@@ -1,8 +1,10 @@
-# 🌍 CharityStride
+
 
 <div align="center">
 
-![CharityStride Banner](https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg)
+<p align="center">
+  <img src="frontend/public/charitystride_icon.png" alt="CharityStride Logo" width="88" height="88" style="border-radius: 18px; box-shadow: 0 10px 25px rgba(16, 185, 129, 0.35);" />
+</p>
 
 ### *Comprehensive Charity Event & Volunteer Management System for NGOs in Malaysia*
 
